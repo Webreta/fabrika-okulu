@@ -1,0 +1,469 @@
+/**
+ * Online Eğitim Sistemi - Admin Styles
+ */
+
+/* Dashboard */
+.oes-admin-wrap {
+    max-width: 1400px;
+}
+
+.oes-dashboard {
+    margin-top: 20px;
+}
+
+/* Stats Grid */
+.oes-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.oes-stat-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.oes-stat-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.oes-stat-icon .dashicons {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #fff;
+}
+
+.oes-stat-content h3 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+
+.oes-stat-content p {
+    margin: 4px 0 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* Recent Section */
+.oes-recent-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.oes-recent-section h2 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+}
+
+/* Quick Actions */
+.oes-quick-actions {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.oes-quick-actions h2 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+}
+
+.oes-action-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.oes-action-buttons .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.oes-action-buttons .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+/* Status Badges */
+.oes-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.oes-status-active,
+.oes-status-publish {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.oes-status-inactive,
+.oes-status-draft {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.oes-status-cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.oes-status-pending {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+/* No Data */
+.oes-no-data,
+.oes-no-courses {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.oes-no-courses .button {
+    margin-top: 16px;
+}
+
+/* Settings */
+.oes-settings-form {
+    max-width: 800px;
+}
+
+.oes-settings-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.oes-settings-section h2 {
+    margin: 0 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 16px;
+}
+
+/* WooCommerce Product Panel */
+#oes_course_data .options_group {
+    padding: 0;
+}
+
+#oes_course_data h4 {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Metabox Stilleri */
+.oes-metabox-table {
+    width: 100%;
+}
+
+.oes-metabox-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+    vertical-align: top;
+}
+
+.oes-metabox-table td {
+    padding: 15px 0;
+}
+
+.oes-metabox-table .regular-text {
+    width: 100%;
+    max-width: 400px;
+}
+
+.oes-metabox-table .large-text {
+    width: 100%;
+}
+
+/* Repeater Fields */
+.oes-repeater-wrapper {
+    padding: 12px 0;
+}
+
+.oes-repeater-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.oes-repeater-item input[type="text"],
+.oes-repeater-item input[type="url"] {
+    flex: 1;
+}
+
+.oes-repeater-item .oes-remove-item {
+    color: #dc2626;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.oes-repeater-item .oes-remove-item:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+}
+
+.oes-repeater-item .oes-sort-handle {
+    cursor: move;
+    color: #9ca3af;
+}
+
+/* Curriculum Builder */
+.oes-curriculum-wrapper {
+    padding: 12px 0;
+}
+
+.oes-curriculum-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.oes-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.oes-section-header .oes-section-title-input {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 12px;
+}
+
+.oes-sort-handle {
+    cursor: move;
+    color: #9ca3af;
+}
+
+.oes-toggle-section,
+.oes-remove-section {
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.oes-remove-section {
+    color: #dc2626;
+}
+
+.oes-remove-section:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+}
+
+.oes-section-lessons {
+    padding: 16px;
+}
+
+.oes-lesson-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.oes-lesson-item .oes-lesson-title-input {
+    flex: 2;
+    min-width: 150px;
+}
+
+.oes-lesson-item .oes-lesson-duration-input {
+    width: 80px !important;
+    flex: 0 0 80px;
+}
+
+.oes-lesson-item .oes-lesson-video-input {
+    flex: 2;
+    min-width: 200px;
+}
+
+.oes-lesson-item .oes-preview-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    color: #6b7280;
+}
+
+.oes-remove-lesson {
+    color: #dc2626;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.oes-remove-lesson:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+}
+
+.oes-add-lesson {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+    background: #f0f9ff;
+    border: 1px dashed #3b82f6;
+    color: #2563eb;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.oes-add-lesson:hover {
+    background: #e0f2fe;
+}
+
+.oes-add-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.oes-add-outcome,
+.oes-add-feature {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+/* Image Upload */
+.oes-image-upload-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.oes-preview-image {
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .oes-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .oes-action-buttons {
+        flex-direction: column;
+    }
+
+    .oes-action-buttons .button {
+        justify-content: center;
+    }
+}
+
+
+.oes-stat-value {
+    margin-right: 5px;
+}
+
+/* ============================================================
+   Fabrika Okulu — Modern admin teması (v2)
+   admin.css yalnızca eklenti sayfalarında yüklenir; kurallar oralarda etkilidir.
+   ============================================================ */
+:root{
+  --fo-navy:#194977; --fo-navy-d:#142b56; --fo-sky:#5baecf;
+  --fo-ink:#12233a; --fo-ink3:#6b7a90; --fo-line:#e3e8ef; --fo-bg:#f4f7fb;
+}
+#wpbody-content{ background:var(--fo-bg); }
+.wrap{ max-width:1320px; }
+.wrap > h1, .wrap > h1.wp-heading-inline{
+  font-size:22px; color:var(--fo-navy); font-weight:800;
+  padding:4px 0 14px; margin:0 0 20px; border-bottom:2px solid var(--fo-line);
+}
+.wrap .subsubsub{ margin-bottom:8px; }
+
+/* Butonlar */
+.wrap .button-primary{
+  background:var(--fo-navy)!important; border-color:var(--fo-navy)!important;
+  box-shadow:none!important; text-shadow:none!important; border-radius:8px!important;
+}
+.wrap .button-primary:hover{ background:var(--fo-navy-d)!important; border-color:var(--fo-navy-d)!important; }
+.wrap .button, .wrap .button-secondary{ border-radius:8px!important; }
+
+/* Tablolar */
+.wrap .widefat{
+  border:1px solid var(--fo-line); border-radius:12px; overflow:hidden;
+  box-shadow:0 1px 3px rgba(20,43,86,.06);
+}
+.wrap .widefat thead th, .wrap .widefat tfoot th{
+  background:#eef3f9; color:var(--fo-navy); font-weight:700; border-bottom:1px solid var(--fo-line);
+}
+.wrap .widefat td, .wrap .widefat th{ padding:12px 14px; vertical-align:middle; }
+.wrap .widefat tbody tr:hover{ background:#f7fafd; }
+
+/* Kutular / form tabloları */
+.wrap .postbox, .wrap .card{
+  border:1px solid var(--fo-line)!important; border-radius:12px!important;
+  box-shadow:0 1px 3px rgba(20,43,86,.06)!important;
+}
+.wrap .form-table th{ color:var(--fo-ink); font-weight:600; }
+.wrap select, .wrap input[type=text], .wrap input[type=email], .wrap input[type=url],
+.wrap input[type=number], .wrap input[type=search], .wrap input[type=date], .wrap textarea{
+  border-radius:8px; border-color:#cfd8e3;
+}
+
+/* Bildirim/uyarı kutuları biraz yuvarlak */
+.wrap .notice{ border-radius:8px; }
+
+/* Marka: eski mavi vurguları navy'ye çek */
+.oes-stat-icon{ background:linear-gradient(135deg,var(--fo-navy) 0%,var(--fo-navy-d) 100%)!important; border-radius:12px; }
+.oes-stat-card{ border:1px solid var(--fo-line); border-radius:14px; box-shadow:0 1px 3px rgba(20,43,86,.06); }
+.wrap a{ color:var(--fo-navy); }
+.wrap a:hover{ color:var(--fo-navy-d); }

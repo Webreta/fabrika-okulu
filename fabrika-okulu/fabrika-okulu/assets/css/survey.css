@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Fabrika Okulu — Anket
+   1) Zorunlu sihirbaz — MODAL, bulunulan sayfanın üstünde  → .svm
+   2) Panel içi düz düzenleme (shell.php)                    → .sv-flat
+   3) wp-admin sonuç/segmentasyon + soru düzenleyici          → .fabo-wrap .sv-*
+   Palet .svm-ovl ve .sv üzerinde ayrı ayrı tanımlı: modal tema sayfalarında
+   panel.css YÜKLÜ OLMADAN da doğru görünmeli.
+   ========================================================================== */
+
+.svm-ovl, .sv {
+  --navy:#194977; --navy-d:#12365a; --navy-x:#0b2340; --navy-soft:#e7edf5;
+  --sky:#5baecf; --sky-soft:#e9f3f9;
+  --ink:#12233a; --ink2:#5a6577; --ink3:#98a1b3;
+  --line:#e3e8ef; --hover:#f2f6fa;
+  --green:#1f9d5b; --green-soft:#e7f6ee;
+  --red:#d1493d; --red-soft:#fbebe9;
+  --amber:#d9871a;
+}
+
+/* ==========================================================================
+   1) MODAL — anket kullanıcının BULUNDUĞU sayfanın üstünde açılır
+
+   KAYDIRMA KURALI (kullanıcı isteği): sol ray ve alt bar SABİT durur, yalnızca
+   ortadaki soru alanı kayar. Bunu sağlayan üçlü:
+     .svm-form  → flex sütun
+     .svm-scroll→ flex:1 + overflow-y:auto + min-height:0  (min-height olmazsa
+                  flex öğesi içeriğine göre büyür ve kaydırma HİÇ oluşmaz)
+     .svm-foot  → flex:none
+   ========================================================================== */
+
+/* Modal açıkken arka sayfa kaymasın */
+html.svm-lock, body.svm-lock { overflow: hidden !important; }
+
+.svm-ovl {
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(10, 28, 51, .62);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+}
+
+.svm {
+  display: grid; grid-template-columns: 310px 1fr;
+  width: min(1020px, 100%); height: min(700px, calc(100vh - 48px));
+  background: #fff; border-radius: 18px; overflow: hidden;
+  box-shadow: 0 30px 80px rgba(6, 26, 54, .38);
+}
+
+/* ---- Sol ray: SABİT, içerikle birlikte kaymaz ---- */
+/* display:block ZORUNLU: modal herhangi bir tema/panel sayfasının üstünde
+   açılıyor; panel.css gibi yerlerdeki genel "aside{display:none}" kuralları
+   sol rayı yok edip formu 310px sütuna sıkıştırıyordu (sağda dev boşluk). */
+.svm-side {
+  display: block !important;
+  background: linear-gradient(165deg, var(--navy) 0%, var(--navy-d) 55%, var(--navy-x) 100%);
+  color: #fff; padding: 30px 26px; position: relative; overflow: hidden;
+}
+/* Yumuşak ışık lekesi — düz navy blok fazla sert duruyordu */
+.svm-side::after {
+  content: ""; position: absolute; width: 340px; height: 340px; border-radius: 50%;
+  background: rgba(91, 174, 207, .18); filter: blur(48px);
+  top: -110px; right: -140px; pointer-events: none;
+}
+.svm-side-in { position: relative; z-index: 1; }
+.svm-side h2 { font-size: 21px; font-weight: 700; line-height: 1.25; margin: 0 0 8px; color: #fff; }
+.svm-tag { font-size: 13px; line-height: 1.6; color: rgba(255, 255, 255, .78); margin: 0 0 26px; }
+.svm-tag b { color: #fff; }
+.svm-note {
+  margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .14);
+  font-size: 11.5px; line-height: 1.6; color: rgba(255, 255, 255, .58);
+}
+
+/* ---- Sağ: form ---- */
+.svm-form { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fff; }
+.svm-bar { flex: none; height: 3px; background: var(--line); }
+.svm-bar span { display: block; height: 3px; width: 0; background: var(--navy); transition: width .3s ease; }
+.svm-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 30px 34px 10px; }
+.svm-foot {
+  flex: none; display: flex; align-items: center; gap: 12px;
+  padding: 15px 34px; border-top: 1px solid var(--line); background: #fff;
+}
+
+/* ---- Dikey adım göstergesi ---- */
+.svz-steps { list-style: none; margin: 0; padding: 0; }
+.svz-dot {
+  display: flex; gap: 14px; align-items: flex-start; position: relative;
+  padding-bottom: 24px; opacity: .5; transition: opacity .2s;
+}
+.svz-dot[hidden] { display: none; }
+/* Bağlantı çizgisi */
+.svz-dot::before {
+  content: ""; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px;
+  background: rgba(255, 255, 255, .18);
+}
+.svz-dot:last-child::before { display: none; }
+
+.svz-n {
+  width: 32px; height: 32px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; position: relative; z-index: 1;
+  background: rgba(255, 255, 255, .13); color: #fff;
+  border: 2px solid transparent; transition: all .2s;
+}
+.svz-txt { padding-top: 5px; }
+.svz-txt b { display: block; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.svz-txt i { display: block; font-size: 12px; font-style: normal; color: rgba(255, 255, 255, .6); margin-top: 2px; }
+
+.svz-dot.active { opacity: 1; }
+.svz-dot.active .svz-n { background: #fff; color: var(--navy); border-color: #fff; }
+.svz-dot.done { opacity: .85; }
+.svz-dot.done .svz-n { background: var(--green); color: #fff; font-size: 0; }
+.svz-dot.done .svz-n::after { content: "✓"; font-size: 15px; font-weight: 700; }
+
+/* ---- Adım başlığı ---- */
+.svz-step[hidden] { display: none; }
+.svz-h { margin-bottom: 24px; }
+.svz-h h2 { font-size: 22px; font-weight: 700; color: var(--ink); margin: 0 0 5px; line-height: 1.25; }
+.svz-h p { font-size: 13.5px; color: var(--ink3); margin: 0; }
+
+/* ---- Alt bar öğeleri ---- */
+.svz-count { font-size: 13px; color: var(--ink3); font-weight: 600; margin-left: auto; margin-right: auto; }
+.svz-back {
+  display: inline-flex; align-items: center; gap: 6px; background: none; border: 0;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink2); cursor: pointer;
+  padding: 12px 14px; border-radius: 10px;
+}
+.svz-back:hover { background: var(--hover); color: var(--navy); }
+.svz-back[hidden], .sv-btn[hidden] { display: none; }
+
+/* Kaydedilip yönlendirilirken formu kilitle (çift gönderim olmasın) */
+.sv-done { opacity: .55; pointer-events: none; }
+
+/* Erteleme bağlantısı — düğme gibi değil, ikincil dursun */
+.svz-skip { padding: 6px 0 18px; text-align: center; }
+.svz-skip button {
+  background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink3);
+  text-decoration: underline; cursor: pointer; padding: 6px 10px;
+}
+.svz-skip button:hover { color: var(--ink2); }
+.svz-skip button:disabled { opacity: .5; cursor: default; }
+
+/* ==========================================================================
+   2) ORTAK FORM PARÇALARI (sihirbaz + panel)
+   ========================================================================== */
+
+.sv-note {
+  background: var(--navy-soft); border-radius: 12px; padding: 14px 16px;
+  font-size: 13.5px; line-height: 1.6; color: var(--ink); margin-bottom: 24px;
+}
+.sv-note.upd { background: #fff6e8; border: 1px solid #f2d3a0; }
+
+.sv-sec { margin-bottom: 34px; }
+.sv-sec-t {
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--navy); padding-bottom: 10px; margin: 0 0 20px;
+  border-bottom: 2px solid var(--navy-soft);
+}
+
+/* ---- Soru ---- */
+.sv-q { margin-bottom: 26px; }
+.sv-q[hidden] { display: none; }
+.sv-lbl { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.sv-req { color: var(--red); margin-left: 3px; }
+.sv-help { font-size: 12.5px; color: var(--ink3); margin-top: 3px; }
+.sv-q.miss .sv-lbl { color: var(--red); }
+
+/* ---- Şıklar: tıklanabilir kartlar ---- */
+.sv-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.sv-opt {
+  display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px;
+  border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer;
+  font-size: 14.5px; line-height: 1.45; color: var(--ink); background: #fff;
+  transition: border-color .13s, background .13s, box-shadow .13s;
+}
+.sv-opt:hover { border-color: #c9d6e6; background: var(--hover); }
+.sv-opt input { margin: 1px 0 0; flex: none; accent-color: #194977; width: 18px; height: 18px; }
+/* .on sınıfını JS de basıyor — :has() desteklemeyen tarayıcılarda da vurgu çalışsın */
+.sv-opt:has(input:checked), .sv-opt.on {
+  border-color: var(--navy); background: var(--navy-soft);
+  box-shadow: 0 0 0 1px var(--navy) inset;
+}
+.sv-q.miss .sv-opt { border-color: #eab8b2; }
+
+/* Şık listesindeki grup başlığı (#anahtar) — seçilemez, sadece ayırıcı */
+.sv-group {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink3); margin: 16px 0 2px; padding-left: 2px;
+}
+.sv-group:first-child { margin-top: 0; }
+
+/* ---- Metin alanları ---- */
+.sv-q input[type=text],
+.sv-q input[type=date],
+.sv-q textarea {
+  width: 100%; margin-top: 12px; padding: 13px 16px; font: inherit; font-size: 14.5px;
+  border: 1.5px solid var(--line); border-radius: 12px; background: #fff;
+  color: var(--ink); box-sizing: border-box; transition: border-color .13s;
+}
+.sv-q textarea { resize: vertical; min-height: 110px; line-height: 1.65; }
+.sv-q input:focus, .sv-q textarea:focus { outline: none; border-color: var(--navy); }
+.sv-q.miss input, .sv-q.miss textarea { border-color: #eab8b2; }
+
+/* ---- Düğme + mesaj ---- */
+.sv-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--navy); color: #fff; border: 0; border-radius: 12px;
+  padding: 14px 26px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: background .14s, transform .1s;
+}
+.sv-btn:hover { background: var(--navy-d); }
+.sv-btn:active { transform: translateY(1px); }
+.sv-btn:disabled { opacity: .55; cursor: default; }
+
+.sv-msg { display: none; margin-top: 18px; padding: 12px 16px; border-radius: 10px; font-size: 13.5px; }
+.sv-msg.show { display: block; }
+.sv-msg.ok  { background: var(--green-soft); color: #10693f; }
+.sv-msg.err { background: var(--red-soft); color: #a5312a; }
+
+/* ---- Panel içi düz mod ---- */
+.sv-flat .sv-actions { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line); }
+
+/* ==========================================================================
+   MOBİL — sol hero üstte kompakt şeride dönüşür
+   ========================================================================== */
+/* Dar ekran: sol ray üstte kompakt şeride döner, stepper gizlenir
+   (ilerlemeyi üstteki çubuk gösteriyor).
+
+   MOBİLDE DE POPUP (kullanıcı isteği): modal tam ekrana YAYILMAZ. Kenarlarda
+   boşluk + köşe yuvarlaması kalır, arkada bulanık sayfa görünmeye devam eder;
+   kullanıcı siteden koparılmış hissetmez. Yükseklik içeriğe göre (auto), uzun
+   adımlarda ekranı taşırmasın diye max-height ile sınırlanır ve iç alan kayar.
+   dvh: adres çubuğu açılıp kapanırken modal zıplamasın (vh yedeği önce). */
+@media (max-width: 900px) {
+  .svm-ovl { padding: 16px 14px; }
+  .svm {
+    grid-template-columns: 1fr; grid-template-rows: auto 1fr;
+    width: 100%; max-width: 520px; height: auto;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    border-radius: 16px;
+  }
+  .svm-side { padding: 18px 20px; }
+  .svm-side h2 { font-size: 18px; }
+  .svm-tag { font-size: 12.5px; margin-bottom: 0; }
+  .svz-steps, .svm-note { display: none; }
+  .svm-scroll { padding: 22px 20px 8px; }
+  .svm-foot { padding: 13px 20px; gap: 8px; }
+  .svz-h h2 { font-size: 19px; }
+  .svm-foot .sv-btn { padding: 12px 18px; font-size: 14.5px; }
+  .svz-count { font-size: 12px; }
+}
+@media (max-width: 420px) {
+  /* Küçük telefonda kenar boşluğu incelir ama SIFIRLANMAZ — popup kalsın. */
+  .svm-ovl { padding: 10px 8px; }
+  .svm {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+  .svz-count { display: none; }
+  .svm-foot .sv-btn { margin-left: auto; }
+}
+
+/* ==========================================================================
+   3) wp-admin — sonuç/segmentasyon + soru düzenleyici
+   (.fabo-wrap altına kapsanır, WP ekranlarına sızmaz)
+   ========================================================================== */
+
+/* ---- Filtre paneli (katlanabilir) ---- */
+.fabo-wrap .sv-filterbox { border: 1px solid var(--line, #e3e8ef); border-radius: 12px; background: #fff; margin-bottom: 16px; }
+.fabo-wrap .sv-filterbox > summary {
+  cursor: pointer; padding: 13px 16px; font-weight: 600; font-size: 13.5px; list-style: none;
+  display: flex; align-items: center; gap: 9px;
+}
+.fabo-wrap .sv-filterbox > summary::-webkit-details-marker { display: none; }
+.fabo-wrap .sv-filterbox > summary::before { content: "▸"; color: #98a1b3; transition: transform .15s; }
+.fabo-wrap .sv-filterbox[open] > summary::before { transform: rotate(90deg); }
+.fabo-wrap .sv-filterbox .sv-fcount {
+  margin-left: auto; font-size: 11.5px; font-weight: 700; background: #194977; color: #fff;
+  border-radius: 20px; padding: 2px 9px;
+}
+.fabo-wrap .sv-fbody { padding: 0 16px 16px; border-top: 1px solid #eef2f7; }
+
+.fabo-wrap .sv-frow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 4px; }
+.fabo-wrap .sv-frow input[type=search] { min-width: 240px; }
+.fabo-wrap .sv-fgrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px; margin-top: 14px;
+}
+.fabo-wrap .sv-fq { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5a6577; min-width: 0; }
+.fabo-wrap .sv-fq span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fabo-wrap .sv-fq select { width: 100%; max-width: 100%; }
+
+.fabo-wrap .sv-resbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px;
+}
+.fabo-wrap .sv-resbar .sp { margin-left: auto; }
+
+.fabo-wrap .sv-pager { display: flex; gap: 5px; margin-top: 16px; flex-wrap: wrap; }
+.fabo-wrap .sv-pager a, .fabo-wrap .sv-pager .cur {
+  padding: 6px 12px; border-radius: 8px; border: 1px solid #e3e8ef; text-decoration: none; font-size: 13px; color: #5a6577;
+}
+.fabo-wrap .sv-pager a:hover { background: #f2f6fa; }
+.fabo-wrap .sv-pager .cur { background: #194977; color: #fff; border-color: #194977; font-weight: 600; }
+
+.fabo-wrap .sv-dsec {
+  margin: 26px 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: #194977;
+}
+
+/* ---- Soru düzenleyici (akordiyon) ---- */
+.fabo-wrap .sv-qrow { border: 1px solid #e3e8ef; border-radius: 12px; margin-bottom: 10px; background: #fff; overflow: hidden; }
+.fabo-wrap .sv-qrow.open { box-shadow: 0 2px 10px rgba(20, 43, 86, .06); }
+.fabo-wrap .sv-qhead {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; background: #fbfcfe;
+}
+.fabo-wrap .sv-qrow.open .sv-qhead { border-bottom: 1px solid #eef2f7; }
+.fabo-wrap .sv-qhead:hover { background: #f2f6fa; }
+.fabo-wrap .sv-caret { color: #98a1b3; transition: transform .15s; flex: none; }
+.fabo-wrap .sv-qrow.open .sv-caret { transform: rotate(90deg); }
+.fabo-wrap .sv-qkey {
+  font-family: Consolas, Monaco, monospace; font-size: 12px; color: #194977;
+  background: #e7edf5; padding: 2px 8px; border-radius: 6px; flex: none;
+}
+.fabo-wrap .sv-qsum { font-size: 13px; color: #5a6577; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.fabo-wrap .sv-qmeta { display: flex; gap: 5px; flex: none; }
+.fabo-wrap .sv-qtools { display: flex; gap: 4px; flex: none; }
+.fabo-wrap .sv-qbody { padding: 16px 14px 14px; }
+.fabo-wrap .sv-qrow:not(.open) .sv-qbody { display: none; }
+
+.fabo-wrap .sv-qgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; }
+@media (max-width: 1100px) { .fabo-wrap .sv-qgrid { grid-template-columns: repeat(2, 1fr); } }
+.fabo-wrap .sv-qgrid label, .fabo-wrap .sv-full {
+  display: block; font-size: 12px; font-weight: 600; color: #5a6577; margin-bottom: 14px;
+}
+.fabo-wrap .sv-qgrid label { margin-bottom: 0; }
+.fabo-wrap .sv-qgrid input, .fabo-wrap .sv-qgrid select,
+.fabo-wrap .sv-full input[type=text], .fabo-wrap .sv-full textarea { width: 100%; margin-top: 4px; }
+.fabo-wrap .sv-qgrid input[readonly] { background: #eef2f7; color: #98a1b3; }
+.fabo-wrap .sv-req-lbl { align-self: end; font-weight: 600; }
+.fabo-wrap .sv-full textarea { font-family: Consolas, Monaco, monospace; font-size: 12.5px; line-height: 1.6; }
+
+.fabo-wrap .sv-rulebox { background: #f7f9fc; border: 1px solid #eef2f7; border-radius: 10px; padding: 12px 13px; }
+.fabo-wrap .sv-rulebox > strong { font-size: 12.5px; }
+.fabo-wrap .sv-rules { margin: 10px 0 8px; }
+.fabo-wrap .sv-rule { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.fabo-wrap .sv-rule select { max-width: 260px; }
+.fabo-wrap .sv-rule input[type=text] { flex: 1; min-width: 170px; }
+
+.fabo-wrap .sv-savebar {
+  position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e3e8ef;
+  padding: 14px 0; margin-top: 18px; display: flex; align-items: center; gap: 14px;
+}

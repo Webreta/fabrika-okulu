@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+@theme {
+  /* Marka renkleri — mevcut siteden: lacivert #142b56, açık mavi #84bedc */
+  --color-navy-50: #f3f5f9;
+  --color-navy-100: #e3e8ef;
+  --color-navy-200: #c5cfe0;
+  --color-navy-300: #9aabc7;
+  --color-navy-400: #6a82ab;
+  --color-navy-500: #3f5b8d;
+  --color-navy-600: #1a4976;
+  --color-navy-700: #1d3663;
+  --color-navy-800: #142b56;
+  --color-navy-900: #0f2043;
+  --color-navy-950: #0a1530;
+
+  --color-sky-50: #f2f9fc;
+  --color-sky-100: #e0f1f8;
+  --color-sky-200: #bfe2f0;
+  --color-sky-300: #84bedc;
+  --color-sky-400: #5baecf;
+  --color-sky-500: #3d97bd;
+  --color-sky-600: #2e7a9c;
+  --color-sky-700: #266481;
+
+  --color-ink: #1b2437;
+  --color-muted: #5f6b80;
+  --color-line: #e3e8ef;
+  --color-surface: #f5f7f8;
+
+  --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-script: var(--font-dancing), "Dancing Script", cursive;
+}
+
+body {
+  @apply bg-white text-ink antialiased;
+}
+
+@layer components {
+/* Zengin metin (kurs açıklaması, yasal sayfalar) */
+.prose-fabo :is(h2, h3, h4) { @apply mt-6 mb-2 font-bold text-navy-800; }
+.prose-fabo h2 { @apply text-2xl; }
+.prose-fabo h3 { @apply text-xl; }
+.prose-fabo p { @apply my-3 leading-relaxed; }
+.prose-fabo ul { @apply my-3 list-disc pl-6; }
+.prose-fabo ol { @apply my-3 list-decimal pl-6; }
+.prose-fabo a { @apply text-sky-600 underline; }
+.prose-fabo table { @apply my-4 w-full border-collapse text-sm; }
+.prose-fabo :is(td, th) { @apply border border-line p-2 text-left; }
+
+/* Form elemanları (panel + admin ortak) */
+.input {
+  @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:bg-surface;
+}
+.label { @apply mb-1 block text-sm font-medium text-navy-800; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60; }
+.btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60 bg-navy-800 text-white hover:bg-navy-900; }
+.btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60 border border-line bg-white text-navy-800 hover:bg-navy-50; }
+.btn-sky { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60 bg-sky-400 text-white hover:bg-sky-500; }
+.btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-60 bg-red-600 text-white hover:bg-red-700; }
+.btn-sm { padding: 0.375rem 0.75rem !important; font-size: 0.75rem !important; }
+.card { @apply rounded-xl border border-line bg-white p-5 shadow-sm; }
+.badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+
+/* Tablolar */
+.table { @apply w-full text-left text-sm; }
+.table th { @apply border-b border-line bg-surface px-3 py-2 font-semibold text-navy-800; }
+.table td { @apply border-b border-line px-3 py-2 align-middle; }
+.table tr:last-child td { @apply border-b-0; }
+
+/* Kurs kapak görselleri sabit oran */
+.cover { @apply aspect-[16/11] w-full object-cover; }
+}
+
+/* Admin sayfa başlıkları: üste yapışık, içeriğin üstüne binmez */
+.admin-main > .page-title {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: -1rem -1rem 1.5rem;
+  padding: 0.9rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid var(--color-line);
+}
+@media (min-width: 1024px) {
+  .admin-main > .page-title { margin: -2rem -2rem 1.5rem; padding: 1rem 2rem; }
+}
+
+/* ===== Panel temaları: Tailwind renk token'ları .fo-theme kapsamında ezilir → tüm bileşenler yeniden boyanır ===== */
+.fo-theme { color: var(--color-ink); transition: background-color .3s, color .3s; }
+
+/* Aydınlık: ferah, açık maviler */
+.fo-theme[data-theme="aydinlik"] {
+  --color-surface: #e3eef9; --color-line: #c3d6ea; --color-white: #f7fbff; --color-ink: #12304f; --color-muted: #4f6b88;
+  --color-navy-800: #1769b0; --color-navy-900: #10528c; --color-navy-700: #1f7ccc; --color-navy-600: #2f8fdc; --color-navy-100: #d3e6f8; --color-navy-50: #e8f2fc; --color-navy-200: #b6d3f0; --color-navy-300: #8bbbe6; --color-navy-400: #5ea0d8;
+  --color-sky-400: #2fb2ea; --color-sky-500: #189fd9; --color-sky-600: #0f86ba; --color-sky-300: #7dcdf2; --color-sky-100: #d5f0fb; --color-sky-50: #eaf8fe; --color-sky-700: #0b6b96;
+}
+/* Kafe: espresso — koyu kahve zemin, krem yazı, karamel vurgu */
+.fo-theme[data-theme="kafe"] {
+  --color-surface: #1f1510; --color-line: #3d2c21; --color-white: #2b1d15; --color-ink: #f4ebdf; --color-muted: #c1a78f;
+  --color-navy-950: #fff7ec; --color-navy-900: #f7e9d6; --color-navy-800: #edd6b6; --color-navy-700: #dcbf98; --color-navy-600: #c9a77c; --color-navy-500: #ae8c62;
+  --color-navy-400: #8e6f4c; --color-navy-300: #6c5339; --color-navy-200: #4f3a28; --color-navy-100: #3f2d20; --color-navy-50: #332419;
+  --color-sky-700: #ffdcae; --color-sky-600: #f8cd91; --color-sky-500: #ecaf62; --color-sky-400: #dd9745; --color-sky-300: #bb7a33; --color-sky-200: #7d501f; --color-sky-100: #4d3115; --color-sky-50: #392410;
+  --color-emerald-50: #21301f; --color-emerald-100: #2a4229; --color-emerald-700: #93d9a6; --color-emerald-800: #ace3ba;
+  --color-amber-50: #3e2c0e; --color-amber-100: #523a12; --color-amber-200: #725218; --color-amber-700: #f6c96c; --color-amber-800: #f9d68c;
+  --color-red-50: #401c17; --color-red-700: #f39c8d; --color-red-600: #f5ab9e; --color-red-200: #70322a;
+  --color-violet-50: #31243a; --color-violet-100: #3e2d4c; --color-violet-700: #cfbaf2;
+  color-scheme: dark;
+}
+/* Kütüphane: koyu orman yeşili zemin, kağıt rengi yazı, zeytin/lime vurgu */
+.fo-theme[data-theme="kutuphane"] {
+  --color-surface: #24362c; --color-line: #3c5244; --color-white: #2e4236; --color-ink: #eef4ea; --color-muted: #b7c8b6;
+  --color-navy-950: #f4f9ef; --color-navy-900: #e8f1df; --color-navy-800: #d6e6c8; --color-navy-700: #bfd6aa; --color-navy-600: #a6c290; --color-navy-500: #8aa876;
+  --color-navy-400: #6f8c5e; --color-navy-300: #557048; --color-navy-200: #415a3a; --color-navy-100: #364c3e; --color-navy-50: #2b3f33;
+  --color-sky-700: #e3f3b3; --color-sky-600: #d3ea95; --color-sky-500: #bddc6b; --color-sky-400: #a7cd55; --color-sky-300: #86ab3d; --color-sky-200: #5a7628; --color-sky-100: #3f5422; --color-sky-50: #33461c;
+  --color-emerald-50: #1f3d2f; --color-emerald-100: #274d3b; --color-emerald-700: #94e0b1; --color-emerald-800: #ade8c4;
+  --color-amber-50: #40341a; --color-amber-100: #54451f; --color-amber-200: #715d26; --color-amber-700: #f1d278; --color-amber-800: #f5dd96;
+  --color-red-50: #44272a; --color-red-700: #f3a0a0; --color-red-600: #f5b0b0; --color-red-200: #713a3a;
+  --color-violet-50: #322e45; --color-violet-100: #403a57; --color-violet-700: #cfc2f3;
+  color-scheme: dark;
+}
+/* Gece: koyu mod — beyaz kartlar koyu laciverte, koyu yazılar açığa döner */
+.fo-theme[data-theme="gece"] {
+  --color-surface: #0b1220; --color-line: #24324a; --color-white: #141d2e; --color-ink: #e6ebf5; --color-muted: #9aa8c2;
+  --color-navy-950: #eaf2ff; --color-navy-900: #dfe9f7; --color-navy-800: #cfdcf0; --color-navy-700: #b7c9e6; --color-navy-600: #9fb7dc; --color-navy-500: #7f9bc6;
+  --color-navy-400: #6b86b0; --color-navy-300: #4d6690; --color-navy-200: #34496b; --color-navy-100: #26354f; --color-navy-50: #1b2739;
+  --color-sky-700: #bfe2f0; --color-sky-600: #a6d6ea; --color-sky-500: #6fbbdc; --color-sky-400: #5baecf; --color-sky-300: #3d8fb0; --color-sky-200: #24607a; --color-sky-100: #1a3a4a; --color-sky-50: #14293a;
+  --color-emerald-50: #10301f; --color-emerald-100: #164329; --color-emerald-700: #6fd39e; --color-emerald-800: #86dcae;
+  --color-amber-50: #33240a; --color-amber-100: #4a3510; --color-amber-200: #6a4a14; --color-amber-700: #f0be5c; --color-amber-800: #f4cb7c;
+  --color-red-50: #3a1717; --color-red-700: #f08b8b; --color-red-600: #f39c9c; --color-red-200: #6b2b2b;
+  --color-violet-50: #2a2145; --color-violet-100: #352a58; --color-violet-700: #c4b5fd;
+  color-scheme: dark;
+}
+.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"]) .fo-logo { filter: brightness(0) invert(1); }
+/* Gece'de açık laciverte dönen dolu butonlarda koyu yazı */
+.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"]) :is(.bg-navy-800, .bg-navy-900, .btn-primary) { color: var(--color-surface); }
+/* Mermer: gri-lavanta, zarif */
+.fo-theme[data-theme="mermer"] {
+  --color-surface: #e9e7ee; --color-line: #cfcbd9; --color-white: #faf9fc; --color-ink: #23203a; --color-muted: #6a6684;
+  --color-navy-800: #4b4372; --color-navy-900: #38315a; --color-navy-700: #5c5388; --color-navy-600: #6d649b; --color-navy-100: #e3dfee; --color-navy-50: #f1eff6; --color-navy-200: #cbc5dd; --color-navy-300: #aaa2c4; --color-navy-400: #8a81aa;
+  --color-sky-400: #9b8fc4; --color-sky-500: #8678b5; --color-sky-600: #72649f; --color-sky-300: #b7add4; --color-sky-100: #e9e5f3; --color-sky-50: #f3f1f8; --color-sky-700: #5c5085;
+}

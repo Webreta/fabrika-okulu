@@ -1,0 +1,683 @@
+/**
+ * Görev/Görev Sistemi - Minimal CSS
+ */
+
+/* Reset Flatsome conflicts */
+.oes-assignments-page *,
+.oes-assignment-detail *,
+.oes-submit-section * {
+    box-sizing: border-box;
+}
+
+.oes-assignments-page ul,
+.oes-assignment-detail ul {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.oes-assignments-page li::before,
+.oes-assignment-detail li::before {
+    display: none !important;
+}
+
+/* Page */
+.oes-assignments-page h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: #111;
+}
+
+.oes-assignments-section {
+    margin-bottom: 24px;
+}
+
+.oes-assignments-section h3 {
+    font-size: 10px;
+    font-weight: 500;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px;
+}
+
+/* Assignment List */
+.oes-assignments-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.oes-assignment-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
+    font-size: 13px;
+    transition: border-color 0.15s;
+}
+
+.oes-assignment-card:hover {
+    border-color: #10b981;
+}
+
+.oes-assignment-card.overdue {
+    border-left: 2px solid #ef4444;
+}
+
+.oes-assignment-card.submitted {
+    border-left: 2px solid #3b82f6;
+}
+
+.oes-assignment-card.completed {
+    border-left: 2px solid #10b981;
+    opacity: 0.6;
+}
+
+.oes-assignment-card h4 {
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0;
+    color: #222;
+    flex: 1;
+}
+
+.oes-assignment-header {
+    display: none;
+}
+
+.oes-assignment-footer {
+    display: none;
+}
+
+.oes-assignment-course {
+    font-size: 11px;
+    color: #666;
+}
+
+.oes-assignment-due {
+    font-size: 11px;
+    color: #666;
+}
+
+.oes-assignment-card.overdue .oes-assignment-due {
+    color: #ef4444;
+}
+
+.oes-assignment-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.oes-assignment-badge.overdue {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.oes-assignment-badge.submitted {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.oes-assignment-badge.completed {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.oes-assignment-types {
+    font-size: 11px;
+    color: #999;
+}
+
+.oes-view-link {
+    font-size: 11px;
+    color: #10b981;
+}
+
+/* Empty */
+.oes-empty-state {
+    text-align: center;
+    padding: 32px;
+    color: #666;
+}
+
+.oes-empty-icon {
+    font-size: 24px;
+    opacity: 0.4;
+    margin-bottom: 8px;
+}
+
+.oes-empty-state p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* Detail Page */
+.oes-assignment-detail {
+    /* tam genişlik */
+}
+
+.oes-back-link {
+    font-size: 12px;
+    color: #666;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+.oes-back-link:hover {
+    color: #10b981;
+}
+
+.oes-detail-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.oes-detail-course {
+    font-size: 10px;
+    color: #10b981;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.oes-detail-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: #111;
+}
+
+.oes-detail-due {
+    font-size: 12px;
+    color: #666;
+}
+
+.oes-detail-due.overdue {
+    color: #ef4444;
+}
+
+.oes-overdue-badge {
+    font-size: 9px;
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 4px;
+}
+
+.oes-detail-score {
+    float: right;
+    text-align: right;
+    padding: 5px 8px;
+    border-radius: 10px;
+}
+
+.oes-score-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #10b981;
+}
+
+.oes-score-max {
+    font-size: 12px;
+    color: #999;
+}
+
+.oes-detail-description,
+.oes-detail-submission {
+    background: #f9f9f9;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.oes-detail-description h4,
+.oes-detail-submission h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #444;
+    margin: 0 0 6px;
+}
+
+.oes-description-content {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.oes-detail-feedback {
+    background: #fffbeb;
+    border-left: 2px solid #f59e0b;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+}
+
+.oes-detail-feedback h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #92400e;
+    margin: 0 0 4px;
+}
+
+.oes-detail-feedback p {
+    margin: 0;
+    font-size: 13px;
+    color: #78350f;
+}
+
+.oes-submission-info {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.oes-status-graded {
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.oes-status-pending {
+    color: #d97706;
+    font-weight: 500;
+}
+
+.oes-submission-text {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.oes-submission-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.oes-attachment-item {
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    color: #333;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.oes-attachment-item:hover {
+    background: #eee;
+}
+
+.oes-voice-attachment audio {
+    height: 28px;
+    margin-top: 4px;
+}
+
+/* Submit Section */
+.oes-submit-section {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.oes-submit-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: #111;
+}
+
+.oes-submission-form .oes-form-group {
+    margin-bottom: 14px;
+}
+
+.oes-submission-form label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 500;
+    color: #444;
+    margin-bottom: 4px;
+}
+
+.oes-submission-form textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.oes-submission-form textarea:focus {
+    outline: none;
+    border-color: #10b981;
+}
+
+/* Speech Button */
+.oes-speech-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    color: #666;
+    cursor: pointer;
+}
+
+.oes-speech-btn:hover {
+    background: #eee;
+}
+
+.oes-speech-btn.active {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+/* File Upload */
+.oes-upload-area {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    font-size: 12px;
+    color: #666;
+}
+
+.oes-upload-area:hover,
+.oes-upload-area.dragover {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.oes-upload-icon {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.oes-file-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    border-radius: 4px;
+}
+
+.oes-file-name {
+    font-size: 12px;
+    color: #166534;
+}
+
+.oes-file-remove,
+.oes-voice-remove {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.oes-file-remove:hover,
+.oes-voice-remove:hover {
+    color: #ef4444;
+}
+
+.oes-existing-file,
+.oes-existing-voice {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #666;
+}
+
+.oes-existing-file a {
+    color: #10b981;
+}
+
+/* Voice Recorder */
+.oes-voice-recorder {
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.oes-recorder-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.oes-record-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.oes-record-btn:hover {
+    background: #2563eb;
+}
+
+.oes-record-btn.recording {
+    background: #ef4444;
+}
+
+.oes-rec-icon {
+    width: 8px;
+    height: 8px;
+    background: currentColor;
+    border-radius: 50%;
+}
+
+.oes-record-btn.recording .oes-rec-icon {
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.oes-record-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ef4444;
+    font-family: monospace;
+}
+
+/* Wave Canvas */
+#waveCanvas {
+    display: none;
+    width: 100%;
+    height: 30px;
+    margin-top: 8px;
+    border-radius: 4px;
+    background: #f3f4f6;
+}
+
+/* Çoklu Dosya Listesi */
+.oes-files-list,
+.oes-voices-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.oes-file-item,
+.oes-voice-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.oes-file-item.uploading,
+.oes-voice-item.uploading {
+    background: #f9f9f9;
+    color: #999;
+}
+
+.oes-file-item a {
+    flex: 1;
+    color: #333;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oes-file-item a:hover {
+    color: #10b981;
+}
+
+.oes-voice-item audio {
+    flex: 1;
+    height: 28px;
+}
+
+.oes-voice-dur {
+    font-size: 11px;
+    color: #666;
+    font-family: monospace;
+}
+
+.oes-remove-file,
+.oes-remove-voice {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.oes-remove-file:hover,
+.oes-remove-voice:hover {
+    color: #ef4444;
+}
+
+/* Submit Actions */
+.oes-submit-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+
+.oes-submit-btn {
+    padding: 8px 16px;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.oes-submit-btn:hover {
+    background: #059669;
+}
+
+.oes-submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.oes-submit-note {
+    font-size: 10px;
+    color: #999;
+}
+
+.oes-extra-deadline {
+    font-size: 12px;
+    color: #f59e0b;
+    background: #fffbeb;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.oes-delete-submission {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.oes-delete-submission:hover {
+    opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .oes-assignment-card {
+        flex-wrap: wrap;
+    }
+
+    .oes-submission-info {
+        flex-direction: column;
+        gap: 2px;
+    }
+}

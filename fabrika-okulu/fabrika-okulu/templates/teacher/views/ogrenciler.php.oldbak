@@ -1,0 +1,41 @@
+<?php
+if (!defined('ABSPATH')) exit;
+/** @var array $data */
+$uid = $data['user']['id'];
+$students = OES_Teacher::get_teacher_students($uid);
+?>
+<div class="oestp-page-head">
+    <div class="oestp-page-head-txt"><h1>Öğrencilerim</h1><p><?php echo count($students); ?> öğrenci</p></div>
+</div>
+
+<?php if (empty($students)): ?>
+<div class="oestp-empty">
+    <div class="oestp-empty-ic"><i class="ti ti-users-group"></i></div>
+    <p>Henüz kayıtlı öğrencin yok. Kursların satın alındıkça öğrenciler burada listelenir.</p>
+</div>
+<?php else: ?>
+<div class="oestp-students">
+    <?php foreach ($students as $s):
+        $titles = $s->course_titles ? explode('||', $s->course_titles) : array();
+    ?>
+    <div class="oestp-student-card">
+        <div class="oestp-student-head">
+            <div class="oesp-avatar"><?php echo esc_html(mb_strtoupper(mb_substr($s->display_name ?: '?', 0, 1))); ?></div>
+            <div class="oestp-student-who">
+                <strong><?php echo esc_html($s->display_name ?: 'Öğrenci'); ?></strong>
+                <a href="mailto:<?php echo esc_attr($s->user_email); ?>" class="oestp-student-mail"><i class="ti ti-mail"></i> <?php echo esc_html($s->user_email); ?></a>
+            </div>
+            <span class="oestp-student-count"><?php echo intval($s->course_count); ?> kurs</span>
+        </div>
+        <?php if (!empty($titles)): ?>
+        <div class="oestp-student-courses">
+            <?php foreach ($titles as $t): ?><span class="oestp-course-chip"><i class="ti ti-book"></i> <?php echo esc_html($t); ?></span><?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <div class="oestp-student-foot">
+            <i class="ti ti-calendar"></i> İlk kayıt: <?php echo $s->first_enrolled ? esc_html(date_i18n('d M Y', strtotime($s->first_enrolled))) : '—'; ?>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>

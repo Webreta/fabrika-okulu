@@ -1,0 +1,107 @@
+<?php
+if (!defined('ABSPATH')) exit;
+/** @var array $data */
+/** @var OES_Teacher_Panel $panel */
+$uid = $data['user']['id'];
+$list_url = $panel->panel_url('sorular');
+
+$thread = null; $err = '';
+if (isset($_GET['chat'])) {
+    $parts = explode('_', sanitize_text_field($_GET['chat']), 2);
+    if (count($parts) === 2) {
+        $thread = OES_Teacher_Questions::get_thread($uid, intval($parts[0]), intval($parts[1]));
+        if (!$thread) $err = 'Bu sohbete erişiminiz yok.';
+    }
+}
+?>
+
+<?php if ($err): ?><div class="oesp-auth-msg error" style="margin-bottom:16px;"><?php echo esc_html($err); ?></div><?php endif; ?>
+
+<?php if ($thread === null): ?>
+<!-- ===== SOHBET LİSTESİ ===== -->
+<?php $threads = OES_Teacher_Questions::get_teacher_threads($uid); ?>
+<div class="oestp-page-head">
+    <div class="oestp-page-head-txt"><h1>Soru-Cevap</h1><p><?php echo count($threads); ?> sohbet</p></div>
+</div>
+
+<?php if (empty($threads)): ?>
+<div class="oestp-empty"><div class="oestp-empty-ic"><i class="ti ti-message-off"></i></div><p>Henüz soru yok. Öğrencilerin kurs içinden soru sordukça burada görünecek.</p></div>
+<?php else: ?>
+<div class="oestp-threads">
+    <?php foreach ($threads as $t):
+        $chat = intval($t->user_id) . '_' . intval($t->course_id);
+    ?>
+    <a href="<?php echo esc_url($list_url . '&chat=' . $chat); ?>" class="oestp-thread<?php echo $t->pending_count > 0 ? ' unread' : ''; ?>">
+        <div class="oesp-avatar"><?php echo esc_html(mb_strtoupper(mb_substr($t->display_name ?: '?', 0, 1))); ?></div>
+        <div class="oestp-thread-body">
+            <div class="oestp-thread-top">
+                <strong><?php echo esc_html($t->display_name ?: 'Öğrenci'); ?></strong>
+                <span class="oestp-thread-time"><?php echo esc_html(date_i18n('d M', strtotime($t->last_activity))); ?></span>
+            </div>
+            <div class="oestp-thread-course"><i class="ti ti-book"></i> <?php echo esc_html($t->course_name); ?></div>
+            <div class="oestp-thread-last"><?php echo esc_html(wp_trim_words($t->last_message, 12)); ?></div>
+        </div>
+        <?php if ($t->pending_count > 0): ?><span class="oestp-count-dot" style="position:static;"><?php echo intval($t->pending_count); ?></span><?php endif; ?>
+    </a>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php else: ?>
+<!-- ===== SOHBET ===== -->
+<div class="oestp-editor-head">
+    <a href="<?php echo esc_url($list_url); ?>" class="oestp-back-btn"><i class="ti ti-arrow-left"></i></a>
+    <div class="oestp-page-head-txt"><h1><?php echo esc_html($thread['student']); ?></h1><p><i class="ti ti-book"></i> <?php echo esc_html($thread['course_name']); ?></p></div>
+</div>
+
+<div class="oestp-chat" id="oestpChat">
+    <?php foreach ($thread['messages'] as $m): ?>
+    <div class="oestp-msg oestp-msg-<?php echo $m['type'] === 'instructor' ? 'me' : 'them'; ?>">
+        <?php if (!empty($m['lesson'])): ?><div class="oestp-msg-lesson"><i class="ti ti-player-play"></i> <?php echo esc_html($m['lesson']); ?></div><?php endif; ?>
+        <div class="oestp-msg-bubble"><?php echo nl2br(esc_html($m['text'])); ?></div>
+        <div class="oestp-msg-time"><?php echo esc_html(date_i18n('d M H:i', strtotime($m['time']))); ?></div>
+    </div>
+    <?php endforeach; ?>
+</div>
+
+<div class="oestp-chat-compose">
+    <textarea id="oestpReply" rows="1" placeholder="Cevabını yaz…"></textarea>
+    <button type="button" class="oestp-chat-send" id="oestpSend"><i class="ti ti-send"></i></button>
+</div>
+
+<script>
+(function(){
+    var T = window.oesTeacher;
+    var chat = document.getElementById('oestpChat');
+    var ta = document.getElementById('oestpReply');
+    var btn = document.getElementById('oestpSend');
+    var chatUser = <?php echo intval($thread['user_id']); ?>;
+    var chatCourse = <?php echo intval($thread['course_id']); ?>;
+
+    function scrollBottom(){ chat.scrollTop = chat.scrollHeight; }
+    scrollBottom();
+
+    ta.addEventListener('input', function(){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; });
+
+    function send(){
+        var text = ta.value.trim(); if(!text) return;
+        var p = new URLSearchParams();
+        p.append('action','oes_tp_answer_question'); p.append('nonce',T.nonce);
+        p.append('chat_user_id',chatUser); p.append('chat_course_id',chatCourse); p.append('answer',text);
+        btn.disabled=true;
+        fetch(T.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString(),credentials:'same-origin'})
+        .then(function(r){return r.json();}).then(function(res){
+            btn.disabled=false;
+            if(res.success){
+                var d=document.createElement('div'); d.className='oestp-msg oestp-msg-me';
+                d.innerHTML='<div class="oestp-msg-bubble"></div><div class="oestp-msg-time">'+(res.data.reply.time||'')+'</div>';
+                d.querySelector('.oestp-msg-bubble').textContent=text;
+                chat.appendChild(d); ta.value=''; ta.style.height='auto'; scrollBottom();
+            } else alert(res.data||'Gönderilemedi.');
+        }).catch(function(){ btn.disabled=false; alert('Bağlantı hatası.'); });
+    }
+    btn.addEventListener('click',send);
+    ta.addEventListener('keydown',function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } });
+})();
+</script>
+<?php endif; ?>

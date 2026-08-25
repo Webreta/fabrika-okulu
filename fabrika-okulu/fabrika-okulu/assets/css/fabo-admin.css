@@ -1,0 +1,106 @@
+/* ============================================================
+   Fabrika Okulu — wp-admin ORTAK PANEL TASARIMI
+   Tüm eklenti ekranları bu dosyayı kullanır (tek görünüm).
+   Kapsam: .fabo-wrap altına kapsanır → WP'nin kendi ekranlarına sızmaz.
+   ============================================================ */
+
+.fabo-wrap{
+  --navy:#194977; --navy-d:#142b56; --sky:#5baecf; --sky-soft:#e9f3f9;
+  --ink:#12233a; --ink2:#5a6577; --ink3:#98a1b3;
+  --line:#e3e8ef; --card:#f5f7fa; --bg:#fff;
+  --green:#1f9d5b; --green-soft:#e7f6ee;
+  --amber:#d9871a; --amber-soft:#fbf0dd;
+  --red:#d1493d; --red-soft:#fbebe9;
+  margin:20px 20px 40px 0;
+  color:var(--ink);
+  font-size:14px;
+}
+.fabo-wrap *{box-sizing:border-box;}
+/* WP'nin .wrap'i içindeyken kendi kenar boşluğu zaten var → üst üste binmesin */
+.wrap > .fabo-wrap{margin:16px 0 40px;}
+/* İç içe panel (ör. Bildirimler → Mail Ayarları sekmesi) boşluğu ikiye katlamasın */
+.fabo-wrap .fabo-wrap{margin:0;}
+
+/* ---- Başlık ---- */
+.fabo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+.fabo-head h1{font-size:23px;font-weight:700;color:var(--navy);margin:0 0 5px;padding:0;line-height:1.3;}
+.fabo-head p{margin:0;color:var(--ink2);font-size:13.5px;max-width:760px;line-height:1.55;}
+.fabo-head-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ---- Sekmeler ---- */
+.fabo-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:20px;}
+.fabo-tab{display:inline-flex;align-items:center;gap:7px;padding:10px 15px;font-size:13.5px;font-weight:600;
+  color:var(--ink2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.fabo-tab:hover{color:var(--navy);}
+.fabo-tab.active{color:var(--navy);border-bottom-color:var(--navy);}
+.fabo-tab .count{background:var(--card);border-radius:20px;padding:1px 7px;font-size:11.5px;color:var(--ink2);}
+.fabo-tab.active .count{background:var(--navy);color:#fff;}
+
+/* ---- Kartlar ---- */
+.fabo-panel{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;
+  box-shadow:0 1px 2px rgba(20,43,86,.04);}
+.fabo-panel > h2{margin:0 0 4px;padding:0;font-size:15.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.fabo-panel > h2 .dashicons{color:var(--navy);}
+.fabo-panel > .desc{margin:0 0 14px;color:var(--ink3);font-size:12.5px;line-height:1.5;}
+/* Serbest kullanılabilen ipucu metni (.desc yalnız panelin DOĞRUDAN çocuğunda çalışır) */
+.fabo-hint{color:var(--ink3);font-size:12.5px;line-height:1.5;}
+
+/* ---- KPI ---- */
+.fabo-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px;}
+.fabo-kpi{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:13px;}
+.fabo-kpi .ic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;}
+.fabo-kpi .ic .dashicons{font-size:21px;width:21px;height:21px;}
+.fabo-kpi .v{font-size:22px;font-weight:700;line-height:1.15;}
+.fabo-kpi .l{font-size:12px;color:var(--ink3);margin-top:2px;}
+.ic-navy{background:#e7edf5;color:var(--navy);} .ic-sky{background:var(--sky-soft);color:#2a7aa3;}
+.ic-green{background:var(--green-soft);color:var(--green);} .ic-amber{background:var(--amber-soft);color:var(--amber);}
+.ic-red{background:var(--red-soft);color:var(--red);}
+.fabo-kpi.alert{border-color:#f0c2bc;background:var(--red-soft);}
+
+/* ---- Tablo ---- */
+.fabo-table{width:100%;border-collapse:collapse;background:var(--bg);}
+.fabo-table th{text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--ink3);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+.fabo-table td{padding:12px;border-bottom:1px solid #f1f4f8;vertical-align:middle;font-size:13.5px;}
+.fabo-table tr:last-child td{border-bottom:none;}
+.fabo-table tbody tr:hover{background:#fafbfd;}
+.fabo-tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--bg);}
+
+/* ---- Kişi ---- */
+.fabo-person{display:flex;align-items:center;gap:10px;min-width:0;}
+.fabo-av{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;flex:none;text-transform:uppercase;}
+.fabo-person .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fabo-person .e{font-size:12px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ---- Rozetler ---- */
+.fabo-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.c-green{background:var(--green-soft);color:var(--green);} .c-amber{background:var(--amber-soft);color:var(--amber);}
+.c-red{background:var(--red-soft);color:var(--red);} .c-navy{background:#e7edf5;color:var(--navy);}
+.c-sky{background:var(--sky-soft);color:#2a7aa3;} .c-gray{background:#eef1f6;color:var(--ink3);}
+
+/* ---- İlerleme ---- */
+.fabo-bar{width:110px;height:7px;background:#eef1f6;border-radius:20px;overflow:hidden;display:inline-block;vertical-align:middle;}
+.fabo-bar > span{display:block;height:100%;background:var(--navy);border-radius:20px;}
+.fabo-prog{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--navy);}
+
+/* ---- Boş durum ---- */
+.fabo-empty{text-align:center;padding:38px 20px;color:var(--ink3);}
+.fabo-empty .dashicons{font-size:38px;width:38px;height:38px;color:#c7ced9;}
+.fabo-empty p{margin:10px 0 0;font-size:13.5px;}
+
+/* ---- Butonlar ---- */
+.fabo-wrap .button-primary{background:var(--navy);border-color:var(--navy);}
+.fabo-wrap .button-primary:hover{background:var(--navy-d);border-color:var(--navy-d);}
+
+/* ---- İki kolon ---- */
+.fabo-cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;}
+@media(max-width:1200px){.fabo-cols{grid-template-columns:1fr;}}
+
+/* ---- Liste (rapor satırları) ---- */
+.fabo-list{margin:0;padding:0;list-style:none;}
+.fabo-list li{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #f1f4f8;font-size:13.5px;}
+.fabo-list li:last-child{border-bottom:none;}
+.fabo-list .meta{margin-left:auto;font-size:12px;color:var(--ink3);white-space:nowrap;}
+.fabo-list .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.dot-green{background:var(--green);} .dot-amber{background:var(--amber);} .dot-red{background:var(--red);} .dot-navy{background:var(--navy);}

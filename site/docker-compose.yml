@@ -1,0 +1,17 @@
+# Yerel geliştirme: yalnızca PostgreSQL
+# Kullanım: docker compose up -d
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fabo
+      POSTGRES_PASSWORD: fabo
+      POSTGRES_DB: fabrika_okulu
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

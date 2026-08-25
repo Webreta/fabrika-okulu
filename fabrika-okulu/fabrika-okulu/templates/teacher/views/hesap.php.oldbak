@@ -1,0 +1,146 @@
+<?php
+if (!defined('ABSPATH')) exit;
+/** @var array $data */
+$u = $data['user'];
+?>
+<div class="oestp-account">
+    <div class="oesp-section-title">Hesap detayları</div>
+
+    <div class="oestp-card">
+        <div class="oestp-account-head">
+            <div class="oesp-avatar oesp-avatar-lg"><?php echo esc_html($u['initial']); ?></div>
+            <div>
+                <div class="oestp-account-name"><?php echo esc_html($u['name']); ?></div>
+                <div class="oestp-account-mail"><i class="ti ti-mail"></i> <?php echo esc_html($u['email']); ?></div>
+            </div>
+        </div>
+
+        <div class="oesp-auth-msg" id="oestpAccMsg" hidden></div>
+
+        <form id="oestpAccountForm" class="oestp-form">
+            <div class="oestp-form-row">
+                <label>Ad
+                    <input type="text" name="first_name" value="<?php echo esc_attr($u['first']); ?>" placeholder="Adın">
+                </label>
+                <label>Soyad
+                    <input type="text" name="last_name" value="<?php echo esc_attr($u['last']); ?>" placeholder="Soyadın">
+                </label>
+            </div>
+
+            <label>E-posta
+                <input type="email" value="<?php echo esc_attr($u['email']); ?>" disabled>
+                <small>E-posta adresi panelden değiştirilemez.</small>
+            </label>
+
+            <div class="oestp-form-divider"><span>Şifre değiştir (opsiyonel)</span></div>
+
+            <label>Mevcut şifre
+                <input type="password" name="current_pass" autocomplete="current-password" placeholder="••••••••">
+            </label>
+            <label>Yeni şifre
+                <input type="password" name="new_pass" autocomplete="new-password" placeholder="En az 6 karakter">
+            </label>
+
+            <button type="submit" class="oesp-btn oesp-btn-green"><i class="ti ti-device-floppy"></i> Kaydet</button>
+        </form>
+    </div>
+
+    <?php if (class_exists('OES_Push') && OES_Push::available()): ?>
+    <div class="oestp-card" style="margin-top:16px;">
+        <div class="oesp-section-title" style="margin:0 0 8px;">Bildirimler</div>
+        <p style="font-size:13px;color:#64748b;margin:0 0 14px;">Yeni gönderim, soru ve randevulardan anında haberdar ol.</p>
+        <button type="button" class="oesp-btn oesp-btn-green" id="oesPushBtn"><i class="ti ti-bell"></i> Bildirimleri aç</button>
+        <button type="button" class="oesp-btn oesp-btn-ghost" id="oesPushTest" hidden style="margin-left:8px;"><i class="ti ti-send"></i> Sunucudan test</button>
+        <button type="button" class="oesp-btn oesp-btn-ghost" id="oesPushLocal" hidden style="margin-left:8px;"><i class="ti ti-device-mobile"></i> Yerel test</button>
+        <span id="oesPushStateTxt" style="margin-left:10px;font-size:13px;color:#64748b;"></span>
+        <div id="oesPushTestMsg" style="margin-top:10px;font-size:13px;" hidden></div>
+        <div id="oesPushDiag" style="margin-top:12px;font-size:12px;color:#64748b;font-family:ui-monospace,monospace;line-height:1.6;background:#f8fafc;border:1px solid #eef2f7;border-radius:8px;padding:8px 10px;"></div>
+    </div>
+    <script>
+    (function(){
+        var btn=document.getElementById('oesPushBtn'), st=document.getElementById('oesPushStateTxt');
+        var test=document.getElementById('oesPushTest'), tmsg=document.getElementById('oesPushTestMsg');
+        var local=document.getElementById('oesPushLocal'), diag=document.getElementById('oesPushDiag');
+        (function(){
+            var ua=navigator.userAgent, m=ua.match(/OS (\d+)[_.](\d+)/);
+            var iosv=m?(m[1]+'.'+m[2]):'?';
+            var isIos=/iphone|ipad|ipod/i.test(ua);
+            var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;
+            var pushOk=('PushManager' in window), swOk=('serviceWorker' in navigator), notifOk=('Notification' in window);
+            var perm=notifOk?Notification.permission:'yok';
+            diag.innerHTML =
+                'iOS: <b>'+(isIos?iosv:'—')+'</b> (16.4+ gerekli)<br>'+
+                'Kurulu (standalone): <b style="color:'+(standalone?'#047857':'#b91c1c')+'">'+(standalone?'EVET':'HAYIR')+'</b><br>'+
+                'Push API: <b style="color:'+(pushOk?'#047857':'#b91c1c')+'">'+(pushOk?'var':'YOK')+'</b> · SW: '+(swOk?'var':'YOK')+' · izin: <b>'+perm+'</b>';
+        })();
+        function render(){ if(!('Notification' in window)){ btn.style.display='none'; st.textContent='Tarayıcı desteklemiyor.'; return; }
+            var s=Notification.permission;
+            if(s==='granted'){ btn.style.display='none'; test.hidden=false; local.hidden=false; st.innerHTML='<i class="ti ti-check" style="color:#10b981"></i> Bildirimler açık'; }
+            else if(s==='denied'){ btn.style.display='none'; test.hidden=true; local.hidden=true; st.textContent='Tarayıcı ayarlarından izin vermen gerekiyor.'; }
+            else { btn.style.display=''; test.hidden=true; local.hidden=true; st.textContent=''; }
+        }
+        render();
+        btn.addEventListener('click',function(){ if(window.oesPushEnable){ btn.disabled=true; oesPushEnable().then(function(){ btn.disabled=false; render(); }); } else { alert('Bildirim altyapısı yükleniyor, birazdan tekrar dene.'); } });
+        test.addEventListener('click',function(){
+            if(!window.oesPush){ alert('Bildirim altyapısı yüklenmedi.'); return; }
+            test.disabled=true; tmsg.hidden=true;
+            var b='action=oes_push_test&nonce='+encodeURIComponent(oesPush.nonce);
+            fetch(oesPush.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b,credentials:'same-origin'})
+            .then(function(r){return r.json();}).then(function(res){
+                test.disabled=false; tmsg.hidden=false;
+                tmsg.textContent=res.data||(res.success?'Gönderildi.':'Hata');
+                tmsg.style.color=res.success?'#047857':'#b91c1c';
+            }).catch(function(){ test.disabled=false; tmsg.hidden=false; tmsg.textContent='Bağlantı hatası.'; tmsg.style.color='#b91c1c'; });
+        });
+        // Yerel test: push yolunu atlar, SW doğrudan bildirim gösterir
+        local.addEventListener('click',function(){
+            tmsg.hidden=true;
+            if(!('serviceWorker' in navigator)){ tmsg.hidden=false; tmsg.textContent='SW desteklenmiyor.'; tmsg.style.color='#b91c1c'; return; }
+            navigator.serviceWorker.ready.then(function(reg){
+                return reg.showNotification('🔔 Yerel test', { body:'Bunu görüyorsan cihazın bildirim GÖSTEREBİLİYOR.', tag:'oes-local-'+Date.now(), renotify:true, vibrate:[70,40,70] });
+            }).then(function(){
+                tmsg.hidden=false; tmsg.textContent='Yerel bildirim gönderildi — bannerı gördün mü?'; tmsg.style.color='#047857';
+            }).catch(function(e){
+                tmsg.hidden=false; tmsg.textContent='Yerel bildirim gösterilemedi: '+(e&&e.message||e); tmsg.style.color='#b91c1c';
+            });
+        });
+    })();
+    </script>
+    <?php endif; ?>
+
+    <a href="<?php echo esc_url(wp_logout_url(home_url('/egitmen/'))); ?>" class="oestp-logout-link"><i class="ti ti-logout"></i> Çıkış yap</a>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById('oestpAccountForm');
+    var msg = document.getElementById('oestpAccMsg');
+    if (!form) return;
+
+    function showMsg(t, type) { msg.textContent = t; msg.className = 'oesp-auth-msg ' + (type || 'error'); msg.hidden = false; }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true; btn.classList.add('loading');
+        var body = 'action=oes_panel_update_account'
+            + '&nonce=' + encodeURIComponent(oesTeacher.accountNonce)
+            + '&first_name=' + encodeURIComponent(form.first_name.value)
+            + '&last_name=' + encodeURIComponent(form.last_name.value)
+            + '&current_pass=' + encodeURIComponent(form.current_pass.value)
+            + '&new_pass=' + encodeURIComponent(form.new_pass.value);
+        fetch(oesTeacher.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            btn.disabled = false; btn.classList.remove('loading');
+            if (res.success) {
+                showMsg((res.data && res.data.message) || 'Kaydedildi.', 'success');
+                form.current_pass.value = ''; form.new_pass.value = '';
+            } else {
+                showMsg(res.data || 'Bir hata oluştu.', 'error');
+            }
+        })
+        .catch(function () { btn.disabled = false; btn.classList.remove('loading'); showMsg('Bağlantı hatası.', 'error'); });
+    });
+})();
+</script>

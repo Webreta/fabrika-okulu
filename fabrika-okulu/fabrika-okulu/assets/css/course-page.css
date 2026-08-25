@@ -1,0 +1,1313 @@
+/**
+ * Course Page Styles
+ * Kurs tanıtım sayfası stilleri
+ */
+
+/* ============================================
+   CSS Variables - Light & Dark Mode
+   ============================================ */
+:root {
+    --oes-primary: #012963;
+    --oes-primary-dark: #011d47;
+    --oes-primary-light: #90BFDC;
+    --oes-success: #012963;
+    --oes-whatsapp: #25d366;
+    --oes-text: #012963;
+    --oes-text-light: #6b7280;
+    --oes-text-muted: #9ca3af;
+    --oes-border: #e8e8e8;
+    --oes-border-light: #f0f0f0;
+    --oes-bg: #ffffff;
+    --oes-bg-alt: #f0f7fb;
+    --oes-bg-accent: #D1F0FF;
+    --oes-white: #ffffff;
+    --oes-hover: #D1F0FF;
+    --oes-radius: 12px;
+    --oes-radius-sm: 8px;
+}
+
+/* Dark Mode - KAPALI
+   Kurs sayfası sadece light mode kullanır.
+   Player'da dark mode aktiftir. */
+
+/* ============================================
+   Base Reset
+   ============================================ */
+.oes-course-page {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--oes-text);
+    line-height: 1.6;
+    color-scheme: light only; /* Force light mode - browser dark mode'u devre dışı */
+}
+
+/* WooCommerce Reset */
+.woocommerce .oes-course-page .woocommerce-breadcrumb,
+.woocommerce .oes-course-page .product_title,
+.woocommerce .oes-course-page .woocommerce-product-rating,
+.woocommerce .oes-course-page>.price,
+.woocommerce .oes-course-page .product_meta,
+.woocommerce .oes-course-page .woocommerce-tabs,
+.woocommerce .oes-course-page .related.products {
+    display: none !important;
+}
+
+/* ============================================
+   Enrolled Notice
+   ============================================ */
+.oes-enrolled-notice {
+    background: var(--oes-success);
+    padding: 8px 0;
+}
+
+.oes-enrolled-notice-content {
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.oes-enrolled-notice-content>span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.oes-enrolled-notice svg {
+    width: 18px;
+    height: 18px;
+}
+
+.oes-btn-light {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: var(--oes-radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.oes-btn-light:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+/* ============================================
+   Hero Section
+   ============================================ */
+.oes-hero {
+background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);    padding: 40px 0 40px;
+    color: var(--oes-white);
+}
+
+.oes-hero-content {
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.oes-hero-text {
+    max-width: 715px;
+}
+
+/* Category */
+.oes-category {
+    margin-bottom: 12px;
+}
+
+.oes-category a,
+.oes-category span {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+/* Title */
+.oes-title {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    color: var(--oes-white);
+}
+
+.oes-hero .oes-description {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 20px;
+    line-height: 1.6;
+}
+
+/* Meta Badges */
+.oes-meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.oes-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.oes-badge svg {
+    opacity: 0.6;
+    width: 16px;
+    height: 16px;
+}
+
+/* Instructor Mini */
+.oes-instructor-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.oes-instructor-mini img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.oes-instructor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--oes-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: #fff;
+}
+
+.oes-instructor-label {
+    display: block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.oes-instructor-name {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Mobile Hero Media */
+.oes-hero-media-mobile {
+    display: none;
+    margin-bottom: 24px;
+}
+
+.oes-hero-media-mobile .oes-video-wrapper {
+    border-radius: var(--oes-radius);
+    overflow: hidden;
+}
+
+.oes-hero-media-mobile iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    display: block;
+}
+
+.oes-hero-media-mobile img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--oes-radius);
+}
+
+/* ============================================
+   Content Wrapper
+   ============================================ */
+.oes-content-wrapper {
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 48px;
+    align-items: start;
+}
+
+.oes-main-content {
+    max-width: 100%;
+}
+
+/* ============================================
+   Sections
+   ============================================ */
+.oes-section {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--oes-border);
+}
+
+.oes-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.oes-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--oes-text);
+}
+
+/* ============================================
+   Outcomes
+   ============================================ */
+.oes-outcomes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+	color: var(--oes-primary);
+}
+
+.oes-outcome-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.oes-outcome-item svg {
+    flex-shrink: 0;
+    color: var(--oes-success);
+    margin-top: 2px;
+    width: 20px;
+    height: 20px;
+}
+
+.oes-outcome-item span {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* ============================================
+   Description
+   ============================================ */
+.oes-description-content {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--oes-text-light);
+}
+
+.oes-description-content p {
+    margin: 0 0 16px;
+}
+
+.oes-description-content p:last-child {
+    margin-bottom: 0;
+}
+.oes-description-content ul,
+.oes-description-content ol {
+    margin: 0 0 16px;
+    padding-left: 22px;
+}
+.oes-description-content li {
+    margin: 6px 0;
+    color: var(--oes-text-light);
+    line-height: 1.7;
+}
+.oes-description-content h1,
+.oes-description-content h2,
+.oes-description-content h3,
+.oes-description-content h4 {
+    color: var(--oes-text, #142b56);
+    margin: 20px 0 10px;
+    line-height: 1.4;
+}
+.oes-description-content strong,
+.oes-description-content b {
+    color: var(--oes-text, #142b56);
+}
+.oes-description-content a {
+    color: var(--oes-primary, #194977);
+    text-decoration: underline;
+}
+
+/* ============================================
+   Curriculum Stats
+   ============================================ */
+.oes-curriculum-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--oes-text-light);
+}
+
+.oes-dot {
+    color: var(--oes-border);
+}
+
+/* ============================================
+   Accordion
+   ============================================ */
+.oes-accordion {
+    border: 1px solid var(--oes-border);
+    border-radius: var(--oes-radius-sm);
+    overflow: hidden;
+}
+
+.oes-accordion-item {
+    border-bottom: 1px solid var(--oes-border);
+}
+
+.oes-accordion-item:last-child {
+    border-bottom: none;
+}
+
+.oes-accordion-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--oes-bg);
+    cursor: pointer;
+    user-select: none;
+}
+
+.oes-accordion-header:hover {
+    background: #f1f5f9;
+}
+
+.oes-accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--oes-text);
+}
+
+.oes-accordion-title svg {
+    color: var(--oes-text-light);
+    width: 18px;
+    height: 18px;
+}
+
+.oes-accordion-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.oes-lesson-count {
+    font-size: 12px;
+    color: var(--oes-text-light);
+    text-transform: uppercase;
+}
+
+.oes-chevron {
+    transition: transform 0.2s;
+    color: var(--oes-text-light);
+    width: 18px;
+    height: 18px;
+}
+
+.oes-accordion-item.oes-open .oes-chevron {
+    transform: rotate(180deg);
+}
+
+.oes-accordion-content {
+    display: none;
+    background: var(--oes-white);
+}
+
+.oes-accordion-item.oes-open .oes-accordion-content {
+    display: block;
+}
+
+/* Lesson List */
+.oes-lesson-list {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.oes-lesson-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--oes-border);
+    font-size: 14px;
+}
+
+.oes-lesson-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.oes-lesson-info svg {
+    color: var(--oes-text-light);
+    width: 16px;
+    height: 16px;
+}
+
+.oes-lesson-title {
+    font-size: 14px;
+    color: var(--oes-text);
+}
+
+.oes-lesson-duration {
+    font-size: 13px;
+    color: var(--oes-text-light);
+}
+
+/* ============================================
+   Simple List (Gereksinimler, Kimin İçin)
+   ============================================ */
+.oes-simple-list {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.oes-simple-list li {
+    position: relative !important;
+    padding: 6px 0 6px 20px !important;
+    font-size: 15px !important;
+    color: var(--oes-text-light) !important;
+    line-height: 1.5 !important;
+    list-style: none !important;
+}
+
+.oes-simple-list li::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 14px !important;
+    width: 6px !important;
+    height: 6px !important;
+    background: var(--oes-success) !important;
+    border-radius: 50% !important;
+}
+
+.oes-simple-list li::marker {
+    display: none !important;
+}
+
+/* ============================================
+   Instructor Section
+   ============================================ */
+.oes-instructor-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid var(--oes-gray-200);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.oes-instructor-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--oes-primary), #34d399);
+}
+
+.oes-instructor-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.oes-instructor-photo {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 3px solid var(--oes-white);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.oes-instructor-avatar-large {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--oes-primary), #34d399);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 32px;
+    color: var(--oes-white);
+    flex-shrink: 0;
+    border: 3px solid var(--oes-white);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.oes-instructor-details {
+    flex: 1;
+}
+
+.oes-instructor-details h3 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--oes-text);
+}
+
+.oes-instructor-details .oes-instructor-title {
+    margin: 0 0 12px;
+    color: var(--oes-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.oes-instructor-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.oes-contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--oes-text);
+    font-size: 14px;
+    text-decoration: none;
+    padding: 6px 12px;
+    background: var(--oes-white);
+    border-radius: 8px;
+    border: 1px solid var(--oes-gray-200);
+    transition: all 0.2s;
+}
+
+.oes-contact-link:hover {
+    color: var(--oes-primary);
+    border-color: var(--oes-primary);
+    background: #f0fdf4;
+}
+
+.oes-contact-link svg {
+    flex-shrink: 0;
+    color: var(--oes-primary);
+}
+
+.oes-instructor-social {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.oes-instructor-social a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--oes-white);
+    border: 1px solid var(--oes-gray-200);
+    color: var(--oes-text-light);
+    transition: all 0.2s;
+}
+
+.oes-instructor-social a:hover {
+    background: var(--oes-primary);
+    border-color: var(--oes-primary);
+    color: var(--oes-white);
+    transform: translateY(-2px);
+}
+
+.oes-instructor-bio {
+    font-size: 15px;
+    color: var(--oes-text-light);
+    line-height: 1.7;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--oes-gray-200);
+}
+
+.oes-instructor-bio p {
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .oes-instructor-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .oes-instructor-contact {
+        justify-content: center;
+    }
+
+    .oes-instructor-social {
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+.oes-sidebar {
+    position: sticky;
+    top: 110px;
+    margin-top: -300px;
+    z-index: 10;
+}
+
+.oes-purchase-card {
+    background: var(--oes-white);
+    border-radius: var(--oes-radius);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    position: relative;
+    z-index: 50;
+}
+
+.oes-card-content {
+    padding: 24px;
+}
+
+/* Card Media - Video veya Görsel */
+.oes-card-media {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--oes-radius) var(--oes-radius) 0 0;
+    max-height: 180px;
+}
+
+.oes-card-media img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.oes-card-media iframe {
+    width: 100%;
+    height: 180px;
+    display: block;
+}
+
+/* Card Image - Sadece görsel */
+.oes-card-image {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--oes-radius) var(--oes-radius) 0 0;
+    max-height: 180px;
+    background: #f8fafc;
+}
+
+.oes-card-image img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Price */
+.oes-price-wrapper {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.oes-old-price {
+    font-size: 16px;
+    color: var(--oes-text-light);
+    text-decoration: line-through;
+}
+
+.oes-price {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--oes-text);
+}
+
+/* Enrolled Period Info */
+.oes-enrolled-period {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--oes-radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.oes-enrolled-period-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--oes-success);
+    margin-bottom: 4px;
+}
+
+.oes-enrolled-period-name {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--oes-text);
+}
+
+.oes-enrolled-period-dates {
+    display: block;
+    font-size: 13px;
+    color: var(--oes-text-light);
+    margin-top: 2px;
+}
+
+/* Buttons */
+.oes-card-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 100;
+}
+
+.oes-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: var(--oes-radius-sm);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.oes-btn-primary {
+    background: var(--oes-primary);
+    color: var(--oes-white);
+}
+
+.oes-btn-primary:hover {
+    background: var(--oes-primary-dark);
+    color: var(--oes-white);
+}
+
+.oes-btn-whatsapp {
+    background: var(--oes-whatsapp);
+    color: var(--oes-white);
+	 display: flex;
+    align-items: center;
+}
+
+.oes-btn-whatsapp:hover {
+    background: #1da851;
+    color: var(--oes-white);
+}
+
+/* Card Features */
+.oes-card-features {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--oes-border);
+}
+
+.oes-card-features h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--oes-text-light);
+}
+
+.oes-card-features ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.oes-card-features li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    font-size: 14px;
+    color: var(--oes-text);
+}
+
+.oes-card-features li:first-child {
+    padding-top: 0;
+}
+
+.oes-card-features li:last-child {
+    padding-bottom: 0;
+}
+
+.oes-card-features li svg {
+    color: var(--oes-primary);
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+/* ============================================
+   Mobile Bottom Bar
+   ============================================ */
+.oes-mobile-bottom-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--oes-bg);
+    backdrop-filter: blur(10px);
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.03);
+    border-top: 1px solid var(--oes-border);
+    z-index: 1000;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.oes-mobile-price {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 6px;
+}
+
+.oes-mobile-price .oes-old-price {
+    font-size: 11px;
+    color: var(--oes-text-muted);
+    text-decoration: line-through;
+    margin-right: 4px;
+}
+
+.oes-mobile-price .oes-price {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--oes-text);
+    letter-spacing: -0.3px;
+}
+
+.oes-mobile-buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.oes-mobile-buttons form,
+.oes-mobile-buttons .oes-mobile-cart-form {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 1 !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn {
+    padding: 0 8px;
+    background: var(--oes-bg-alt);
+    border: 1px solid var(--oes-border-light);
+    font-size: 11px;
+    cursor: pointer;
+    min-width: 90px;
+    max-width: 120px;
+    width: auto;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    color: var(--oes-text-light);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.oes-mobile-buttons .oes-btn {
+    width: auto !important;
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn:active {
+    transform: scale(0.98);
+    background: var(--oes-bg-accent);
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn.selected {
+    background: var(--oes-hover);
+    border-color: var(--oes-primary);
+    color: var(--oes-primary);
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn.selected svg {
+    stroke: var(--oes-primary);
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn .oes-mpb-icon {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.oes-mobile-buttons .oes-mobile-period-btn .oes-mpb-text {
+    display: block;
+    font-size: 11px;
+}
+
+.oes-mobile-buttons .oes-btn-primary {
+    padding: 0 20px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex: 1;
+    width: auto !important;
+    border-radius: 6px;
+    height: 44px;
+    letter-spacing: -0.2px;
+}
+
+.oes-btn-whatsapp-mini {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--oes-whatsapp);
+    color: var(--oes-white);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.oes-btn-whatsapp-mini:active {
+    transform: scale(0.95);
+    background: #22c55e;
+}
+
+.oes-btn-whatsapp-mini svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Sadece WhatsApp varsa full width + yazı göster */
+.oes-btn-whatsapp-mini.oes-whatsapp-only {
+    width: 100%;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 14px;
+}
+
+.oes-mobile-enrolled {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--oes-success);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* ============================================
+   Ücretsiz Kurs Badge
+   ============================================ */
+.oes-free-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #10b981;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 4px;
+    z-index: 20;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* Süresi biten ücretsiz eğitim */
+.oes-course-expired {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 16px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    cursor: not-allowed;
+}
+.oes-course-expired svg {
+    flex-shrink: 0;
+    stroke: #94a3b8;
+}
+.oes-course-expired-mobile {
+    margin: 0;
+}
+
+/* ============================================
+   İlgili Kurslar
+   ============================================ */
+.oes-related-courses {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid var(--oes-border);
+}
+
+.oes-related-courses h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--oes-text);
+    margin-bottom: 24px;
+}
+
+.oes-related-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.oes-related-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--oes-border);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.oes-related-card:hover {
+    border-color: var(--oes-success);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.oes-related-image {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    background: #f3f4f6;
+}
+
+.oes-related-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.oes-related-image .oes-free-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--oes-success);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.oes-related-info {
+    padding: 16px;
+}
+
+.oes-related-info h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--oes-text);
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.oes-related-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--oes-text-light);
+    margin-bottom: 8px;
+}
+
+.oes-related-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--oes-text);
+}
+
+/* WooCommerce uyarılarını gizle */
+.oes-course-page .woocommerce-info,
+.oes-course-page .woocommerce-message,
+.oes-course-page .woocommerce-error {
+    display: none !important;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 1024px) {
+    .oes-content-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .oes-hero {
+        padding-bottom: 40px;
+    }
+
+    .oes-sidebar {
+        display: none;
+    }
+
+    .oes-hero-media-mobile {
+        display: block;
+    }
+
+    .oes-mobile-bottom-bar {
+        display: flex;
+    }
+
+    .oes-course-page {
+        padding-bottom: 80px;
+    }
+
+    .oes-related-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .oes-hero {
+        padding: 24px 0 32px;
+    }
+
+    .oes-title {
+        font-size: 24px;
+    }
+
+    .oes-hero .oes-description {
+        font-size: 15px;
+    }
+
+    .oes-content-wrapper {
+        padding: 24px 16px;
+    }
+
+    .oes-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+    }
+
+    .oes-outcomes-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .oes-section-title {
+        font-size: 18px;
+    }
+    
+    /* Mobil Bottom Bar Göster */
+    .oes-mobile-bottom-bar {
+        display: flex !important;
+    }
+    
+    /* Çok küçük ekranlarda dönem butonunu optimize et */
+    @media (max-width: 380px) {
+        .oes-mobile-price {
+            font-size: 15px;
+        }
+        
+        .oes-mobile-buttons .oes-mobile-period-btn {
+            min-width: 75px;
+            padding: 0 6px;
+            font-size: 10px;
+        }
+        
+        .oes-mobile-buttons .oes-mobile-period-btn .oes-mpb-text {
+            font-size: 10px;
+        }
+        
+        .oes-mobile-buttons .oes-btn-primary {
+            font-size: 12px;
+        }
+    }
+}
+
+@media (max-width: 640px) {
+    .oes-related-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .oes-related-courses {
+        margin-top: 32px;
+        padding-top: 32px;
+    }
+
+    .oes-related-courses h2 {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .oes-hero-content {
+        padding: 0 16px;
+    }
+
+    .oes-accordion-header {
+        padding: 12px 14px;
+    }
+
+    .oes-lesson-item {
+        padding: 10px 14px;
+    }
+
+    .oes-mobile-buttons .oes-btn-primary {
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+}

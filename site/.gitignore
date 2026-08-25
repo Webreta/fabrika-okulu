@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+.env
+*.tsbuildinfo
+public/uploads/*
+!public/uploads/.gitkeep
+.DS_Store
+private/korumali/*
+!private/korumali/.gitkeep

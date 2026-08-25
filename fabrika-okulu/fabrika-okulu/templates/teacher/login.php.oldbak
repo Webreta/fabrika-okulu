@@ -1,0 +1,149 @@
+<?php
+/**
+ * Eğitmen paneli giriş ekranı — Giriş + Şifremi unuttum (kayıt yok)
+ * Beklenen: $logo, $this (OES_Teacher_Panel)
+ */
+if (!defined('ABSPATH')) exit;
+
+$panel = $this;
+$login_bg = get_option('oes_panel_login_bg', ''); // hardcoded dış URL yok; boşsa gradient
+$auth_nonce = wp_create_nonce('oes_teacher_auth');
+$ajax_url = admin_url('admin-ajax.php');
+?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+    <title><?php echo esc_html(get_bloginfo('name')); ?> — Eğitmen Girişi</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+    <?php echo $panel->get_pwa_head(); ?>
+    <link rel="stylesheet" href="<?php echo esc_url(OES_PLUGIN_URL . 'assets/css/panel.css?v=' . filemtime(OES_PLUGIN_DIR . 'assets/css/panel.css')); ?>">
+    <link rel="stylesheet" href="<?php echo esc_url(OES_PLUGIN_URL . 'assets/css/teacher-panel.css?v=' . filemtime(OES_PLUGIN_DIR . 'assets/css/teacher-panel.css')); ?>">
+</head>
+<body class="oes-panel-body oesp-login-body oestp">
+
+<?php if ($login_bg): ?>
+<div class="oesp-login-bg" style="background-image:url(<?php echo esc_url($login_bg); ?>)"></div>
+<?php endif; ?>
+
+<div class="oesp-login-wrap">
+    <div class="oesp-login-card oesp-glass-dark">
+
+        <div class="oesp-login-logo">
+            <?php if ($logo): ?>
+                <img src="<?php echo esc_url($logo); ?>" alt="<?php echo esc_attr(get_bloginfo('name')); ?>" class="oesp-logo-white">
+            <?php else: ?>
+                <div class="oesp-login-logo-fallback"><i class="ti ti-chalkboard"></i></div>
+            <?php endif; ?>
+        </div>
+
+        <div class="oestp-login-badge"><i class="ti ti-chalkboard"></i> Eğitmen Paneli</div>
+        <h1 class="oesp-login-title" id="oespFormTitle">Eğitmen Girişi</h1>
+        <p class="oesp-login-sub" id="oespFormSub"><?php echo esc_html(get_bloginfo('name')); ?> — eğitmen alanına hoş geldin</p>
+
+        <div class="oesp-auth-msg" id="oespMsg" hidden></div>
+
+        <form class="oesp-auth-form active" data-form="login">
+            <div class="oesp-field">
+                <i class="ti ti-user"></i>
+                <input type="text" name="log" placeholder="Kullanıcı adı veya e-posta" autocomplete="username" required>
+            </div>
+            <div class="oesp-field">
+                <i class="ti ti-lock"></i>
+                <input type="password" name="pwd" class="oesp-pwd" placeholder="Şifre" autocomplete="current-password" required>
+                <button type="button" class="oesp-pwd-toggle" aria-label="Şifreyi göster"><i class="ti ti-eye"></i></button>
+            </div>
+            <div class="oesp-login-row">
+                <label class="oesp-remember"><input type="checkbox" name="remember" value="1" checked> Beni hatırla</label>
+                <a href="#" class="oesp-forgot" data-goto="forgot">Şifremi unuttum</a>
+            </div>
+            <button type="submit" class="oesp-login-btn"><span>Giriş yap</span></button>
+        </form>
+
+        <form class="oesp-auth-form" data-form="forgot">
+            <div class="oesp-field">
+                <i class="ti ti-mail"></i>
+                <input type="text" name="login" placeholder="E-posta veya kullanıcı adı" autocomplete="username" required>
+            </div>
+            <button type="submit" class="oesp-login-btn"><span>Sıfırlama bağlantısı gönder</span></button>
+            <a href="#" class="oesp-back-login" data-goto="login"><i class="ti ti-arrow-left"></i> Girişe dön</a>
+        </form>
+
+        <p class="oesp-auth-fine">Eğitmen hesapları yönetici tarafından tanımlanır. Erişim sorunları için site yöneticinizle iletişime geçin.</p>
+
+        <a href="<?php echo esc_url(home_url()); ?>" class="oesp-login-home" target="_blank" rel="noopener"><i class="ti ti-arrow-left"></i> Siteye dön</a>
+    </div>
+</div>
+
+<script>
+(function () {
+    var ajaxUrl = "<?php echo esc_url($ajax_url); ?>";
+    var nonce = "<?php echo esc_js($auth_nonce); ?>";
+    var card = document.querySelector('.oesp-login-card');
+    var forms = card.querySelectorAll('.oesp-auth-form');
+    var msg = document.getElementById('oespMsg');
+    var titleEl = document.getElementById('oespFormTitle');
+    var subEl = document.getElementById('oespFormSub');
+    var site = "<?php echo esc_js(get_bloginfo('name')); ?>";
+
+    var meta = {
+        login:  { title: 'Eğitmen Girişi',  sub: site + ' — eğitmen alanına giriş yap' },
+        forgot: { title: 'Şifreni sıfırla',  sub: 'Bağlantıyı e-postana gönderelim' }
+    };
+
+    function showForm(name) {
+        forms.forEach(function (f) { f.classList.toggle('active', f.getAttribute('data-form') === name); });
+        if (meta[name]) { titleEl.textContent = meta[name].title; subEl.textContent = meta[name].sub; }
+        hideMsg();
+    }
+    function showMsg(text, type) { msg.textContent = text; msg.className = 'oesp-auth-msg ' + (type || 'error'); msg.hidden = false; }
+    function hideMsg() { msg.hidden = true; }
+
+    card.querySelectorAll('[data-goto]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); showForm(a.getAttribute('data-goto')); });
+    });
+
+    card.querySelectorAll('.oesp-pwd-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = btn.parentNode.querySelector('.oesp-pwd');
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.querySelector('i').className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+        });
+    });
+
+    function post(action, data, btn) {
+        var body = 'action=' + action + '&nonce=' + encodeURIComponent(nonce);
+        for (var k in data) body += '&' + k + '=' + encodeURIComponent(data[k]);
+        btn.classList.add('loading'); btn.disabled = true;
+        fetch(ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            btn.classList.remove('loading'); btn.disabled = false;
+            if (res.success) {
+                if (res.data && res.data.redirect) { showMsg('Yönlendiriliyorsun…', 'success'); window.location.href = res.data.redirect; }
+                else { showMsg((res.data && res.data.message) || 'İşlem başarılı.', 'success'); }
+            } else {
+                showMsg(res.data || 'Bir hata oluştu.', 'error');
+            }
+        })
+        .catch(function () { btn.classList.remove('loading'); btn.disabled = false; showMsg('Bağlantı hatası. Tekrar dene.', 'error'); });
+    }
+
+    forms.forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var type = form.getAttribute('data-form');
+            var btn = form.querySelector('.oesp-login-btn');
+            hideMsg();
+            if (type === 'login') {
+                post('oes_teacher_login', { log: form.log.value, pwd: form.pwd.value, remember: form.remember && form.remember.checked ? 1 : 0 }, btn);
+            } else if (type === 'forgot') {
+                post('oes_teacher_lostpass', { login: form.login.value }, btn);
+            }
+        });
+    });
+})();
+</script>
+</body>
+</html>

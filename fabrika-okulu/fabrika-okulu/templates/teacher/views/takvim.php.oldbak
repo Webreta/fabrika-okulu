@@ -1,0 +1,271 @@
+<?php
+if (!defined('ABSPATH')) exit;
+/** @var array $data */
+/** @var OES_Teacher_Panel $panel */
+$uid = $data['user']['id'];
+$my_courses = $data['courses'];
+$list_url = $panel->panel_url('takvim');
+
+// Hedef ay (YYYY-MM)
+$tm = isset($_GET['tm']) ? sanitize_text_field($_GET['tm']) : current_time('Y-m');
+if (!preg_match('/^\d{4}-\d{2}$/', $tm)) $tm = current_time('Y-m');
+$firstTs   = strtotime($tm . '-01');
+$monthStart= date('Y-m-01', $firstTs);
+$monthEnd  = date('Y-m-t', $firstTs);
+$today     = current_time('Y-m-d');
+$prev      = date('Y-m', strtotime('-1 month', $firstTs));
+$next      = date('Y-m', strtotime('+1 month', $firstTs));
+
+$events = OES_Teacher_Calendar::get_calendar($uid, $monthStart, $monthEnd);
+$byDate = array();
+foreach ($events as $ev) { $byDate[$ev['date']][] = $ev; }
+
+// Grid başlangıcı = ayın ilk gününü içeren haftanın Pazartesisi
+$startWd  = (int) date('N', $firstTs); // 1=Pzt..7=Paz
+$gridTs   = strtotime('-' . ($startWd - 1) . ' days', $firstTs);
+$weekdays = array('Pzt','Sal','Çar','Per','Cum','Cmt','Paz');
+?>
+<div class="oestp-page-head">
+    <div class="oestp-page-head-txt"><h1>Takvimim</h1><p><?php echo esc_html(date_i18n('F Y', $firstTs)); ?></p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="oesp-btn oesp-btn-ghost" id="calAddSlot"><i class="ti ti-clock-plus"></i> Randevu</button>
+        <button type="button" class="oesp-btn oesp-btn-green" id="calAddEvent"><i class="ti ti-plus"></i> Etkinlik</button>
+    </div>
+</div>
+
+<div class="oestp-cal-nav">
+    <a href="<?php echo esc_url($list_url . '&tm=' . $prev); ?>" class="oestp-cal-navbtn"><i class="ti ti-chevron-left"></i></a>
+    <strong><?php echo esc_html(date_i18n('F Y', $firstTs)); ?></strong>
+    <a href="<?php echo esc_url($list_url); ?>" class="oestp-cal-today">Bugün</a>
+    <a href="<?php echo esc_url($list_url . '&tm=' . $next); ?>" class="oestp-cal-navbtn"><i class="ti ti-chevron-right"></i></a>
+</div>
+
+<div class="oestp-cal-legend">
+    <span><i style="background:#7c3aed"></i> Dönem</span>
+    <span><i style="background:#0f6e56"></i> Randevu</span>
+    <span><i style="background:#0b2a5e"></i> Kişisel</span>
+</div>
+
+<!-- Aylık grid -->
+<div class="oestp-cal-grid">
+    <?php foreach ($weekdays as $wd): ?><div class="oestp-cal-wd"><?php echo esc_html($wd); ?></div><?php endforeach; ?>
+    <?php for ($i = 0; $i < 42; $i++):
+        $cellTs = strtotime("+$i days", $gridTs);
+        $cellDate = date('Y-m-d', $cellTs);
+        $inMonth = (date('Y-m', $cellTs) === $tm);
+        $isToday = ($cellDate === $today);
+        $dayEvents = isset($byDate[$cellDate]) ? $byDate[$cellDate] : array();
+        // Ayın son haftasından sonrası boşsa satırı atlamamak için 42 sabit
+        if ($i >= 35 && empty($dayEvents) && !$inMonth) continue;
+    ?>
+    <div class="oestp-cal-cell<?php echo $inMonth?'':' out'; ?><?php echo $isToday?' today':''; ?><?php echo !empty($dayEvents)?' has':''; ?>" data-date="<?php echo esc_attr($cellDate); ?>">
+        <span class="oestp-cal-day"><?php echo intval(date('j', $cellTs)); ?></span>
+        <div class="oestp-cal-dots">
+            <?php foreach (array_slice($dayEvents, 0, 4) as $ev): ?>
+            <span class="oestp-cal-chip" style="background:<?php echo esc_attr($ev['color']); ?>"><?php echo esc_html(($ev['start']?substr($ev['start'],0,5).' ':'') . $ev['title']); ?></span>
+            <?php endforeach; ?>
+            <?php if (count($dayEvents) > 4): ?><span class="oestp-cal-more">+<?php echo count($dayEvents)-4; ?></span><?php endif; ?>
+        </div>
+    </div>
+    <?php endfor; ?>
+</div>
+
+<!-- Ay ajandası -->
+<?php if (empty($byDate)): ?>
+<div class="oestp-empty" style="margin-top:16px;"><div class="oestp-empty-ic"><i class="ti ti-calendar-off"></i></div><p>Bu ayda planın yok. Etkinlik veya randevu ekleyebilirsin.</p></div>
+<?php else: ?>
+<div class="oestp-agenda" style="margin-top:20px;">
+    <?php foreach ($byDate as $date => $items): ?>
+    <div class="oestp-agenda-day" id="day-<?php echo esc_attr($date); ?>">
+        <div class="oestp-agenda-date <?php echo ($date===$today)?'today':''; ?>">
+            <strong><?php echo esc_html(date_i18n('d', strtotime($date))); ?></strong>
+            <span><?php echo esc_html(date_i18n('M', strtotime($date))); ?><br><?php echo esc_html(date_i18n('D', strtotime($date))); ?></span>
+        </div>
+        <div class="oestp-agenda-items">
+            <?php foreach ($items as $ev):
+                $time = $ev['start'] ? substr($ev['start'],0,5) . ($ev['end'] ? '–'.substr($ev['end'],0,5) : '') : 'Gün boyu';
+            ?>
+            <div class="oestp-agenda-item" style="border-left-color:<?php echo esc_attr($ev['color']); ?>">
+                <div class="oestp-ai-main">
+                    <div class="oestp-ai-title"><?php echo esc_html($ev['title']); ?></div>
+                    <div class="oestp-ai-meta"><i class="ti ti-clock"></i> <?php echo esc_html($time); ?> · <?php echo esc_html($ev['meta']); ?></div>
+                    <?php if (!empty($ev['note'])): ?><div class="oestp-ai-note"><?php echo esc_html($ev['note']); ?></div><?php endif; ?>
+                    <?php if (!empty($ev['link'])): ?><a href="<?php echo esc_url($ev['link']); ?>" target="_blank" rel="noopener" class="oestp-ai-link"><i class="ti ti-video"></i> Katıl</a><?php endif; ?>
+                </div>
+                <?php if ($ev['type'] === 'personal'): ?>
+                <div class="oestp-ai-actions">
+                    <button type="button" class="oestp-icon-btn cal-edit-event" data-id="<?php echo intval($ev['id']); ?>" data-title="<?php echo esc_attr($ev['title']); ?>" data-date="<?php echo esc_attr($ev['date']); ?>" data-start="<?php echo esc_attr($ev['start']); ?>" data-end="<?php echo esc_attr($ev['end']); ?>" data-color="<?php echo esc_attr($ev['color']); ?>" data-note="<?php echo esc_attr($ev['note']); ?>" title="Düzenle"><i class="ti ti-edit"></i></button>
+                    <button type="button" class="oestp-icon-btn cal-del-event" data-id="<?php echo intval($ev['id']); ?>" title="Sil"><i class="ti ti-x"></i></button>
+                </div>
+                <?php elseif ($ev['type'] === 'slot'): ?>
+                <div class="oestp-ai-actions">
+                    <span class="oestp-badge oestp-badge-<?php echo ($ev['booked']>=$ev['capacity'])?'fail':'publish'; ?>"><?php echo intval($ev['booked']); ?>/<?php echo intval($ev['capacity']); ?></span>
+                    <button type="button" class="oestp-icon-btn cal-del-slot" data-id="<?php echo intval($ev['id']); ?>" title="Sil"><i class="ti ti-x"></i></button>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<!-- Etkinlik modal -->
+<div class="oestp-media-modal" id="calEventModal">
+    <div class="oestp-media-box" style="max-width:460px;">
+        <div class="oestp-media-head"><strong><i class="ti ti-calendar-plus"></i> <span id="evModalTitle">Etkinlik</span></strong><button type="button" class="oestp-icon-btn" id="evClose"><i class="ti ti-x"></i></button></div>
+        <div style="padding:16px;overflow-y:auto;min-height:0;flex:1;">
+            <div class="oestp-conflict" id="evConflict" hidden></div>
+            <input type="hidden" id="ev_id" value="">
+            <div class="oestp-fields">
+                <label>Başlık *<input type="text" id="ev_title" placeholder="Etkinlik adı"></label>
+                <label>Tarih *<input type="date" id="ev_date"></label>
+                <div class="oestp-form-row">
+                    <label>Başlangıç<input type="time" id="ev_start"></label>
+                    <label>Bitiş<input type="time" id="ev_end"></label>
+                </div>
+                <label>Renk<input type="color" id="ev_color" value="#0b2a5e" style="height:44px;padding:4px;"></label>
+                <label>Not<textarea id="ev_note" rows="2" placeholder="Opsiyonel"></textarea></label>
+            </div>
+        </div>
+        <div class="oestp-media-foot" style="text-align:right;">
+            <button type="button" class="oesp-btn oesp-btn-ghost" id="evCancel">İptal</button>
+            <button type="button" class="oesp-btn oesp-btn-green" id="evSave"><i class="ti ti-check"></i> Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- Randevu slotu modal -->
+<div class="oestp-media-modal" id="calSlotModal">
+    <div class="oestp-media-box" style="max-width:460px;">
+        <div class="oestp-media-head"><strong><i class="ti ti-clock-plus"></i> Randevu Saati</strong><button type="button" class="oestp-icon-btn" id="slClose"><i class="ti ti-x"></i></button></div>
+        <div style="padding:16px;overflow-y:auto;min-height:0;flex:1;">
+            <div class="oestp-conflict" id="slConflict" hidden></div>
+            <input type="hidden" id="sl_id" value="">
+            <div class="oestp-fields">
+                <label>Kurs (opsiyonel)
+                    <select id="sl_course"><option value="">Genel randevu</option>
+                    <?php foreach ($my_courses as $c): ?><option value="<?php echo intval($c['id']); ?>"><?php echo esc_html($c['title']); ?></option><?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Tarih *<input type="date" id="sl_date"></label>
+                <div class="oestp-form-row">
+                    <label>Başlangıç *<input type="time" id="sl_start"></label>
+                    <label>Bitiş *<input type="time" id="sl_end"></label>
+                </div>
+                <label>Kontenjan<input type="number" id="sl_cap" min="1" value="1"></label>
+                <label>Not<input type="text" id="sl_note" placeholder="Opsiyonel"></label>
+            </div>
+        </div>
+        <div class="oestp-media-foot" style="text-align:right;">
+            <button type="button" class="oesp-btn oesp-btn-ghost" id="slCancel">İptal</button>
+            <button type="button" class="oesp-btn oesp-btn-green" id="slSave"><i class="ti ti-check"></i> Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    var T = window.oesTeacher;
+    var selDate = '';
+
+    // Grid güne tıklama → o güne kaydır / seçili tarih
+    document.querySelectorAll('.oestp-cal-cell').forEach(function(cell){
+        cell.addEventListener('click', function(){
+            selDate = cell.dataset.date;
+            var anchor = document.getElementById('day-'+selDate);
+            if (anchor) anchor.scrollIntoView({behavior:'smooth', block:'start'});
+        });
+    });
+
+    function conflictHtml(list){
+        var h = '<div class="oestp-conflict-title"><i class="ti ti-alert-triangle"></i> Bu saatte planın var:</div><ul>';
+        list.forEach(function(c){ h += '<li>'+c.time+' — '+c.title+'</li>'; });
+        h += '</ul><div class="oestp-conflict-ask">Yine de kaydetmek istiyor musun?</div>';
+        return h;
+    }
+
+    // ---- Etkinlik ----
+    var evModal=document.getElementById('calEventModal'), evConf=document.getElementById('evConflict');
+    function openEvent(d){
+        evConf.hidden=true;
+        document.getElementById('evModalTitle').textContent = d?'Etkinliği düzenle':'Yeni etkinlik';
+        document.getElementById('ev_id').value = d?d.id:'';
+        document.getElementById('ev_title').value = d?d.title:'';
+        document.getElementById('ev_date').value = d?d.date:(selDate||'');
+        document.getElementById('ev_start').value = d?(d.start||'').substring(0,5):'';
+        document.getElementById('ev_end').value = d?(d.end||'').substring(0,5):'';
+        document.getElementById('ev_color').value = d&&d.color?d.color:'#0b2a5e';
+        document.getElementById('ev_note').value = d?d.note:'';
+        evModal.classList.add('open');
+    }
+    document.getElementById('calAddEvent').addEventListener('click',function(){ openEvent(null); });
+    document.querySelectorAll('.cal-edit-event').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); openEvent(b.dataset); }); });
+    document.getElementById('evClose').addEventListener('click',function(){evModal.classList.remove('open');});
+    document.getElementById('evCancel').addEventListener('click',function(){evModal.classList.remove('open');});
+
+    function saveEvent(force){
+        var btn=document.getElementById('evSave');
+        var title=document.getElementById('ev_title').value.trim(), date=document.getElementById('ev_date').value;
+        if(!title||!date){ alert('Başlık ve tarih zorunlu.'); return; }
+        var p=new URLSearchParams();
+        p.append('action','oes_tp_save_event'); p.append('nonce',T.nonce);
+        p.append('event_id',document.getElementById('ev_id').value);
+        p.append('title',title); p.append('event_date',date);
+        p.append('start_time',document.getElementById('ev_start').value);
+        p.append('end_time',document.getElementById('ev_end').value);
+        p.append('color',document.getElementById('ev_color').value);
+        p.append('note',document.getElementById('ev_note').value);
+        if(force) p.append('force','1');
+        btn.disabled=true;
+        fetch(T.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString(),credentials:'same-origin'})
+        .then(function(r){return r.json();}).then(function(res){
+            btn.disabled=false;
+            if(res.success && res.data.conflict){ evConf.innerHTML=conflictHtml(res.data.conflicts)+'<button type="button" class="oesp-btn oesp-btn-navy" id="evForce">Yine de kaydet</button>'; evConf.hidden=false; document.getElementById('evForce').addEventListener('click',function(){ saveEvent(true); }); }
+            else if(res.success){ location.reload(); }
+            else alert(res.data||'Hata');
+        }).catch(function(){ btn.disabled=false; alert('Bağlantı hatası.'); });
+    }
+    document.getElementById('evSave').addEventListener('click',function(){ saveEvent(false); });
+
+    document.querySelectorAll('.cal-del-event').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); if(!confirm('Etkinlik silinsin mi?')) return;
+        var p=new URLSearchParams(); p.append('action','oes_tp_delete_event'); p.append('nonce',T.nonce); p.append('event_id',b.dataset.id);
+        fetch(T.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString(),credentials:'same-origin'}).then(function(r){return r.json();}).then(function(res){ if(res.success) location.reload(); else alert(res.data||'Hata'); });
+    }); });
+
+    // ---- Slot ----
+    var slModal=document.getElementById('calSlotModal'), slConf=document.getElementById('slConflict');
+    document.getElementById('calAddSlot').addEventListener('click',function(){ slConf.hidden=true; document.getElementById('sl_id').value=''; document.getElementById('sl_date').value=selDate||''; document.getElementById('sl_start').value=''; document.getElementById('sl_end').value=''; document.getElementById('sl_cap').value=1; document.getElementById('sl_note').value=''; slModal.classList.add('open'); });
+    document.getElementById('slClose').addEventListener('click',function(){slModal.classList.remove('open');});
+    document.getElementById('slCancel').addEventListener('click',function(){slModal.classList.remove('open');});
+
+    function saveSlot(force){
+        var btn=document.getElementById('slSave');
+        var date=document.getElementById('sl_date').value, start=document.getElementById('sl_start').value, end=document.getElementById('sl_end').value;
+        if(!date||!start||!end){ alert('Tarih ve saat zorunlu.'); return; }
+        var p=new URLSearchParams();
+        p.append('action','oes_tp_save_slot'); p.append('nonce',T.nonce);
+        p.append('slot_id',document.getElementById('sl_id').value);
+        p.append('course_id',document.getElementById('sl_course').value);
+        p.append('slot_date',date); p.append('start_time',start); p.append('end_time',end);
+        p.append('capacity',document.getElementById('sl_cap').value||'1');
+        p.append('note',document.getElementById('sl_note').value);
+        if(force) p.append('force','1');
+        btn.disabled=true;
+        fetch(T.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString(),credentials:'same-origin'})
+        .then(function(r){return r.json();}).then(function(res){
+            btn.disabled=false;
+            if(res.success && res.data.conflict){ slConf.innerHTML=conflictHtml(res.data.conflicts)+'<button type="button" class="oesp-btn oesp-btn-navy" id="slForce">Yine de kaydet</button>'; slConf.hidden=false; document.getElementById('slForce').addEventListener('click',function(){ saveSlot(true); }); }
+            else if(res.success){ location.reload(); }
+            else alert(res.data||'Hata');
+        }).catch(function(){ btn.disabled=false; alert('Bağlantı hatası.'); });
+    }
+    document.getElementById('slSave').addEventListener('click',function(){ saveSlot(false); });
+
+    document.querySelectorAll('.cal-del-slot').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); if(!confirm('Randevu saati silinsin mi?')) return;
+        var p=new URLSearchParams(); p.append('action','oes_tp_delete_slot'); p.append('nonce',T.nonce); p.append('slot_id',b.dataset.id);
+        fetch(T.ajaxUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString(),credentials:'same-origin'}).then(function(r){return r.json();}).then(function(res){ if(res.success) location.reload(); else alert(res.data||'Hata'); });
+    }); });
+})();
+</script>

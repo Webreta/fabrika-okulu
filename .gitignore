@@ -1,0 +1,8 @@
+site/node_modules
+site/.next
+site/.env
+site/public/uploads/*
+!site/public/uploads/.gitkeep
+site/private/korumali/*
+!site/private/korumali/.gitkeep
+*.tsbuildinfo

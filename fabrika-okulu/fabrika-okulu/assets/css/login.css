@@ -1,0 +1,55 @@
+/* Fabrika Okulu — Login (v2 split). panel.css / teacher-panel.css token'larıyla çalışır. */
+body{margin:0;background:#fff;}
+.lo-promo{background:#194977;color:#fff;min-height:39px;display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:.2px;padding:6px 12px;text-align:center;}
+.lo-split{display:flex;min-height:100vh;}
+
+/* Sol görsel panel */
+.lo-aside{flex:1 1 46%;position:relative;overflow:hidden;background:linear-gradient(150deg,#194977 0%,#142b56 55%,#012963 100%);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:56px 54px;}
+.lo-aside::before,.lo-aside::after{content:"";position:absolute;border-radius:50%;}
+.lo-aside::before{width:360px;height:360px;background:radial-gradient(circle at 30% 30%,rgba(91,174,207,.50),transparent 70%);top:-100px;right:-80px;}
+.lo-aside::after{width:300px;height:300px;background:radial-gradient(circle at 50% 50%,rgba(203,226,240,.28),transparent 70%);bottom:-90px;left:-70px;}
+.lo-aside-in{position:relative;z-index:1;max-width:430px;}
+.lo-logo-pill{display:inline-flex;background:#fff;border-radius:14px;padding:12px 18px;margin-bottom:34px;box-shadow:0 10px 30px rgba(0,0,0,.20);}
+.lo-logo-pill img{height:54px;width:auto;display:block;}
+.lo-aside h2{font-size:32px;line-height:1.2;font-weight:800;margin:0 0 14px;letter-spacing:-.5px;color:#fff;}
+.lo-aside .tag{font-size:15px;line-height:1.6;color:#d6e6f2;margin:0 0 32px;}
+.lo-feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:16px;}
+.lo-feats li{display:flex;align-items:flex-start;gap:12px;}
+.lo-feats i{flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;}
+.lo-feats b{display:block;font-weight:700;color:#fff;font-size:14.5px;margin-bottom:1px;}
+.lo-feats span{color:#c3d7e8;font-size:13px;line-height:1.4;}
+
+/* Sağ form paneli */
+.lo-main{flex:1 1 54%;display:flex;align-items:center;justify-content:center;padding:40px 24px;background:linear-gradient(180deg,#f5f7fa,#fff);}
+.login-card{width:100%;max-width:412px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 22px 54px rgba(20,43,86,.10);padding:34px 32px;}
+.lo-mlogo{display:none;text-align:center;margin-bottom:18px;}
+.lo-mlogo img{height:64px;width:auto;}
+.login-card h1{font-size:23px;font-weight:800;color:var(--navy);text-align:center;margin:0 0 4px;}
+.login-card .lsub{font-size:13px;color:var(--ink3);text-align:center;margin-bottom:22px;}
+.login-tabs{display:flex;background:var(--card);border-radius:12px;padding:4px;margin-bottom:20px;gap:4px;}
+.login-tab{flex:1;padding:10px;border:none;background:none;font-size:13.5px;font-weight:600;color:var(--ink3);border-radius:9px;cursor:pointer;font-family:inherit;}
+.login-tab.active{background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(20,43,86,.08);}
+.login-form{display:none;} .login-form.active{display:block;}
+.lfield{position:relative;margin-bottom:13px;}
+.lfield>i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:18px;}
+.lfield input{width:100%;height:50px;padding:0 14px 0 42px;border:1px solid var(--line);border-radius:12px;font-size:14.5px;outline:none;background:#fff;color:var(--ink);font-family:inherit;}
+.lfield.has-toggle input{padding-right:46px;}
+.lfield input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(25,73,119,.08);}
+.lpass{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:none;background:none;color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;border-radius:8px;}
+.lpass:hover{color:var(--navy);background:var(--hover);}
+.lrow{display:flex;align-items:center;justify-content:space-between;font-size:13px;margin:4px 0 18px;}
+.lremember{display:flex;align-items:center;gap:7px;color:var(--ink2);cursor:pointer;}
+.lforgot,.lgoto{color:var(--navy);font-weight:600;cursor:pointer;background:none;border:none;font-size:13px;font-family:inherit;padding:0;}
+.lbtn{width:100%;height:50px;background:var(--navy);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
+.lbtn:hover{background:var(--navy-d);} .lbtn:disabled{opacity:.7;cursor:wait;}
+.lmsg{font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:14px;display:none;line-height:1.45;}
+.lmsg.show{display:block;} .lmsg.err{background:#fef2f2;color:#b91c1c;} .lmsg.ok{background:var(--green-soft);color:#0f6e56;}
+.lfine{text-align:center;font-size:11.5px;color:var(--ink3);margin-top:14px;line-height:1.5;}
+.lback{display:block;text-align:center;margin-top:16px;font-size:13px;color:var(--ink3);text-decoration:none;background:none;border:none;width:100%;cursor:pointer;font-family:inherit;}
+.lback:hover{color:var(--navy);}
+
+@media(max-width:900px){
+  .lo-aside{display:none;}
+  .lo-mlogo{display:block;}
+  .lo-split{min-height:100vh;}
+}

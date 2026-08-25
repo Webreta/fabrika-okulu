@@ -1,0 +1,35 @@
+<?php
+/**
+ * Eğitmen paneli — erişim yok ekranı
+ * Giriş yapmış ama eğitmen olmayan kullanıcılar için.
+ * Beklenen: $panel (OES_Teacher_Panel)
+ */
+if (!defined('ABSPATH')) exit;
+
+$student_panel = home_url('/panel/');
+$logout_url = wp_logout_url(home_url('/egitmen/'));
+?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title><?php echo esc_html(get_bloginfo('name')); ?> — Erişim yok</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+    <link rel="stylesheet" href="<?php echo esc_url(OES_PLUGIN_URL . 'assets/css/panel.css?v=' . filemtime(OES_PLUGIN_DIR . 'assets/css/panel.css')); ?>">
+    <link rel="stylesheet" href="<?php echo esc_url(OES_PLUGIN_URL . 'assets/css/teacher-panel.css?v=' . filemtime(OES_PLUGIN_DIR . 'assets/css/teacher-panel.css')); ?>">
+</head>
+<body class="oes-panel-body oestp oestp-noaccess-body">
+<div class="oestp-noaccess">
+    <div class="oestp-noaccess-card">
+        <div class="oestp-noaccess-ic"><i class="ti ti-lock-exclamation"></i></div>
+        <h1>Bu alan eğitmenlere özel</h1>
+        <p>Hesabında eğitmen yetkisi bulunmuyor. Öğrenciyseniz kendi paneline geçebilirsin.</p>
+        <div class="oestp-noaccess-actions">
+            <a href="<?php echo esc_url($student_panel); ?>" class="oesp-btn oesp-btn-green"><i class="ti ti-user"></i> Öğrenci paneline git</a>
+            <a href="<?php echo esc_url($logout_url); ?>" class="oesp-btn oesp-btn-ghost"><i class="ti ti-logout"></i> Çıkış yap</a>
+        </div>
+        <p class="oestp-noaccess-fine">Eğitmen olman gerekiyorsa site yöneticisiyle iletişime geç.</p>
+    </div>
+</div>
+</body>
+</html>

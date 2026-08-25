@@ -1,0 +1,391 @@
+/**
+ * Dönem Seçici Stilleri
+ */
+
+/* CSS Variables - Light & Dark Mode */
+:root {
+    --period-bg: #f0f7fb;
+    --period-bg-selected: #D1F0FF;
+    --period-text: #012963;
+    --period-text-muted: #6b7280;
+    --period-border: #e8e8e8;
+    --period-border-light: #f0f0f0;
+    --period-primary: #012963;
+    --period-primary-light: #90BFDC;
+    --period-hover: #fff;
+    --period-warning-bg: #fef3c7;
+    --period-warning-text: #92400e;
+}
+
+/* Dönem yok uyarısı */
+.oes-no-period {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--period-warning-bg);
+    border-radius: 10px;
+    margin-bottom: 12px;
+}
+.oes-no-period span { font-size: 24px; }
+.oes-no-period p { margin: 0; }
+.oes-no-period strong { color: var(--period-warning-text); font-size: 13px; }
+.oes-no-period small { color: var(--period-warning-text); font-size: 11px; opacity: 0.8; }
+.oes-no-period ~ .oes-btn { display: none !important; }
+
+/* Trigger Butonu */
+.oes-period-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--period-bg);
+    border: 1px solid var(--period-border);
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all .15s ease;
+}
+.oes-period-trigger:hover { border-color: var(--period-primary); background: var(--period-hover); }
+.oes-period-trigger.selected { border-color: var(--period-primary); background: var(--period-bg-selected); }
+.oes-pt-icon { 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--period-text-muted);
+}
+.oes-pt-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--period-text-muted);
+}
+.oes-pt-text { flex: 1; }
+.oes-pt-text span {
+    display: block;
+    font-size: 10px;
+    color: var(--period-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 500;
+}
+.oes-pt-text strong {
+    display: block;
+    font-size: 14px;
+    color: var(--period-text);
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+.oes-pt-arrow {
+    font-size: 18px;
+    color: var(--period-text-muted);
+    font-weight: 300;
+}
+
+/* Lightbox Overlay */
+.oes-period-lb {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: rgba(0,0,0,.4);
+    backdrop-filter: blur(3px);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.oes-period-lb.open { display: flex; }
+
+/* Lightbox Box */
+.oes-lb-box {
+    position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 750px;
+    height: 480px;
+    max-height: 80vh;
+    background: var(--period-hover);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,.15);
+    animation: oesLBIn .2s ease;
+}
+@keyframes oesLBIn {
+    from { opacity: 0; transform: scale(.97); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Sol Panel - Dönem Listesi */
+.oes-lb-left {
+    width: 300px;
+    border-right: 1px solid var(--period-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--period-hover);
+}
+.oes-lb-title {
+    padding: 16px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--period-text);
+    border-bottom: 1px solid var(--period-border);
+    flex-shrink: 0;
+    letter-spacing: -0.2px;
+}
+.oes-lb-periods-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 70px;
+}
+
+/* Dönem Item */
+.oes-lb-period {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--period-border);
+    transition: background .12s;
+}
+.oes-lb-period:hover:not(.disabled) { background: var(--period-bg); }
+.oes-lb-period.active { background: var(--period-bg-selected); }
+.oes-lb-period.disabled { opacity: .5; cursor: not-allowed; }
+
+/* Radio Button */
+.oes-lb-radio {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--period-border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+}
+.oes-lb-period.active .oes-lb-radio {
+    border-color: var(--period-primary);
+    background: var(--period-primary);
+}
+.oes-lb-period.active .oes-lb-radio::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: var(--period-hover);
+    border-radius: 50%;
+}
+
+/* Dönem Info */
+.oes-lb-pinfo { flex: 1; min-width: 0; }
+.oes-lb-pinfo strong {
+    display: block;
+    font-size: 13px;
+    color: var(--period-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+.oes-lb-pinfo span { font-size: 11px; color: var(--period-text-muted); font-weight: 500; }
+
+/* Kontenjan Badge */
+.oes-lb-cap {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: var(--period-primary-light);
+    color: var(--period-primary);
+}
+.oes-lb-cap.low { background: #fef3c7; color: #d97706; }
+.oes-lb-cap.full { background: #fee2e2; color: #dc2626; }
+
+/* Sağ Panel - Takvim */
+.oes-lb-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--period-bg);
+    overflow: hidden;
+    position: relative;
+}
+.oes-lb-calendar {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    padding-bottom: 75px;
+}
+.oes-cal-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--period-text);
+    margin-bottom: 14px;
+    letter-spacing: -0.2px;
+}
+.oes-cal-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--period-text-muted);
+    font-size: 13px;
+}
+.oes-cal-empty p { margin: 0; text-align: center; }
+.oes-cal-list { display: none; }
+.oes-cal-list.show { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+/* Takvim Item */
+.oes-cal-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px;
+    background: var(--period-hover);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.oes-cal-date {
+    width: 36px;
+    height: 36px;
+    background: var(--period-primary);
+    color: var(--period-hover);
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.oes-cal-date b { font-size: 13px; line-height: 1; }
+.oes-cal-date small { font-size: 8px; text-transform: uppercase; opacity: .9; }
+.oes-cal-info { flex: 1; min-width: 0; }
+.oes-cal-info strong {
+    display: block;
+    font-size: 12px;
+    color: var(--period-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+.oes-cal-info span { font-size: 10px; color: var(--period-text-muted); }
+
+/* Kapat Butonu */
+.oes-lb-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: var(--period-bg);
+    color: var(--period-text-muted);
+    border-radius: 6px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all .12s;
+}
+.oes-lb-close:hover { background: var(--period-bg-accent); color: var(--period-text); }
+
+/* Footer */
+.oes-lb-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 18px;
+    background: var(--period-hover);
+    border-top: 1px solid var(--period-border);
+}
+.oes-lb-cancel,
+.oes-lb-ok {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .12s;
+}
+.oes-lb-cancel {
+    background: var(--period-hover);
+    border: 1px solid var(--period-border);
+    color: var(--period-text-muted);
+}
+.oes-lb-cancel:hover { background: var(--period-bg); }
+.oes-lb-ok {
+    background: var(--period-primary);
+    border: none;
+    color: var(--period-hover);
+}
+.oes-lb-ok:hover:not(:disabled) { background: var(--period-primary-dark); }
+.oes-lb-ok:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Mobil Responsive */
+@media (max-width: 700px) {
+    .oes-lb-box {
+        flex-direction: column;
+        max-height: 90vh;
+        min-height: auto;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+    }
+    .oes-period-lb {
+        align-items: flex-end;
+        padding: 0;
+    }
+    .oes-lb-left {
+        width: 100%;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .oes-lb-periods-wrap { padding-bottom: 0; }
+    .oes-lb-right { min-height: 180px; }
+    .oes-lb-calendar { padding: 16px; padding-bottom: 70px; }
+    .oes-cal-empty { height: 100px; }
+    .oes-lb-footer { position: relative; }
+    .oes-lb-close { top: 12px; right: 12px; }
+}
+
+/* Mobil Bottom Bar Dönem Butonu */
+.oes-mobile-period-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+    background: #fff;
+    border: 2px solid #10b981;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #059669;
+    font-weight: 600;
+    transition: all .2s;
+    white-space: nowrap;
+    min-width: 110px;
+}
+.oes-mobile-period-btn:active {
+    transform: scale(0.97);
+    background: #f0fdf4;
+}
+.oes-mobile-period-btn.selected {
+    background: #10b981;
+    color: #fff;
+}
+.oes-mpb-icon { font-size: 14px; }
+.oes-mpb-text { 
+    max-width: 80px; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+}
