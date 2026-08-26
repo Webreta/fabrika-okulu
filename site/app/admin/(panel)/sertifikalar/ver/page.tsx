@@ -12,7 +12,7 @@ export default async function AdminIssueCertificatesPage({ searchParams }: { sea
   const [ov, feed] = await Promise.all([teacherOverview(user), certificateFeed(user, courseId)]);
   return (
     <>
-      <PageTitle title="Sertifikalar" sub="Koşulu sağlayan öğrencilere sertifika tanımla." />
+      <PageTitle title="Sertifikalar" />
       <Tabs items={[{ href: "/admin/sertifikalar", label: "Tasarımlar", active: false }, { href: "/admin/sertifikalar/ver", label: "Sertifika ver", active: true }, { href: "/admin/sertifikalar?sekme=verilenler", label: "Verilen sertifikalar", active: false }]} />
       <form className="mb-4 flex gap-2" method="get">
         <select name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm eğitimler</option>{ov.courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>

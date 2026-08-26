@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     { href: "/admin/kurslar", label: "Kurslar", icon: "book", group: "Eğitim" },
     { href: "/admin/egitmenler", label: "Eğitmenler", icon: "users" },
     { href: "/admin/ogrenciler", label: "Kayıtlı Öğrenciler", icon: "user", badge: fresh.ogrenciler || undefined },
-    { href: "/admin/gonderimler", label: "Gönderimler", icon: "task", badge: ps || undefined },
+    { href: "/admin/gonderimler", label: "Görevler & Sınavlar", icon: "task", badge: ps || undefined },
     { href: "/admin/sorular", label: "Öğrenci Soruları", icon: "message", badge: pq || undefined },
     { href: "/admin/notlar", label: "Öğrenci Notları", icon: "edit", badge: fresh.notlar || undefined },
     { href: "/admin/sertifikalar", label: "Sertifikalar", icon: "award", badge: fresh.sertifikalar || undefined },
@@ -52,8 +52,6 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
         <nav className="flex flex-1 flex-col gap-0.5 p-3">
           <AdminNav items={items} />
           <div className="mt-3 border-t border-line pt-3">
-            <Link href="/egitmen" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-navy-800 hover:bg-navy-50"><Icon name="layers" className="size-4 text-navy-400" />Eğitmen Paneli</Link>
-            <Link href="/panel" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-navy-800 hover:bg-navy-50"><Icon name="user" className="size-4 text-navy-400" />Öğrenci Paneli</Link>
             <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-navy-500 hover:bg-navy-50"><Icon name="external" className="size-4 text-navy-400" />Siteye dön</a>
           </div>
         </nav>

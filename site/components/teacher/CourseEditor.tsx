@@ -13,7 +13,7 @@ type Question = Lesson["questions"][number];
 type Period = CourseInput["periods"][number];
 
 const newLesson = (type: Lesson["type"]): Lesson => ({
-  type, title: "", videoUrl: "", duration: "", preview: false, description: "", dueDays: 0, fileUrl: "", fileName: "", fileMime: "",
+  type, title: "", videoUrl: "", duration: "", preview: false, description: "", dueDays: 0, dueDate: "", dueTime: "", fileUrl: "", fileName: "", fileMime: "",
   questions: type === "quiz" ? [newQuestion(), newQuestion()] : [], timeLimit: 0, passScore: 0, maxAttempts: 1,
   shuffleQuestions: false, showCorrectAnswers: true, isGraded: false, maxScore: 100, allowFile: true, allowVoice: true, allowText: true,
 });
@@ -53,10 +53,11 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 }
 
 export function CourseEditor({
-  initial, locked, isAdmin, instructors, periodEnrolled = {}, backHref,
+  initial, locked, isAdmin, instructors, periodEnrolled = {}, backHref, allCourses = [],
 }: {
   initial: CourseInput; locked: boolean; isAdmin: boolean;
   instructors: { id: number; name: string }[]; periodEnrolled?: Record<number, number>; backHref: string;
+  allCourses?: { id: number; title: string }[];
 }) {
   const [c, setC] = useState<CourseInput>(initial);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -67,6 +68,8 @@ export function CourseEditor({
   const isNew = !c.id;
   const isAdminShell = backHref.startsWith("/admin");
   const today = new Date().toISOString().slice(0, 10);
+  // Dönemli (takvimli) kursta teslim mutlak tarihle, esnek kursta gün sayısıyla girilir
+  const hasPeriods = c.periods.length > 0;
 
   useEffect(() => {
     if (!msg?.ok) return;
@@ -82,7 +85,7 @@ export function CourseEditor({
   const save = (status: "draft" | "published") =>
     start(async () => {
       setMsg(null);
-      const r = await saveCourseAction({ ...c, status: locked ? c.status : status });
+      const r = await saveCourseAction({ ...c, status: locked ? c.status : status, relations: c.relations?.filter((x) => x.relatedCourseId > 0) });
       if (!r.ok) { setMsg({ ok: false, text: r.error }); return; }
       setMsg({ ok: true, text: r.message ?? "Kaydedildi." });
       setPublishStep(0);
@@ -257,9 +260,19 @@ export function CourseEditor({
                         </div>
                       )}
                       {l.type === "assign" && (
-                        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_160px]">
+                        <div className={`mt-2 grid gap-2 ${hasPeriods ? "sm:grid-cols-[1fr_260px]" : "sm:grid-cols-[1fr_160px]"}`}>
                           <textarea rows={2} value={l.description} onChange={(e) => setLesson(mi, li, { ...l, description: e.target.value })} placeholder="Görev açıklaması" className="input" />
-                          <div><input type="number" min={0} value={l.dueDays} onChange={(e) => setLesson(mi, li, { ...l, dueDays: Number(e.target.value) })} className="input" /><p className="mt-1 text-[11px] text-muted">Teslim süresi (gün) · 0 = süresiz</p></div>
+                          {hasPeriods ? (
+                            <div>
+                              <div className="flex gap-1">
+                                <input type="date" value={l.dueDate} onChange={(e) => setLesson(mi, li, { ...l, dueDate: e.target.value, dueDays: 0 })} className="input" />
+                                <input type="time" value={l.dueTime} onChange={(e) => setLesson(mi, li, { ...l, dueTime: e.target.value })} className="input w-28" />
+                              </div>
+                              <p className="mt-1 text-[11px] text-muted">Son teslim tarihi · boş = süresiz · saat boş = 23:59</p>
+                            </div>
+                          ) : (
+                            <div><input type="number" min={0} value={l.dueDays} onChange={(e) => setLesson(mi, li, { ...l, dueDays: Number(e.target.value) })} className="input" /><p className="mt-1 text-[11px] text-muted">Teslim süresi (gün) · 0 = süresiz</p></div>
+                          )}
                           <div className="flex flex-wrap items-center gap-4 text-xs sm:col-span-2">
                             <label className="flex items-center gap-1"><input type="checkbox" checked={l.isGraded} onChange={(e) => setLesson(mi, li, { ...l, isGraded: e.target.checked })} /> Puanlı</label>
                             {l.isGraded && <span className="flex items-center gap-1">Maks puan <input type="number" min={1} value={l.maxScore} onChange={(e) => setLesson(mi, li, { ...l, maxScore: Number(e.target.value) })} className="input w-20 py-0.5" /></span>}
@@ -277,14 +290,15 @@ export function CourseEditor({
                           <span className="text-[11px] text-muted">öğrenci indiremez · ilerlemeye dahil değil</span>
                         </div>
                       )}
-                      {l.type === "quiz" && <QuizBuilder lesson={l} onChange={(nl) => setLesson(mi, li, nl)} />}
+                      {l.type === "quiz" && <QuizBuilder lesson={l} hasPeriods={hasPeriods} onChange={(nl) => setLesson(mi, li, nl)} />}
                     </div>
                   );
                 })}
-                <div className="flex flex-wrap gap-2">
-                  {(["video", "quiz", "assign", "file"] as const).map((t) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  {(["video", "quiz", "assign", "file"] as const).filter((t) => t !== "assign" || hasPeriods).map((t) => (
                     <button key={t} onClick={() => setModule(mi, { ...m, lessons: [...m.lessons, newLesson(t)] })} className="btn-secondary btn-sm"><Icon name="plus" className="size-3.5" /> {LESSON_META[t].label}</button>
                   ))}
+                  {!hasPeriods && <span className="text-[11px] text-muted">Görev yalnızca takvimli (dönemli) eğitimlerde eklenebilir.</span>}
                 </div>
               </div>
             </div>
@@ -294,7 +308,7 @@ export function CourseEditor({
       </Section>
 
       {/* Dönemler */}
-      <Section title="Dönemler" hint={locked ? "Yayında: yalnızca gelecek oturumların bağlantıları düzenlenebilir." : "Dönem eklersen eğitim 'Takvimli Program' olur. Görev süreleri dönem başlangıç saatinden itibaren işler."}>
+      <Section title="Dönemler" hint={locked ? "Yayında: yalnızca gelecek oturumların bağlantıları düzenlenebilir." : "Dönem eklersen eğitim 'Takvimli Program' olur. Görev/sınav son teslim tarihleri müfredatta ders üzerinde tarih olarak girilir."}>
         <div className="space-y-4">
           {c.periods.map((p, pi) => {
             const passed = !!p.endDate && p.endDate < today;
@@ -314,7 +328,7 @@ export function CourseEditor({
                 <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="lg:col-span-2"><label className="label">Ad</label><input disabled={frozen} value={p.name} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, name: e.target.value } : x)))} className="input" /></div>
                   <div><label className="label">Başlangıç</label><input type="date" disabled={frozen} value={p.startDate} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, startDate: e.target.value } : x)))} className="input" /></div>
-                  <div><label className="label">Başlangıç saati</label><input type="time" disabled={frozen} value={p.startTime} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, startTime: e.target.value } : x)))} className="input" /><p className="text-[11px] text-muted">Görev süreleri bu saatte biter</p></div>
+                  <div><label className="label">Başlangıç saati</label><input type="time" disabled={frozen} value={p.startTime} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, startTime: e.target.value } : x)))} className="input" /><p className="text-[11px] text-muted">Dönemin ilk günü bu saatte başlar</p></div>
                   <div><label className="label">Bitiş</label><input type="date" disabled={frozen} value={p.endDate} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, endDate: e.target.value } : x)))} className="input" /></div>
                   <div><label className="label">Kontenjan</label><input type="number" min={1} disabled={frozen} value={p.capacity} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, capacity: Number(e.target.value) } : x)))} className="input" /></div>
                   <div className="lg:col-span-4"><label className="label">Açıklama</label><input disabled={frozen} value={p.description} onChange={(e) => set("periods", c.periods.map((x, j) => (j === pi ? { ...x, description: e.target.value } : x)))} className="input" /></div>
@@ -338,6 +352,31 @@ export function CourseEditor({
           {!locked && <button onClick={() => set("periods", [...c.periods, newPeriod()])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Dönem ekle</button>}
         </div>
       </Section>
+
+      {/* Kurs önerileri (yalnızca admin): tamamlayan/satın alan öğrenciye panelde önerilir */}
+      {isAdmin && (
+        <Section title="Kurs Önerileri (İlişkili Kurslar)" hint="Bu kursu tamamlayan ya da satın alan öğrenciye panelindeki tanıtım alanında önerilecek kurslar. İndirim yüzdesi o öğrenciye özeldir ve sepette otomatik uygulanır.">
+          <div className="space-y-2">
+            {(c.relations ?? []).map((r, ri) => (
+              <div key={ri} className="grid gap-2 rounded-lg border border-line p-3 sm:grid-cols-[1fr_170px_110px_1fr_auto]">
+                <select value={r.relatedCourseId} onChange={(e) => set("relations", (c.relations ?? []).map((x, j) => (j === ri ? { ...x, relatedCourseId: Number(e.target.value) } : x)))} className="input">
+                  <option value={0}>Kurs seç</option>
+                  {allCourses.filter((x) => x.id !== c.id).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+                </select>
+                <select value={r.trigger} onChange={(e) => set("relations", (c.relations ?? []).map((x, j) => (j === ri ? { ...x, trigger: e.target.value as "completed" | "purchased" } : x)))} className="input">
+                  <option value="completed">Kursu bitirince öner</option>
+                  <option value="purchased">Satın alınca öner</option>
+                </select>
+                <div className="flex items-center gap-1"><input type="number" min={0} max={100} value={r.discountPercent} onChange={(e) => set("relations", (c.relations ?? []).map((x, j) => (j === ri ? { ...x, discountPercent: Number(e.target.value) } : x)))} className="input" /><span className="text-sm text-muted">%</span></div>
+                <input value={r.note} onChange={(e) => set("relations", (c.relations ?? []).map((x, j) => (j === ri ? { ...x, note: e.target.value } : x)))} placeholder="Kısa mesaj (isteğe bağlı)" className="input" />
+                <button onClick={() => set("relations", (c.relations ?? []).filter((_, j) => j !== ri))} className="rounded p-1.5 text-red-600 hover:bg-red-50 self-center" title="Kaldır"><Icon name="trash" className="size-4" /></button>
+              </div>
+            ))}
+            <button onClick={() => set("relations", [...(c.relations ?? []), { relatedCourseId: 0, trigger: "completed" as const, discountPercent: 0, note: "" }])} className="btn-secondary btn-sm"><Icon name="plus" className="size-3.5" /> Öneri ekle</button>
+            <p className="text-xs text-muted">İndirim %0 ise kurs indirimsiz önerilir. &quot;Kursu bitirince&quot; önerileri panelde önceliklidir.</p>
+          </div>
+        </Section>
+      )}
 
       {/* Yayınlama sihirbazı */}
       {publishStep > 0 && (
@@ -389,7 +428,7 @@ function NotifyPeriodButton({ periodId }: { periodId: number }) {
   );
 }
 
-function QuizBuilder({ lesson, onChange }: { lesson: Lesson; onChange: (l: Lesson) => void }) {
+function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeriods: boolean; onChange: (l: Lesson) => void }) {
   const [open, setOpen] = useState(false);
   const setQ = (i: number, q: Question) => onChange({ ...lesson, questions: lesson.questions.map((x, j) => (j === i ? q : x)) });
   return (
@@ -400,11 +439,26 @@ function QuizBuilder({ lesson, onChange }: { lesson: Lesson; onChange: (l: Lesso
         <label className="flex items-center gap-1"><input type="checkbox" checked={lesson.showCorrectAnswers} onChange={(e) => onChange({ ...lesson, showCorrectAnswers: e.target.checked })} /> Sonuçta doğru cevapları göster</label>
       </div>
       <div className="grid gap-2 sm:grid-cols-4">
-        <div><input type="number" min={0} value={lesson.dueDays} onChange={(e) => onChange({ ...lesson, dueDays: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Süre (gün) · 0 = süresiz</p></div>
+        {hasPeriods ? (
+          <div>
+            <div className="flex gap-1">
+              <input type="date" value={lesson.dueDate} onChange={(e) => onChange({ ...lesson, dueDate: e.target.value, dueDays: 0 })} className="input" />
+              <input type="time" value={lesson.dueTime} onChange={(e) => onChange({ ...lesson, dueTime: e.target.value })} className="input w-28" />
+            </div>
+            <p className="text-[11px] text-muted">Son tarih · boş = süresiz · saat boş = 23:59</p>
+          </div>
+        ) : (
+          <div><input type="number" min={0} value={lesson.dueDays} onChange={(e) => onChange({ ...lesson, dueDays: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Süre (gün) · 0 = süresiz</p></div>
+        )}
         <div><input type="number" min={0} value={lesson.timeLimit} onChange={(e) => onChange({ ...lesson, timeLimit: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Süre sınırı (dk) · 0 = yok</p></div>
         <div><input type="number" min={0} max={100} value={lesson.passScore} onChange={(e) => onChange({ ...lesson, passScore: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Geçme notu % · 0 = otomatik geçer</p></div>
         <div><input type="number" min={0} value={lesson.maxAttempts} onChange={(e) => onChange({ ...lesson, maxAttempts: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Deneme hakkı · 0 = sınırsız</p></div>
       </div>
+      <p className="mb-1 text-[11px] text-muted">
+        {hasPeriods
+          ? "Test ve doğru/yanlış sorular otomatik değerlendirilir. Açık uçlu soru soracaksan onları ayrı bir sınavda topla; eğitmen değerlendirir (karma sınav kaydedilmez)."
+          : "Esnek/ücretsiz eğitimde yalnızca test ve doğru/yanlış soru sorulur; öğrenci her sorudan sonra doğru cevabı ve açıklamayı anında görür."}
+      </p>
       <button onClick={() => setOpen(!open)} className="mt-2 text-sm font-semibold text-navy-800">{open ? "▾" : "▸"} Sorular ({lesson.questions.filter((q) => q.text).length})</button>
       {open && (
         <div className="mt-2 space-y-3">
@@ -413,7 +467,7 @@ function QuizBuilder({ lesson, onChange }: { lesson: Lesson; onChange: (l: Lesso
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-muted">{i + 1}.</span>
                 <select value={q.qtype} onChange={(e) => setQ(i, { ...q, qtype: e.target.value as Question["qtype"], correct: e.target.value === "true_false" ? "true" : 0 })} className="input w-auto">
-                  <option value="multiple_choice">Çoktan seçmeli</option><option value="true_false">Doğru / Yanlış</option><option value="open_ended">Açık uçlu</option>
+                  <option value="multiple_choice">Çoktan seçmeli</option><option value="true_false">Doğru / Yanlış</option>{hasPeriods && <option value="open_ended">Açık uçlu</option>}
                 </select>
                 <input type="number" min={1} value={q.points} onChange={(e) => setQ(i, { ...q, points: Number(e.target.value) })} className="input w-20" title="Puan" />
                 <button onClick={() => onChange({ ...lesson, questions: lesson.questions.filter((_, j) => j !== i) })} className="ml-auto rounded p-1 text-red-600 hover:bg-red-50"><Icon name="trash" className="size-4" /></button>

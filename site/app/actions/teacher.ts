@@ -18,6 +18,7 @@ import { notifyUser, notifyUsers, logNotification } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
 import { courseProgress } from "@/lib/data/student";
 import { CERT_CONDITIONS } from "@/lib/certificates";
+import { grantCertificate } from "@/lib/cert-issue";
 
 export type ActionResult = { ok: true; message?: string; id?: number; url?: string } | { ok: false; error: string };
 
@@ -156,7 +157,7 @@ export async function gradeSubmission(submissionId: number, score: number, feedb
   return { ok: true };
 }
 
-export async function gradeOpenEnded(attemptId: number, grades: Record<string, { points: number; feedback: string }>): Promise<ActionResult> {
+export async function gradeOpenEnded(attemptId: number, grades: Record<string, { points: number; feedback: string }>, feedback = ""): Promise<ActionResult> {
   const user = await requireTeacher();
   const [row] = await db.select({ at: quizAttempts, q: quizzes }).from(quizAttempts).innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id)).where(eq(quizAttempts.id, attemptId)).limit(1);
   if (!row || !(await ownsCourse(user, row.q.courseId))) return { ok: false, error: "Yetki yok." };
@@ -174,8 +175,19 @@ export async function gradeOpenEnded(attemptId: number, grades: Record<string, {
   }
   const score = total ? Math.round((earned / total) * 10000) / 100 : 0;
   const passed = row.q.passScore === 0 ? true : score >= row.q.passScore;
-  await db.update(quizAttempts).set({ score: score.toFixed(2), earnedPoints: earned.toFixed(2), totalPoints: total, passed, status: "completed", grades }).where(eq(quizAttempts.id, attemptId));
-  await notifyUser(row.at.userId, { title: "✅ Sınavın değerlendirildi", body: `${row.q.title} · %${score}`, url: `/kurs-izle/${row.q.courseId}?quiz=${row.q.id}`, tag: `qzg-${attemptId}` });
+  const fb = feedback.trim().slice(0, 5000);
+  await db.update(quizAttempts).set({ score: score.toFixed(2), earnedPoints: earned.toFixed(2), totalPoints: total, passed, status: "completed", grades, feedback: fb }).where(eq(quizAttempts.id, attemptId));
+  const url = `/kurs-izle/${row.q.courseId}?quiz=${row.q.id}`;
+  await notifyUser(row.at.userId, { title: "✅ Sınavın değerlendirildi", body: `${row.q.title} · %${score}${fb ? " · eğitmenden cevap var" : ""}`, url, tag: `qzg-${attemptId}` });
+  const [st] = await db.select().from(users).where(eq(users.id, row.at.userId)).limit(1);
+  if (st) {
+    await sendMail({
+      type: "quiz_graded",
+      to: st.email,
+      subject: `Sınavın değerlendirildi: ${row.q.title}`,
+      html: emailTemplate({ title: "Sınavın değerlendirildi", html: `<p><b>${row.q.title}</b> · Puan: <b>%${score}</b></p>${fb ? `<p>${fb}</p>` : ""}`, buttonText: "Sınava git", buttonUrl: siteUrl(url) }),
+    });
+  }
   revalidatePath("/egitmen/gonderim");
   return { ok: true, message: `Puan: %${score}` };
 }
@@ -187,6 +199,7 @@ export async function quizAttemptDetail(attemptId: number) {
   const qs = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, row.q.id)).orderBy(quizQuestions.sortOrder, quizQuestions.id);
   return {
     id: row.at.id, title: row.q.title, student: `${row.u.firstName} ${row.u.lastName}`.trim(), status: row.at.status, score: row.at.score ? Number(row.at.score) : null,
+    feedback: row.at.feedback,
     questions: qs.map((x) => {
       const a = row.at.answers[String(x.id)];
       const correct = x.type === "multiple_choice" ? (Array.isArray(x.correct) && x.correct.includes(Number(a))) : x.type === "true_false" ? String(a) === String(x.correct) : null;
@@ -213,17 +226,10 @@ export async function issueCertificate(templateId: number, studentId: number, co
     const p = await courseProgress(studentId, courseId);
     if (p.total === 0 || p.completed < p.total) return { ok: false, error: `Koşul sağlanmıyor: ${CERT_CONDITIONS.completed}.` };
   }
-  const [[s], [c]] = await Promise.all([db.select().from(users).where(eq(users.id, studentId)).limit(1), db.select().from(courses).where(eq(courses.id, courseId)).limit(1)]);
-  if (!s || !c) return { ok: false, error: "Kayıt bulunamadı." };
-  const token = randomBytes(24).toString("hex");
-  const holder = `${s.firstName} ${s.lastName}`.trim() || s.email;
-  const r = await db.insert(issuedCertificates).values({ templateId, userId: studentId, courseId, holderName: holder, courseName: c.title, token, issuedBy: user.id }).onConflictDoNothing().returning({ id: issuedCertificates.id });
-  if (!r[0]) return { ok: false, error: "Bu sertifika zaten verilmiş." };
-  const url = `/sertifika/${token}`;
-  await notifyUser(studentId, { title: "🎓 Sertifikan hazır", body: `${t.title} · ${c.title}`, url, tag: `cert-${templateId}-${courseId}` });
-  await sendMail({ type: "certificate", to: s.email, subject: `Sertifikan hazır: ${c.title}`, html: emailTemplate({ title: "Tebrikler! 🎓", html: `<p><b>${c.title}</b> programı için <b>${t.title}</b> belgen hazır.</p>`, buttonText: "Sertifikayı gör", buttonUrl: siteUrl(url) }) });
+  const r = await grantCertificate({ templateId, userId: studentId, courseId, issuedBy: user.id });
+  if (!r.ok) return r;
   revalidatePath("/egitmen/sertifika");
-  return { ok: true, url };
+  return { ok: true, url: r.url };
 }
 
 export async function revokeCertificate(id: number): Promise<ActionResult> {

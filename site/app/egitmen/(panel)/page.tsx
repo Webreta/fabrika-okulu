@@ -46,7 +46,7 @@ export default async function TeacherHome() {
           <div className="card">
             <h3 className="font-bold text-navy-800">Hızlı erişim</h3>
             <ul className="mt-2 space-y-1 text-sm">
-              {[["/egitmen/editor/yeni", "Yeni eğitim", "plus"], ["/egitmen/gonderim", "Gönderimler", "task"], ["/egitmen/sorular", "Sorular", "message"], ["/egitmen/takvim", "Takvim", "calendar"]].map(([h, l, i]) => (
+              {[["/egitmen/editor/yeni", "Yeni eğitim", "plus"], ["/egitmen/gonderim", "Görevler & Sınavlar", "task"], ["/egitmen/sorular", "Sorular", "message"], ["/egitmen/takvim", "Takvim", "calendar"]].map(([h, l, i]) => (
                 <li key={h}><Link href={h} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-surface"><Icon name={i as "plus"} className="size-4 text-sky-500" />{l}</Link></li>
               ))}
             </ul>

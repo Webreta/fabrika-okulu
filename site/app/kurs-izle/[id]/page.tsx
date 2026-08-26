@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions } from "@/lib/player";
 import { getEnrollment } from "@/lib/data/student";
 import { db } from "@/db";
-import { quizzes, assignments, progress } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { quizzes, assignments, progress, quizAttempts } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { parseVideo } from "@/lib/course-logic";
 import { unreadCount } from "@/lib/notify";
 import { Icon } from "@/components/site/Icon";
@@ -19,6 +19,7 @@ import { logout } from "@/app/actions/auth";
 import { initials } from "@/lib/format";
 import { getSetting } from "@/lib/settings";
 import { listCourseNotes } from "@/app/actions/notes";
+import { autoIssueCertificates } from "@/lib/cert-issue";
 import { themeByKey } from "@/lib/panel-themes";
 import { PushBanner } from "@/components/panel/PushBanner";
 
@@ -77,6 +78,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   if (active?.type === "file" && !acc.preview && !done.has(active.id)) {
     await db.insert(progress).values({ userId: user!.id, courseId, lessonId: active.id }).onConflictDoNothing();
     done.add(active.id);
+    await autoIssueCertificates(user!.id, courseId);
   }
 
   const next = activeIdx >= 0 ? flat[activeIdx + 1] : undefined;
@@ -86,12 +88,14 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const prevUrl = prev ? `/kurs-izle/${courseId}?ders=${prev.id}` : null;
   const unread = await unreadCount(user!.id);
   const themeKey = themeByKey(user!.panelTheme, (await getSetting("panel")).defaultTheme).key;
+  // Esnek/ücretsiz kurslarda sınavlar anlık geri bildirimli çözülür (eğitmene gönderim yok)
+  const instant = course.group !== "takvimli";
 
   // Sahne verisi
   let stage: React.ReactNode = null;
   if (activeIdx === -2 && sp.quiz) {
     const p = await quizPayload(Number(sp.quiz), user!.id);
-    stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={null} preview={acc.preview} /> : <p className="card">Sınav bulunamadı.</p>;
+    stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={null} preview={acc.preview} instant={instant} /> : <p className="card">Sınav bulunamadı.</p>;
   } else if (activeIdx === -2 && sp.gorev) {
     const p = await assignmentPayload(Number(sp.gorev), user!.id);
     stage = p ? <AssignmentStage payload={serializeAssignment(p)} nextUrl={null} preview={acc.preview} /> : <p className="card">Görev bulunamadı.</p>;
@@ -117,7 +121,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     } else if (active.type === "quiz") {
       const q = await quizForLesson(active.id);
       const p = q ? await quizPayload(q.id, user!.id) : null;
-      stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={nextUrl} preview={acc.preview} /> : <p className="card">Bu derse bağlı sınav bulunamadı.</p>;
+      stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={nextUrl} preview={acc.preview} instant={instant} /> : <p className="card">Bu derse bağlı sınav bulunamadı.</p>;
     } else if (active.type === "assign") {
       const a = await assignmentForLesson(active.id);
       const p = a ? await assignmentPayload(a.id, user!.id) : null;
@@ -127,6 +131,55 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     }
   } else {
     stage = <div className="card text-center text-muted">Bu programda henüz içerik yok.</div>;
+  }
+
+  // Esnek/ücretsiz kurs tamamlandığında sınav istatistikleri: kendi puanın + tüm katılımcıların ortalaması
+  let completionCard: React.ReactNode = null;
+  if (instant && !acc.preview && prog.total > 0 && prog.percent === 100) {
+    const courseQuizzes = await db.select().from(quizzes).where(and(eq(quizzes.courseId, courseId), eq(quizzes.status, "active")));
+    if (courseQuizzes.length) {
+      const atts = await db
+        .select()
+        .from(quizAttempts)
+        .where(and(inArray(quizAttempts.quizId, courseQuizzes.map((q) => q.id)), eq(quizAttempts.status, "completed")));
+      const stats = courseQuizzes.map((q) => {
+        const qa = atts.filter((a) => a.quizId === q.id && a.score !== null);
+        // Kişi başına en iyi puan üzerinden ortalama
+        const best = new Map<number, number>();
+        for (const a of qa) best.set(a.userId, Math.max(best.get(a.userId) ?? 0, Number(a.score)));
+        const scores = [...best.values()];
+        return {
+          id: q.id,
+          title: q.title,
+          mine: best.get(user!.id) ?? null,
+          avg: scores.length ? Math.round((scores.reduce((s, x) => s + x, 0) / scores.length) * 10) / 10 : null,
+          people: scores.length,
+        };
+      }).filter((s) => s.people > 0);
+      if (stats.length) {
+        completionCard = (
+          <div className="card border-2 border-emerald-200">
+            <h2 className="text-lg font-bold text-navy-800">🎉 Tebrikler, bu programı tamamladın!</h2>
+            <p className="mt-1 text-sm text-muted">Sınav sonuçların ve tüm katılımcıların ortalaması:</p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-line text-left text-xs uppercase text-muted"><th className="py-2 pr-3">Sınav</th><th className="py-2 pr-3">Senin puanın</th><th className="py-2 pr-3">Katılımcı ortalaması</th><th className="py-2">Katılımcı</th></tr></thead>
+                <tbody>
+                  {stats.map((s) => (
+                    <tr key={s.id} className="border-b border-line last:border-0">
+                      <td className="py-2 pr-3 font-semibold text-navy-800">{s.title}</td>
+                      <td className="py-2 pr-3">{s.mine !== null ? `%${s.mine}` : "—"}</td>
+                      <td className="py-2 pr-3">{s.avg !== null ? `%${s.avg}` : "—"}</td>
+                      <td className="py-2 text-muted">{s.people} kişi</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+    }
   }
 
   return (
@@ -174,7 +227,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
 
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />
       <div className="mx-auto grid max-w-[1310px] gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
-        <div className="min-w-0">{stage}</div>
+        <div className="min-w-0 space-y-5">{completionCard}{stage}</div>
         <Curriculum
           courseId={courseId}
           modules={course.modules.map((m) => ({
@@ -205,6 +258,8 @@ function serializeQuiz(p: NonNullable<Awaited<ReturnType<typeof quizPayload>>>) 
     attempts: p.attempts.map((a) => ({ id: a.id, score: a.score ? Number(a.score) : null, earned: Number(a.earnedPoints), total: a.totalPoints, status: a.status, passed: a.passed, at: a.completedAt?.toISOString() ?? a.startedAt.toISOString() })),
     canAttempt: p.canAttempt,
     due: p.due?.toISOString() ?? null,
+    review: p.review,
+    feedback: p.feedback,
   };
 }
 

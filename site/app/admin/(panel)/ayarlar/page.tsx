@@ -42,7 +42,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           { key: "appName", label: "Uygulama adı", type: "text" }, { key: "iconUrl", label: "Uygulama ikonu (512×512)", type: "image" },
           { key: "loginBg", label: "Giriş ekranı arka planı", type: "image" }, { key: "loginLogo", label: "Giriş ekranı logosu", type: "image" },
           { key: "defaultTheme", label: "Varsayılan panel teması", type: "select", options: PANEL_THEMES.map((t) => ({ value: t.key, label: t.label })) },
-          { key: "registrationOpen", label: "Üye kaydı açık", type: "checkbox" }, { key: "surveyRequired", label: "Anket zorunlu", type: "checkbox" },
+          { key: "registrationOpen", label: "Üye kaydı açık", type: "checkbox" },
         ]} />
       )}
       {sekme === "seo" && (

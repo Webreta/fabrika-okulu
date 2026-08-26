@@ -33,8 +33,12 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                 <div className="flex-1">
                   <Link href={`/program/${l.slug}`} className="font-semibold text-navy-800 hover:text-sky-600">{l.title}</Link>
                   {l.periodName && <p className="text-sm text-muted">Dönem: {l.periodName}</p>}
+                  {l.personalPercent > 0 && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Sana özel %{l.personalPercent} indirim</span>}
                 </div>
-                <span className="font-bold text-navy-800">{fmtMoney(l.price)}</span>
+                <span className="text-right">
+                  {l.personalPercent > 0 && <span className="block text-xs text-muted line-through">{fmtMoney(l.listPrice)}</span>}
+                  <span className="font-bold text-navy-800">{fmtMoney(l.price)}</span>
+                </span>
                 <form action={removeFromCart}>
                   <input type="hidden" name="courseId" value={l.courseId} />
                   <button className="rounded-lg p-2 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Kaldır"><Icon name="trash" className="size-5" /></button>

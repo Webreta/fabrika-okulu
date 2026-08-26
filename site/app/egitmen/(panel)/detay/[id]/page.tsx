@@ -47,7 +47,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
       </div>
       <Tabs items={[
         { href: `${base}?sekme=ogrenciler`, label: "Öğrenciler", count: students.length, active: sekme === "ogrenciler" },
-        { href: `${base}?sekme=gonderimler`, label: "Gönderimler", active: sekme === "gonderimler" },
+        { href: `${base}?sekme=gonderimler`, label: "Görevler & Sınavlar", active: sekme === "gonderimler" },
         { href: `/egitmen/sorular`, label: "Sorular →", active: false },
       ]} />
       {sekme === "ogrenciler" && (

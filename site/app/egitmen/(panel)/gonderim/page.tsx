@@ -10,7 +10,7 @@ export default async function SubmissionsPage() {
   const [ov, subs, attempts] = await Promise.all([teacherOverview(user), teacherSubmissions(user), teacherQuizAttempts(user)]);
   return (
     <>
-      <PageTitle title="Gönderimler" sub="Görev teslimleri ve sınav sonuçları" />
+      <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları" />
       <div className="mb-6 grid grid-cols-3 gap-4">
         <Link href="/egitmen/sorular"><Kpi label="Bekleyen soru" value={ov.pendingQuestions} icon="message" color={ov.pendingQuestions ? "red" : "green"} /></Link>
         <a href="#gorev"><Kpi label="Görev teslimi" value={subs.length} icon="task" color="amber" /></a>

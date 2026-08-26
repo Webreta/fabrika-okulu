@@ -1,25 +1,14 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { surveyAnswers, users } from "@/db/schema";
-import { getRawSetting, getSetting } from "@/lib/settings";
+import { surveys, surveyAnswers, surveyCompletions, users, type Survey, type SurveyQuestion } from "@/db/schema";
+import { getRawSetting } from "@/lib/settings";
 import type { SessionUser } from "@/lib/auth/session";
 
-// Anket şeması site ayarında (key: survey_schema) tutulur; cevaplar soru başına satır.
+export type { SurveyCondition, SurveyQuestion, Survey } from "@/db/schema";
 
-export type SurveyCondition = { q: string; op: "in" | "not_in" | "filled" | "empty"; val?: string[] };
-export type SurveyQuestion = {
-  key: string;
-  section: string;
-  step: number;
-  type: "radio" | "checkbox" | "text" | "textarea" | "date";
-  required: boolean;
-  label: string;
-  help?: string;
-  options?: { value: string; label: string }[];
-  showIf?: SurveyCondition[];
-};
-export type SurveySchema = {
+// Eski tek-anket modeli (site ayarındaki survey_schema) ilk erişimde surveys tablosuna taşınır.
+type LegacySchema = {
   key: string;
   title: string;
   version: number;
@@ -28,7 +17,7 @@ export type SurveySchema = {
   questions: SurveyQuestion[];
 };
 
-export const DEFAULT_SURVEY: SurveySchema = {
+const LEGACY_DEFAULT: LegacySchema = {
   key: "kariyer_rotam",
   title: "Kariyer Rotam",
   version: 1,
@@ -77,8 +66,46 @@ export const DEFAULT_SURVEY: SurveySchema = {
   ],
 };
 
-export async function getSurveySchema() {
-  return getRawSetting<SurveySchema>("survey_schema", DEFAULT_SURVEY);
+/** Tek seferlik geçiş: surveys tablosu boşsa eski şemayı taşır, eski tamamlayanları işaretler. */
+export async function ensureSurveysSeeded() {
+  const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(surveys);
+  if (n > 0) return;
+  const legacy = await getRawSetting<LegacySchema>("survey_schema", LEGACY_DEFAULT);
+  await db.insert(surveys).values({
+    key: legacy.key, title: legacy.title, intro: legacy.intro, status: "published",
+    sections: legacy.sections, questions: legacy.questions, publishedAt: new Date(),
+  }).onConflictDoNothing();
+  const doneUsers = await db.select({ id: users.id }).from(users).where(sql`${users.surveyVersion} > 0`);
+  if (doneUsers.length) {
+    await db.insert(surveyCompletions).values(doneUsers.map((u) => ({ userId: u.id, surveyKey: legacy.key }))).onConflictDoNothing();
+  }
+}
+
+export async function listSurveys(onlyPublished = false) {
+  await ensureSurveysSeeded();
+  return db.select().from(surveys).where(onlyPublished ? eq(surveys.status, "published") : undefined).orderBy(desc(surveys.publishedAt), desc(surveys.id));
+}
+
+export async function getSurveyById(id: number): Promise<Survey | null> {
+  await ensureSurveysSeeded();
+  const [s] = await db.select().from(surveys).where(eq(surveys.id, id)).limit(1);
+  return s ?? null;
+}
+
+/** Kullanıcının tamamladığı anket anahtarları */
+export async function completedSurveyKeys(userId: number) {
+  const rows = await db.select({ k: surveyCompletions.surveyKey }).from(surveyCompletions).where(eq(surveyCompletions.userId, userId));
+  return new Set(rows.map((r) => r.k));
+}
+
+/** Popup için: yayında olup kullanıcının henüz doldurmadığı en yeni anket */
+export async function pendingSurveyFor(user: SessionUser) {
+  if (user.role !== "student") return null;
+  const list = await listSurveys(true);
+  if (!list.length) return null;
+  const done = await completedSurveyKeys(user.id);
+  const pending = list.filter((s) => !done.has(s.key));
+  return pending[0] ?? null;
 }
 
 export function isVisible(q: SurveyQuestion, answers: Record<string, string | string[]>) {
@@ -105,27 +132,46 @@ export async function getSurveyAnswers(userId: number, surveyKey: string) {
   return out;
 }
 
-export async function getSurveyState(user: SessionUser) {
-  const [schema, panel] = await Promise.all([getSurveySchema(), getSetting("panel")]);
-  const completed = user.surveyVersion >= schema.version;
-  const mustAnswer = panel.surveyRequired && !completed && !user.surveySkipped && user.role === "student";
-  return { title: schema.title, completed, mustAnswer, needsAttention: !completed && !user.surveySkipped, schema };
-}
-
-export async function saveSurvey(userId: number, raw: Record<string, string | string[]>) {
-  const schema = await getSurveySchema();
-  const visible = schema.questions.filter((q) => isVisible(q, raw));
+export async function saveSurvey(userId: number, survey: Survey, raw: Record<string, string | string[]>) {
+  const visible = survey.questions.filter((q) => isVisible(q, raw));
   for (const q of visible) {
     const v = raw[q.key];
     const empty = v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
     if (q.required && empty) return { error: `"${q.label}" sorusu zorunlu.` };
   }
   // Görünmeyen soruların cevapları silinir
-  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, schema.key)));
+  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key)));
   const values = visible
     .filter((q) => raw[q.key] !== undefined && raw[q.key] !== "")
-    .map((q) => ({ userId, surveyKey: schema.key, questionKey: q.key, value: raw[q.key] }));
+    .map((q) => ({ userId, surveyKey: survey.key, questionKey: q.key, value: raw[q.key] }));
   if (values.length) await db.insert(surveyAnswers).values(values);
-  await db.update(users).set({ surveyVersion: schema.version, surveySkipped: false }).where(eq(users.id, userId));
+  await db.insert(surveyCompletions).values({ userId, surveyKey: survey.key }).onConflictDoNothing();
   return { ok: true };
+}
+
+export type SurveyStats = {
+  participants: number;
+  questions: { key: string; label: string; total: number; options: { value: string; label: string; count: number; percent: number }[] }[];
+};
+
+/** Kapalı uçlu (tek/çok seçim) soruların cevap dağılımı — açık uçlular hariç */
+export async function getSurveyStats(survey: Survey): Promise<SurveyStats> {
+  const closed = survey.questions.filter((q) => (q.type === "radio" || q.type === "checkbox") && q.options?.length);
+  const [[{ n: participants }], rows] = await Promise.all([
+    db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(surveyCompletions).where(eq(surveyCompletions.surveyKey, survey.key)),
+    closed.length
+      ? db.select({ questionKey: surveyAnswers.questionKey, value: surveyAnswers.value }).from(surveyAnswers)
+          .where(and(eq(surveyAnswers.surveyKey, survey.key), inArray(surveyAnswers.questionKey, closed.map((q) => q.key))))
+      : Promise.resolve([]),
+  ]);
+  const questions = closed.map((q) => {
+    const answers = rows.filter((r) => r.questionKey === q.key).map((r) => (Array.isArray(r.value) ? r.value : [r.value]));
+    const total = answers.length; // cevap veren kişi sayısı
+    const options = (q.options ?? []).map((o) => {
+      const count = answers.filter((a) => a.includes(o.value)).length;
+      return { value: o.value, label: o.label, count, percent: total ? Math.round((count / total) * 100) : 0 };
+    });
+    return { key: q.key, label: q.label, total, options };
+  });
+  return { participants, questions };
 }

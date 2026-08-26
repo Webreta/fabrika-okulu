@@ -57,6 +57,16 @@ export async function quizPayload(quizId: number, userId: number) {
   const finished = attempts.filter((a) => a.status !== "in_progress");
   const base = await studentTaskBase(userId, q.courseId);
   const due = q.extraDays && q.extraDays > 0 ? taskDue(base, q.extraDays) : deadlineOf(q.endDate);
+  // Değerlendirilmiş açık uçlu soruların özeti (doğru cevap sızdırılmaz; yalnız kendi cevabı + puan + geri bildirim)
+  const lastDone = finished[finished.length - 1];
+  const review = lastDone?.status === "completed" && Object.keys(lastDone.grades).length
+    ? qs.filter((x) => x.type === "open_ended").map((x) => ({
+        text: x.text,
+        points: x.points,
+        answer: lastDone.answers[String(x.id)] != null ? String(lastDone.answers[String(x.id)]) : null,
+        grade: lastDone.grades[String(x.id)] ?? null,
+      }))
+    : [];
   return {
     quiz: q,
     // correct cevaplar istemciye gitmez
@@ -64,6 +74,8 @@ export async function quizPayload(quizId: number, userId: number) {
     attempts: finished,
     canAttempt: q.maxAttempts === 0 || finished.length < q.maxAttempts,
     due,
+    review,
+    feedback: lastDone?.feedback ?? "",
   };
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { submitQuiz, type QuizResult } from "@/app/actions/player";
+import { submitQuiz, answerQuizQuestion, type QuizResult } from "@/app/actions/player";
 import { fmtDateTime } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 
@@ -14,13 +14,18 @@ type Payload = {
   attempts: { id: number; score: number | null; earned: number; total: number; status: string; passed: boolean | null; at: string }[];
   canAttempt: boolean;
   due: string | null;
+  review?: { text: string; points: number; answer: string | null; grade: { points: number; feedback: string } | null }[];
+  feedback?: string;
 };
 
-export function QuizStage({ payload, courseId, nextUrl, preview }: { payload: Payload; courseId: number; nextUrl: string | null; preview: boolean }) {
+type Feedback = { correct: boolean; correctAnswer: number | string | null; explanation: string };
+
+export function QuizStage({ payload, courseId, nextUrl, preview, instant = false }: { payload: Payload; courseId: number; nextUrl: string | null; preview: boolean; instant?: boolean }) {
   const [started, setStarted] = useState(false);
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [pending, start] = useTransition();
   const [left, setLeft] = useState<number | null>(null);
   const router = useRouter();
@@ -98,6 +103,26 @@ export function QuizStage({ payload, courseId, nextUrl, preview }: { payload: Pa
               <span className="font-semibold">Son denemen:</span> {last.status === "pending_review" ? "Değerlendirme bekliyor" : `${last.earned}/${last.total} puan · %${last.score}`} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
             </div>
           )}
+          {payload.feedback && (
+            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#fff]/10 p-3 text-sm">
+              <p className="font-semibold">💬 Eğitmenin cevabı</p>
+              <p className="mt-1 whitespace-pre-line text-[#fff]/90">{payload.feedback}</p>
+            </div>
+          )}
+          {(payload.review?.length ?? 0) > 0 && (
+            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-3 text-sm">
+              <p className="mb-2 font-semibold">Açık uçlu soruların değerlendirmesi</p>
+              <ol className="space-y-2">
+                {payload.review!.map((r, i) => (
+                  <li key={i} className="rounded-lg bg-[#fff]/10 p-2.5">
+                    <p className="font-semibold">{i + 1}. {r.text}</p>
+                    {r.answer && <p className="mt-1 text-[#fff]/80">Cevabın: {r.answer}</p>}
+                    <p className="mt-1 text-[#fff]/90">Puan: <b>{r.grade?.points ?? 0}/{r.points}</b>{r.grade?.feedback && <> · {r.grade.feedback}</>}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           <div className="relative mt-6 flex flex-wrap items-center gap-3">
             {payload.canAttempt && !preview && qs.length > 0 ? (
               <button onClick={() => setStarted(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> Sınava başla</button>
@@ -112,6 +137,25 @@ export function QuizStage({ payload, courseId, nextUrl, preview }: { payload: Pa
   }
 
   const a = answers[String(q.id)];
+  // Anlık mod: cevabı kontrol et → doğru/yanlış + açıklama → sonraki soru
+  const checkAnswer = () =>
+    start(async () => {
+      const r = await answerQuizQuestion(payload.id, q.id, a!);
+      if (r.ok) setFeedback({ correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation });
+    });
+  const goNext = () => {
+    setFeedback(null);
+    if (idx < qs.length - 1) setIdx(idx + 1);
+    else finish();
+  };
+  const optionCls = (selected: boolean, isCorrect: boolean) => {
+    if (instant && feedback) {
+      if (isCorrect) return "border-emerald-500 bg-emerald-50";
+      if (selected && !feedback.correct) return "border-red-500 bg-red-50";
+      return "border-line opacity-60";
+    }
+    return selected ? "border-navy-800 bg-navy-50" : "border-line hover:bg-surface";
+  };
   return (
     <div className="card">
       <div className="flex items-center justify-between text-sm text-muted">
@@ -123,19 +167,35 @@ export function QuizStage({ payload, courseId, nextUrl, preview }: { payload: Pa
       {q.image && <img src={q.image} alt="" className="mt-3 max-h-72 rounded-lg" />}
       <div className="mt-4 space-y-2">
         {q.type === "multiple_choice" && q.options.map((o, i) => (
-          <button key={i} onClick={() => setAnswers({ ...answers, [q.id]: i })} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${a === i ? "border-navy-800 bg-navy-50" : "border-line hover:bg-surface"}`}>
+          <button key={i} disabled={instant && !!feedback} onClick={() => setAnswers({ ...answers, [q.id]: i })} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${optionCls(a === i, instant && !!feedback && feedback!.correctAnswer === i)}`}>
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-bold">{String.fromCharCode(65 + i)}</span>{o}
           </button>
         ))}
         {q.type === "true_false" && ["true", "false"].map((v) => (
-          <button key={v} onClick={() => setAnswers({ ...answers, [q.id]: v })} className={`w-full rounded-xl border px-4 py-3 text-left text-sm ${a === v ? "border-navy-800 bg-navy-50" : "border-line hover:bg-surface"}`}>{v === "true" ? "Doğru" : "Yanlış"}</button>
+          <button key={v} disabled={instant && !!feedback} onClick={() => setAnswers({ ...answers, [q.id]: v })} className={`w-full rounded-xl border px-4 py-3 text-left text-sm ${optionCls(a === v, instant && !!feedback && feedback!.correctAnswer === v)}`}>{v === "true" ? "Doğru" : "Yanlış"}</button>
         ))}
         {q.type === "open_ended" && <textarea rows={5} value={(a as string) ?? ""} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className="input" placeholder="Cevabını yaz…" />}
       </div>
+      {instant && feedback && (
+        <div className={`mt-4 rounded-xl p-4 text-sm ${feedback.correct ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+          <p className="font-bold">{feedback.correct ? "🎉 Tebrikler, doğru!" : "Maalesef yanlış."}</p>
+          {!feedback.correct && q.type === "multiple_choice" && typeof feedback.correctAnswer === "number" && (
+            <p className="mt-1">Doğru cevap: <b>{String.fromCharCode(65 + feedback.correctAnswer)} — {q.options[feedback.correctAnswer]}</b></p>
+          )}
+          {!feedback.correct && q.type === "true_false" && <p className="mt-1">Doğru cevap: <b>{feedback.correctAnswer === "true" ? "Doğru" : "Yanlış"}</b></p>}
+          {feedback.explanation && <p className="mt-1">{feedback.explanation}</p>}
+        </div>
+      )}
       <div className="mt-6 flex items-center justify-between">
-        <button onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0} className="btn-secondary btn-sm">Önceki</button>
+        {instant ? <span /> : <button onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0} className="btn-secondary btn-sm">Önceki</button>}
         <Link href={`/kurs-izle/${courseId}`} className="text-sm text-muted hover:underline">Çık</Link>
-        {idx < qs.length - 1 ? (
+        {instant && q.type !== "open_ended" ? (
+          feedback ? (
+            <button onClick={goNext} disabled={pending} className="btn-primary btn-sm">{pending ? "Gönderiliyor…" : idx < qs.length - 1 ? "Sonraki soru" : "Sınavı bitir"}</button>
+          ) : (
+            <button onClick={checkAnswer} disabled={pending || a === undefined} className="btn-primary btn-sm">{pending ? "Kontrol ediliyor…" : "Cevabı kontrol et"}</button>
+          )
+        ) : idx < qs.length - 1 ? (
           <button onClick={() => setIdx(idx + 1)} className="btn-primary btn-sm">Sonraki</button>
         ) : (
           <button onClick={finish} disabled={pending} className="btn-primary btn-sm">{pending ? "Gönderiliyor…" : "Sınavı bitir"}</button>

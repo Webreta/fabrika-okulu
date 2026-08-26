@@ -9,6 +9,7 @@ export const MAIL_TYPES = {
   assignment_graded: { title: "Görev notlandığında", to: "öğrenci" },
   new_quiz: { title: "Yeni sınav atandığında", to: "kursun öğrencileri" },
   quiz_completed: { title: "Sınav tamamlandığında", to: "yönetici" },
+  quiz_graded: { title: "Sınav değerlendirildiğinde", to: "öğrenci" },
   question_asked: { title: "Öğrenci soru sorduğunda", to: "yönetici + eğitmen" },
   question_answered: { title: "Soru cevaplandığında", to: "öğrenci" },
   event_reminder: { title: "Etkinlik hatırlatması (1 gün önce)", to: "öğrenci" },

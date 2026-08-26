@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { SurveySchema, SurveyQuestion } from "@/lib/survey";
-import { submitSurvey, skipSurvey } from "@/app/actions/panel";
+import type { SurveyQuestion } from "@/db/schema";
+import { submitSurvey } from "@/app/actions/panel";
 import type { FormState } from "@/app/actions/auth";
+
+type SurveyLike = { id: number; title: string; intro: string; sections: Record<string, string>; questions: SurveyQuestion[] };
 
 type Answers = Record<string, string | string[]>;
 
@@ -55,10 +56,10 @@ function Question({ q, value, onChange }: { q: SurveyQuestion; value: string | s
   );
 }
 
-export function SurveyForm({ schema, answers, onDone }: { schema: SurveySchema; answers: Answers; onDone?: () => void }) {
+export function SurveyForm({ schema, answers, onDone }: { schema: SurveyLike; answers: Answers; onDone?: () => void }) {
   const [a, setA] = useState<Answers>(answers);
   const [state, action, pending] = useActionState<FormState, FormData>(async (p, fd) => {
-    const r = await submitSurvey(p, fd);
+    const r = await submitSurvey(schema.id, p, fd);
     if (r.ok) onDone?.();
     return r;
   }, {});
@@ -83,27 +84,3 @@ export function SurveyForm({ schema, answers, onDone }: { schema: SurveySchema; 
   );
 }
 
-export function SurveyModal({ schema, answers }: { schema: SurveySchema; answers: Answers }) {
-  const router = useRouter();
-  const [closed, setClosed] = useState(false);
-  if (closed) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/70 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-navy-800">{schema.title}</h2>
-            <p className="text-sm text-muted">Programlarına devam etmeden önce kısa anketi doldur.</p>
-          </div>
-          <button
-            onClick={async () => { await skipSurvey(); setClosed(true); router.refresh(); }}
-            className="text-sm text-muted hover:underline"
-          >
-            Şimdilik geç
-          </button>
-        </div>
-        <SurveyForm schema={schema} answers={answers} onDone={() => { setClosed(true); router.refresh(); }} />
-      </div>
-    </div>
-  );
-}

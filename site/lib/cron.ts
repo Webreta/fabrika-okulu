@@ -1,10 +1,10 @@
 import "server-only";
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   assignments, assignmentSubmissions, enrollments, periodEnrollments, periods, courses, users, sentKeys, questions, quizAttempts,
 } from "@/db/schema";
-import { taskDue } from "@/lib/course-logic";
+import { taskDue, deadlineOf } from "@/lib/course-logic";
 import { studentTaskBase } from "@/lib/data/student";
 import { notifyUser, logNotification } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
@@ -44,8 +44,8 @@ export async function runFrequent() {
       sent++;
     }
   }
-  // Görev son 1 saat
-  const asg = await db.select().from(assignments).where(and(eq(assignments.status, "active"), gt(assignments.extraDays, 0)));
+  // Görev son 1 saat (göreli süreli veya mutlak tarihli)
+  const asg = await db.select().from(assignments).where(and(eq(assignments.status, "active"), or(gt(assignments.extraDays, 0), isNotNull(assignments.dueDate))));
   for (const a of asg) {
     const students = await db
       .select({ userId: enrollments.userId })
@@ -55,7 +55,7 @@ export async function runFrequent() {
     const submitted = new Set(subs.map((s) => s.userId));
     for (const { userId } of students) {
       if (submitted.has(userId)) continue;
-      const due = taskDue(await studentTaskBase(userId, a.courseId), a.extraDays);
+      const due = a.extraDays > 0 ? taskDue(await studentTaskBase(userId, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
       if (!due) continue;
       const diff = (due.getTime() - now) / 60000;
       if (diff < -15 || diff > 60) continue;
@@ -75,8 +75,8 @@ export async function runDaily() {
   const tISO = tomorrow.toISOString().slice(0, 10);
   let dueSent = 0, eventSent = 0;
 
-  // Yarın biten görevler
-  const asg = await db.select().from(assignments).where(and(eq(assignments.status, "active"), gt(assignments.extraDays, 0)));
+  // Yarın biten görevler (göreli süreli veya mutlak tarihli)
+  const asg = await db.select().from(assignments).where(and(eq(assignments.status, "active"), or(gt(assignments.extraDays, 0), isNotNull(assignments.dueDate))));
   for (const a of asg) {
     const students = await db
       .select({ userId: enrollments.userId, email: users.email, name: users.firstName })
@@ -86,7 +86,7 @@ export async function runDaily() {
     const subs = new Set((await db.select({ userId: assignmentSubmissions.userId }).from(assignmentSubmissions).where(eq(assignmentSubmissions.assignmentId, a.id))).map((s) => s.userId));
     for (const s of students) {
       if (subs.has(s.userId)) continue;
-      const due = taskDue(await studentTaskBase(s.userId, a.courseId), a.extraDays);
+      const due = a.extraDays > 0 ? taskDue(await studentTaskBase(s.userId, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
       if (!due || due.toISOString().slice(0, 10) !== tISO) continue;
       const url = `/kurs-izle/${a.courseId}?gorev=${a.id}`;
       await notifyUser(s.userId, { title: "⏰ Teslim yaklaşıyor", body: `${a.title} · yarın ${fmtDateTime(due)}`, url, tag: `due-${a.id}` });

@@ -7,7 +7,7 @@ import { fmtDate } from "@/lib/format";
 import { PageTitle, Tabs, Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 import { CertificateCanvas } from "@/components/CertificateCanvas";
-import { DeleteTemplateButton } from "@/components/admin/CertificateDesigner";
+import { DeleteTemplateButton, DuplicateTemplateButton } from "@/components/admin/CertificateDesigner";
 import { RevokeCertButton } from "@/components/teacher/IssueCertButton";
 
 export default async function CertificatesAdminPage({ searchParams }: { searchParams: Promise<{ sekme?: string; cert?: string; s?: string }> }) {
@@ -53,7 +53,7 @@ export default async function CertificatesAdminPage({ searchParams }: { searchPa
 
   return (
     <>
-      <PageTitle title="Sertifikalar" sub="Tasarımı burada yap; eğitmenler koşulu sağlayan öğrencilere panelden verir." action={<Link href="/admin/sertifikalar/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni tasarım</Link>} />
+      <PageTitle title="Sertifikalar" action={<Link href="/admin/sertifikalar/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni tasarım</Link>} />
       <Tabs items={[{ href: "/admin/sertifikalar", label: "Tasarımlar", active: true }, { href: "/admin/sertifikalar/ver", label: "Sertifika ver", active: false }, { href: "/admin/sertifikalar?sekme=verilenler", label: "Verilen sertifikalar", active: false }]} />
       {templates.length === 0 ? (
         <p className="card text-muted">Henüz tasarım yok.</p>
@@ -64,9 +64,10 @@ export default async function CertificatesAdminPage({ searchParams }: { searchPa
               <div className="border-b border-line bg-surface"><CertificateCanvas imageUrl={t.imageUrl} imageWidth={t.imageWidth} imageHeight={t.imageHeight} fields={t.fields} name={t.sampleName} course={t.sampleCourse} date={fmtDate(new Date(), true)} /></div>
               <div className="p-4">
                 <h3 className="font-bold text-navy-800">{t.title}</h3>
-                <p className="mt-1 text-xs text-muted"><Chip color="sky">{CERT_CONDITIONS[t.rule.condition]}</Chip> <span className="ml-1">{t.rule.scope === "course" ? courseTitle ?? `Kurs #${t.rule.courseId}` : "Tüm eğitimler"}</span> · {issued} verildi</p>
+                <p className="mt-1 text-xs text-muted"><Chip color="sky">{CERT_CONDITIONS[t.rule.condition]}</Chip>{t.rule.auto && <Chip color="green">Otomatik</Chip>} <span className="ml-1">{t.rule.scope === "course" ? courseTitle ?? `Kurs #${t.rule.courseId}` : "Tüm eğitimler"}</span> · {issued} verildi</p>
                 <div className="mt-3 flex gap-2">
                   <Link href={`/admin/sertifikalar/${t.id}`} className="btn-primary btn-sm">Düzenle</Link>
+                  <DuplicateTemplateButton id={t.id} />
                   <DeleteTemplateButton id={t.id} title={t.title} />
                 </div>
               </div>

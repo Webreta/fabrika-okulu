@@ -11,6 +11,9 @@ import { playerAccess } from "@/lib/player";
 import { saveUploadedFile, DOCUMENT_EXTENSIONS, AUDIO_EXTENSIONS } from "@/lib/uploads";
 import { notifyUser } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
+import { taskDue, deadlineOf } from "@/lib/course-logic";
+import { studentTaskBase } from "@/lib/data/student";
+import { autoIssueCertificates } from "@/lib/cert-issue";
 
 async function access(courseId: number) {
   const user = await getCurrentUser();
@@ -40,6 +43,7 @@ export async function markLessonComplete(courseId: number, lessonId: number) {
     .insert(progress)
     .values({ userId: ctx.user.id, courseId, lessonId })
     .onConflictDoNothing();
+  await autoIssueCertificates(ctx.user.id, courseId);
   revalidatePath(`/kurs-izle/${courseId}`);
   return { ok: true };
 }
@@ -50,6 +54,30 @@ export async function markLessonIncomplete(courseId: number, lessonId: number) {
   await db.delete(progress).where(and(eq(progress.userId, ctx.user.id), eq(progress.lessonId, lessonId)));
   revalidatePath(`/kurs-izle/${courseId}`);
   return { ok: true };
+}
+
+/**
+ * Anlık geri bildirimli sınav (esnek/ücretsiz kurslar): tek sorunun cevabını kontrol eder,
+ * doğruluk + doğru cevap + açıklama döner. Açık uçlu sorularda kullanılmaz.
+ */
+export async function answerQuizQuestion(quizId: number, questionId: number, answer: number | string) {
+  const [q] = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).limit(1);
+  if (!q) return { ok: false as const, error: "Sınav bulunamadı." };
+  const ctx = await access(q.courseId);
+  if (!ctx) return { ok: false as const, error: "Erişim yok." };
+  const [x] = await db.select().from(quizQuestions).where(and(eq(quizQuestions.id, questionId), eq(quizQuestions.quizId, quizId))).limit(1);
+  if (!x || x.type === "open_ended") return { ok: false as const, error: "Soru bulunamadı." };
+  let correct = false;
+  let correctAnswer: number | string | null = null;
+  if (x.type === "multiple_choice") {
+    const idx = typeof answer === "number" ? answer : parseInt(String(answer), 10);
+    correct = Array.isArray(x.correct) && x.correct.includes(idx);
+    correctAnswer = Array.isArray(x.correct) ? x.correct[0] ?? null : null;
+  } else {
+    correct = String(answer) === String(x.correct);
+    correctAnswer = String(x.correct);
+  }
+  return { ok: true as const, correct, correctAnswer, explanation: x.explanation ?? "" };
 }
 
 export type QuizResult =
@@ -101,15 +129,18 @@ export async function submitQuiz(quizId: number, answers: Record<string, number 
   });
   revalidatePath(`/kurs-izle/${q.courseId}`);
 
-  // Yönetici + eğitmen bilgilendirme
+  // Yönetici + eğitmen bilgilendirme (son tarih geçtiyse "geç teslim" olarak işaretle)
+  const qDue = q.extraDays && q.extraDays > 0 ? taskDue(await studentTaskBase(ctx.user.id, q.courseId), q.extraDays) : deadlineOf(q.endDate);
+  const qLate = !!qDue && qDue.getTime() < Date.now();
   const teacher = await courseTeacherUserId(q.courseId);
   if (teacher) {
-    await notifyUser(teacher, { title: hasOpen ? "📝 Değerlendirme bekleyen sınav" : "📝 Sınav tamamlandı", body: `${ctx.user.name} · ${q.title}`, url: `/egitmen/gonderim#sinav`, tag: `qz-${quizId}` });
+    await notifyUser(teacher, { title: hasOpen ? "📝 Değerlendirme bekleyen sınav" : "📝 Sınav tamamlandı", body: `${ctx.user.name} · ${q.title}${qLate ? " · ⏰ Geç teslim" : ""}`, url: `/egitmen/gonderim#sinav`, tag: `qz-${quizId}` });
   }
   const admins = await adminEmails();
   if (admins.length) {
-    await sendMail({ type: "quiz_completed", to: admins, subject: `Sınav tamamlandı: ${ctx.user.name}`, html: emailTemplate({ title: "Sınav tamamlandı", html: `<p><b>${ctx.user.name}</b> "${q.title}" sınavını tamamladı.${hasOpen ? " Açık uçlu sorular değerlendirme bekliyor." : ` Puan: %${score}`}</p>`, buttonText: "Sonuçlar", buttonUrl: siteUrl("/admin/gonderimler") }) });
+    await sendMail({ type: "quiz_completed", to: admins, subject: `Sınav tamamlandı: ${ctx.user.name}${qLate ? " (geç teslim)" : ""}`, html: emailTemplate({ title: "Sınav tamamlandı", html: `<p><b>${ctx.user.name}</b> "${q.title}" sınavını tamamladı.${hasOpen ? " Açık uçlu sorular değerlendirme bekliyor." : ` Puan: %${score}`}${qLate ? " <b>Son tarihten sonra teslim edildi.</b>" : ""}</p>`, buttonText: "Sonuçlar", buttonUrl: siteUrl("/admin/gonderimler") }) });
   }
+  await autoIssueCertificates(ctx.user.id, q.courseId);
   if (hasOpen) return { ok: true, pending: true };
   return { ok: true, pending: false, score, earned, total, passed, correct, count: qs.filter((x) => x.type !== "open_ended").length };
 }
@@ -161,19 +192,23 @@ export async function submitAssignment(input: {
   }
   revalidatePath(`/kurs-izle/${a.courseId}`);
 
+  // Son tarih geçtiyse eğitmen/yönetici "geç teslim" olarak bilgilendirilir
+  const aDue = a.extraDays > 0 ? taskDue(await studentTaskBase(ctx.user.id, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
+  const aLate = !!aDue && aDue.getTime() < Date.now();
   const teacher = await courseTeacherUserId(a.courseId);
   if (teacher) {
-    await notifyUser(teacher, { title: "📤 Yeni görev gönderimi", body: `${ctx.user.name} · ${a.title}`, url: `/egitmen/gonderim#gorev`, tag: `asg-${a.id}` });
+    await notifyUser(teacher, { title: aLate ? "📤 Geç görev gönderimi" : "📤 Yeni görev gönderimi", body: `${ctx.user.name} · ${a.title}${aLate ? " · ⏰ Geç teslim" : ""}`, url: `/egitmen/gonderim#gorev`, tag: `asg-${a.id}` });
   }
   const admins = await adminEmails();
   if (admins.length) {
     await sendMail({
       type: "assignment_submitted",
       to: admins,
-      subject: `Görev teslim edildi: ${ctx.user.name}`,
-      html: emailTemplate({ title: "Görev teslimi", html: `<p><b>${ctx.user.name}</b> "${a.title}" görevini teslim etti.</p>`, buttonText: "Gönderimler", buttonUrl: siteUrl("/egitmen/gonderim") }),
+      subject: `Görev teslim edildi: ${ctx.user.name}${aLate ? " (geç teslim)" : ""}`,
+      html: emailTemplate({ title: "Görev teslimi", html: `<p><b>${ctx.user.name}</b> "${a.title}" görevini teslim etti.${aLate ? " <b>Son tarihten sonra teslim edildi.</b>" : ""}</p>`, buttonText: "Görevler & Sınavlar", buttonUrl: siteUrl("/egitmen/gonderim") }),
     });
   }
+  await autoIssueCertificates(ctx.user.id, a.courseId);
   return { ok: true };
 }
 

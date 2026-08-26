@@ -241,6 +241,25 @@ export const periods = pgTable(
   (t) => [index("periods_course_idx").on(t.courseId)]
 );
 
+// İlişkili kurslar: kaynak kurs tamamlanınca/satın alınınca hedef kurs önerilir (kişiye özel indirimle)
+export const courseRelations = pgTable(
+  "course_relations",
+  {
+    id: serial("id").primaryKey(),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    relatedCourseId: integer("related_course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    trigger: text("trigger").notNull().default("completed"), // completed | purchased
+    discountPercent: integer("discount_percent").notNull().default(0), // 0 = indirimsiz öneri
+    note: text("note").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("course_relations_course_idx").on(t.courseId), uniqueIndex("course_relations_uq").on(t.courseId, t.relatedCourseId, t.trigger)]
+);
+
 // ---------- Kayıt & ilerleme ----------
 
 export const enrollments = pgTable(
@@ -367,6 +386,8 @@ export const quizAttempts = pgTable(
       .$type<Record<string, { points: number; feedback: string }>>()
       .notNull()
       .default({}),
+    // Değerlendirme sonrası eğitmenin/adminin öğrenciye genel cevabı
+    feedback: text("feedback").notNull().default(""),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     timeSpent: integer("time_spent").notNull().default(0),
@@ -558,6 +579,8 @@ export type CertRule = {
   scope: "all" | "course";
   courseId: number;
   condition: "enrolled" | "started" | "completed";
+  // true → koşul "completed" ise kurs %100 olduğu anda sertifika otomatik tanımlanır
+  auto?: boolean;
 };
 
 export const certificateTemplates = pgTable("certificate_templates", {
@@ -644,6 +667,46 @@ export const sentKeys = pgTable("sent_keys", {
 });
 
 // ---------- Anket ----------
+
+export type SurveyCondition = { q: string; op: "in" | "not_in" | "filled" | "empty"; val?: string[] };
+export type SurveyQuestion = {
+  key: string;
+  section: string;
+  step: number;
+  type: "radio" | "checkbox" | "text" | "textarea" | "date";
+  required: boolean;
+  label: string;
+  help?: string;
+  options?: { value: string; label: string }[];
+  showIf?: SurveyCondition[];
+};
+
+/** Çoklu anket: tanım satır olarak tutulur; cevaplar surveyAnswers'ta surveyKey ile bağlanır. */
+export const surveys = pgTable("surveys", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  title: text("title").notNull(),
+  intro: text("intro").notNull().default(""),
+  status: text("status").notNull().default("draft"), // draft|published
+  sections: jsonb("sections").$type<Record<string, string>>().notNull().default({}),
+  questions: jsonb("questions").$type<SurveyQuestion[]>().notNull().default([]),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Anketi tamamlayanlar (soru cevapsız bile olsa tamamlama işareti) */
+export const surveyCompletions = pgTable(
+  "survey_completions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    surveyKey: text("survey_key").notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("survey_completions_uq").on(t.userId, t.surveyKey)]
+);
 
 export const surveyAnswers = pgTable(
   "survey_answers",
@@ -742,4 +805,5 @@ export type Order = typeof orders.$inferSelect;
 export type Instructor = typeof instructors.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type CertificateTemplate = typeof certificateTemplates.$inferSelect;
+export type Survey = typeof surveys.$inferSelect;
 export type IssuedCertificate = typeof issuedCertificates.$inferSelect;

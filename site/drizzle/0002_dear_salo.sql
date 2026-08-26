@@ -1,0 +1,1 @@
+ALTER TABLE "quiz_attempts" ADD COLUMN "feedback" text DEFAULT '' NOT NULL;

@@ -2,20 +2,20 @@ import Link from "next/link";
 import Image from "next/image";
 import { getCurrentUser } from "@/lib/auth/session";
 import { studentCourses, studentActions } from "@/lib/data/student";
-import { getSurveyState } from "@/lib/survey";
+import { pendingSurveyFor } from "@/lib/survey";
+import { studentRecommendations } from "@/lib/recommendations";
+import { RecoSlider } from "@/components/panel/RecoSlider";
 import { getSetting } from "@/lib/settings";
 import { themeByKey } from "@/lib/panel-themes";
 import { fmtDate, fmtTime } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Progress, Kpi, Chip } from "@/components/panel/ui";
 import { ThemeButton } from "@/components/panel/ThemePicker";
-import { SurveyModal } from "@/components/panel/SurveyForm";
-import { getSurveyAnswers } from "@/lib/survey";
 
 export default async function PanelHome({ searchParams }: { searchParams: Promise<{ sifirlandi?: string }> }) {
   const user = (await getCurrentUser())!;
   const { sifirlandi } = await searchParams;
-  const [courses, actions, survey, panel] = await Promise.all([studentCourses(user.id), studentActions(user.id), getSurveyState(user), getSetting("panel")]);
+  const [courses, actions, pendingSurvey, panel, recos] = await Promise.all([studentCourses(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel"), studentRecommendations(user.id)]);
   const theme = themeByKey(user.panelTheme, panel.defaultTheme);
   const resume = courses.find((c) => c.percent > 0 && c.percent < 100) ?? courses.find((c) => c.percent < 100);
   const pendingTasks = actions.items.filter((i) => i.kind === "assignment" && !i.done).length;
@@ -25,7 +25,6 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
   const totalLessons = courses.reduce((s, c) => s + c.total, 0);
   const doneLessons = courses.reduce((s, c) => s + c.completed, 0);
   const overall = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
-  const answers = survey.mustAnswer ? await getSurveyAnswers(user.id, survey.schema.key) : {};
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_336px]">
@@ -47,9 +46,9 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
 
         {sifirlandi && <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Şifren güncellendi.</p>}
 
-        {survey.needsAttention && !survey.mustAnswer && (
-          <Link href="/panel/anket" className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <Icon name="survey" className="size-5" /> <span><b>{survey.title}</b> anketini tamamla, sana uygun programları önerelim.</span>
+        {pendingSurvey && (
+          <Link href={`/panel/anket/${pendingSurvey.id}`} className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <Icon name="survey" className="size-5" /> <span><b>{pendingSurvey.title}</b> anketini tamamla.</span>
             <span className="ml-auto font-semibold">Doldur →</span>
           </Link>
         )}
@@ -110,25 +109,10 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
 
       {/* Sağ ray */}
       <aside className="space-y-4">
-        <div className="card">
-          <h3 className="font-bold text-navy-800">Hızlı Erişim</h3>
-          <ul className="mt-3 space-y-1 text-sm">
-            {[
-              { href: "/panel/egitim", label: "Eğitimlerim", icon: "book", n: courses.length },
-              { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "task", n: pendingTasks + upcomingQuiz },
-              { href: "/panel/takvim", label: "Takvim", icon: "calendar", n: upcoming.length },
-              { href: "/panel/sertifika", label: "Sertifikalarım", icon: "award" },
-              { href: "/panel/bildirim", label: "Mesajlarım", icon: "mail" },
-            ].map((l) => (
-              <li key={l.href}>
-                <Link href={l.href} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface">
-                  <Icon name={l.icon as "book"} className="size-4 text-sky-500" /><span className="flex-1 text-navy-800">{l.label}</span>
-                  {l.n !== undefined && <span className="rounded-full bg-surface px-2 text-xs text-muted">{l.n}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Tanıtım alanı: tetiklenen kurs önerileri (öneri yoksa hiç görünmez) */}
+        {recos.length > 0 && (
+          <RecoSlider items={recos.map((r) => ({ courseId: r.courseId, slug: r.slug, title: r.title, imageUrl: r.imageUrl, sourceTitle: r.sourceTitle, trigger: r.trigger, discountPercent: r.discountPercent, note: r.note, price: r.price, finalPrice: r.finalPrice }))} />
+        )}
         <div className="card text-center">
           <h3 className="font-bold text-navy-800">Genel ilerleme</h3>
           <div className="relative mx-auto mt-3 size-32">
@@ -147,7 +131,6 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
         </div>
       </aside>
 
-      {survey.mustAnswer && <SurveyModal schema={survey.schema} answers={answers} />}
     </div>
   );
 }

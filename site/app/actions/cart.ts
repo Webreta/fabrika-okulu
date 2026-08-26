@@ -8,6 +8,7 @@ import { courses, coupons, orders, periods, periodEnrollments } from "@/db/schem
 import { getCart, setCart, clearCart } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth/session";
 import { effectivePrice } from "@/lib/course-logic";
+import { personalDiscountPercent } from "@/lib/recommendations";
 import { hasAccess } from "@/lib/data/student";
 import { enrollUser, fulfillOrder } from "@/lib/enroll";
 import { initCheckoutForm, iyzicoEnabled } from "@/lib/iyzico";
@@ -85,7 +86,7 @@ export async function applyCoupon(formData: FormData) {
 }
 
 export type CartTotals = {
-  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; periodId: number | null; periodName: string | null; group: string }[];
+  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; group: string }[];
   subtotal: number;
   discount: number;
   total: number;
@@ -104,23 +105,31 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
   const pids = cart.map((i) => i.periodId).filter((x): x is number => !!x);
   const ps = pids.length ? await db.select().from(periods).where(inArray(periods.id, pids)) : [];
 
-  const lines = cart
-    .map((i) => {
-      const c = cs.find((x) => x.id === i.courseId);
-      if (!c || c.status !== "published" || c.closed) return null;
-      const p = i.periodId ? ps.find((x) => x.id === i.periodId) : null;
-      return {
-        courseId: c.id,
-        slug: c.slug,
-        title: c.title,
-        imageUrl: c.imageUrl,
-        price: effectivePrice(c),
-        periodId: p?.id ?? null,
-        periodName: p?.name ?? null,
-        group: c.group,
-      };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+  const lines = (
+    await Promise.all(
+      cart.map(async (i) => {
+        const c = cs.find((x) => x.id === i.courseId);
+        if (!c || c.status !== "published" || c.closed) return null;
+        const p = i.periodId ? ps.find((x) => x.id === i.periodId) : null;
+        const listPrice = effectivePrice(c);
+        // Kişiye özel indirim (kurs ilişkilerinden): satır fiyatına doğrudan uygulanır
+        const personalPercent = userId ? await personalDiscountPercent(userId, c.id) : 0;
+        const price = Math.round(listPrice * (1 - Math.max(0, Math.min(100, personalPercent)) / 100) * 100) / 100;
+        return {
+          courseId: c.id,
+          slug: c.slug,
+          title: c.title,
+          imageUrl: c.imageUrl,
+          price,
+          listPrice,
+          personalPercent,
+          periodId: p?.id ?? null,
+          periodName: p?.name ?? null,
+          group: c.group,
+        };
+      })
+    )
+  ).filter((x): x is NonNullable<typeof x> => x !== null);
 
   const subtotal = lines.reduce((s, l) => s + l.price, 0);
   let discount = 0;

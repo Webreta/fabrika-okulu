@@ -11,7 +11,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
   const [ov, feed] = await Promise.all([teacherOverview(user), certificateFeed(user, courseId)]);
   return (
     <>
-      <PageTitle title="Sertifikalar" sub="Koşulu sağlayan öğrencilere sertifika tanımla. Tasarımlar yönetim panelinden oluşturulur." />
+      <PageTitle title="Sertifikalar" />
       <form className="mb-4 flex gap-2" method="get">
         <select name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm eğitimler</option>{ov.courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
         <button className="btn-secondary btn-sm">Filtrele</button>

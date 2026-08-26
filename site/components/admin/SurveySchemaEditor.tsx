@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { SurveySchema, SurveyQuestion } from "@/lib/survey";
-import { saveSurveySchema } from "@/app/actions/admin";
+import type { SurveyQuestion } from "@/db/schema";
+import { saveSurveyAdmin } from "@/app/actions/admin";
 import { Icon } from "@/components/site/Icon";
 
-export function SurveySchemaEditor({ schema, required }: { schema: SurveySchema; required: boolean }) {
-  const [s, setS] = useState<SurveySchema>(schema);
-  const [req, setReq] = useState(required);
-  const [bump, setBump] = useState(false);
+type EditorSurvey = { id?: number; title: string; intro: string; sections: Record<string, string>; questions: SurveyQuestion[] };
+
+export function SurveySchemaEditor({ survey }: { survey: EditorSurvey }) {
+  const [s, setS] = useState<EditorSurvey>(survey);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -23,8 +23,6 @@ export function SurveySchemaEditor({ schema, required }: { schema: SurveySchema;
         <div><label className="label">Anket başlığı</label><input value={s.title} onChange={(e) => setS({ ...s, title: e.target.value })} className="input" /></div>
         <div><label className="label">Bölümler (anahtar|Etiket, virgülle)</label><input value={Object.entries(s.sections).map(([k, v]) => `${k}|${v}`).join(", ")} onChange={(e) => setS({ ...s, sections: Object.fromEntries(e.target.value.split(",").map((p) => p.trim()).filter(Boolean).map((p) => { const [k, v] = p.split("|"); return [k.trim(), (v ?? k).trim()]; })) })} className="input" /></div>
         <div className="md:col-span-2"><label className="label">Giriş metni</label><textarea rows={2} value={s.intro} onChange={(e) => setS({ ...s, intro: e.target.value })} className="input" /></div>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={req} onChange={(e) => setReq(e.target.checked)} /> Anket zorunlu (öğrenci panelde doldurmadan devam edemez, &quot;şimdilik geç&quot; diyebilir)</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={bump} onChange={(e) => setBump(e.target.checked)} /> Sürümü artır (herkes yeniden doldurur) · mevcut sürüm: {s.version}</label>
       </div>
       {s.questions.map((q, i) => (
         <div key={i} className="card space-y-2">
@@ -62,7 +60,7 @@ export function SurveySchemaEditor({ schema, required }: { schema: SurveySchema;
       ))}
       <button onClick={() => setS({ ...s, questions: [...s.questions, { key: `soru_${s.questions.length + 1}`, section: sections[0] ?? "genel", step: 1, type: "radio", required: false, label: "", options: [] }] })} className="btn-secondary btn-sm"><Icon name="plus" className="size-4" /> Soru ekle</button>
       {msg && <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm">{msg}</p>}
-      <button disabled={pending} onClick={() => start(async () => { const r = await saveSurveySchema(s, bump, req); setMsg(r.ok ? r.message ?? "Kaydedildi" : r.error); router.refresh(); })} className="btn-primary">{pending ? "…" : "Anketi kaydet"}</button>
+      <button disabled={pending} onClick={() => start(async () => { const r = await saveSurveyAdmin(s); setMsg(r.ok ? r.message ?? "Kaydedildi" : r.error); if (r.ok && !s.id && r.id) router.replace(`/admin/anketler/${r.id}`); else router.refresh(); })} className="btn-primary">{pending ? "…" : "Anketi kaydet"}</button>
     </div>
   );
 }

@@ -40,7 +40,13 @@ export const DEFAULT_CERT_FIELDS: CertFields = {
   qr: { enabled: false, x: 88, y: 82, size: 120 },
 };
 
-export const DEFAULT_CERT_RULE: CertRule = { scope: "all", courseId: 0, condition: "completed" };
+export const DEFAULT_CERT_RULE: CertRule = { scope: "all", courseId: 0, condition: "completed", auto: false };
+
+/** Görünür seri numarası — FO-<yıl>-<6 haneli id> (token'dan bağımsız, insan okunur) */
+export function certSerial(id: number, issuedAt: Date | string) {
+  const y = new Date(issuedAt).getFullYear();
+  return `FO-${y}-${String(id).padStart(6, "0")}`;
+}
 
 export const CERT_CONDITIONS = {
   enrolled: "Kayıt olunca",

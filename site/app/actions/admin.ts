@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { users, orders, enrollments, pages, certificateTemplates, issuedCertificates, contactMessages, coupons } from "@/db/schema";
-import type { CertFields, CertRule } from "@/db/schema";
+import { users, orders, enrollments, pages, certificateTemplates, issuedCertificates, contactMessages, coupons, surveys, surveyAnswers, surveyCompletions } from "@/db/schema";
+import type { CertFields, CertRule, SurveyQuestion } from "@/db/schema";
 import { requireAdmin, destroyAllSessions } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { setSetting, setRawSetting, type SettingsKey, type SettingsMap } from "@/lib/settings";
@@ -13,7 +13,6 @@ import { enrollUser, unenrollUser, fulfillOrder } from "@/lib/enroll";
 import { saveUploadedFile, IMAGE_EXTENSIONS, slugify } from "@/lib/uploads";
 import { DEFAULT_CERT_FIELDS, DEFAULT_CERT_RULE } from "@/lib/certificates";
 import { notifyUsers } from "@/lib/notify";
-import type { SurveySchema } from "@/lib/survey";
 import type { ActionResult } from "@/app/actions/teacher";
 import type { FormState } from "@/app/actions/auth";
 import { markSeen, SEEN_SECTIONS, type SeenSection } from "@/lib/admin-seen";
@@ -189,6 +188,18 @@ export async function saveCertificateTemplate(input: { id?: number; title: strin
   return { ok: true, id };
 }
 
+export async function duplicateCertificateTemplate(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const [t] = await db.select().from(certificateTemplates).where(eq(certificateTemplates.id, id)).limit(1);
+  if (!t) return { ok: false, error: "Tasarım bulunamadı." };
+  const { id: _id, createdAt: _ca, ...rest } = t;
+  void _id; void _ca;
+  // Kopya güvenli başlar: otomatik verme kapalı gelir, isteyerek açılır
+  const [c] = await db.insert(certificateTemplates).values({ ...rest, title: `${t.title} (Kopya)`, rule: { ...t.rule, auto: false } }).returning({ id: certificateTemplates.id });
+  revalidatePath("/admin/sertifikalar");
+  return { ok: true, id: c.id };
+}
+
 export async function deleteCertificateTemplate(id: number): Promise<ActionResult> {
   await requireAdmin();
   await db.delete(issuedCertificates).where(eq(issuedCertificates.templateId, id));
@@ -206,31 +217,59 @@ export async function uploadCertificateImage(formData: FormData) {
 
 // ---------- Anket tanımı ----------
 
-export async function saveSurveySchema(schema: SurveySchema, bump: boolean, required: boolean): Promise<ActionResult> {
+export async function saveSurveyAdmin(input: { id?: number; title: string; intro: string; sections: Record<string, string>; questions: SurveyQuestion[] }): Promise<ActionResult> {
   await requireAdmin();
-  const { getRawSetting } = await import("@/lib/settings");
-  const { DEFAULT_SURVEY } = await import("@/lib/survey");
-  const current = await getRawSetting<SurveySchema>("survey_schema", DEFAULT_SURVEY);
   const seen = new Set<string>();
-  const questions = schema.questions.filter((q) => { const k = q.key.trim(); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  const questions = input.questions.filter((q) => { const k = q.key.trim(); if (!k || seen.has(k)) return false; seen.add(k); return true; });
   if (questions.length === 0) return { ok: false, error: "En az bir soru olmalı." };
-  const newKeys = questions.some((q) => !current.questions.some((c) => c.key === q.key));
-  const version = bump || newKeys ? current.version + 1 : current.version;
-  const next: SurveySchema = { ...schema, key: current.key, version, questions };
-  await setRawSetting("survey_schema", next);
-  await setSetting("panel", { surveyRequired: required });
-  if (version !== current.version) {
-    const ids = (await db.select({ id: users.id }).from(users).where(and(eq(users.role, "student"), sql`${users.surveyVersion} > 0`))).map((r) => r.id);
-    await db.update(users).set({ surveySkipped: false }).where(eq(users.role, "student"));
-    await notifyUsers(ids, { title: "📋 Anketinde yeni sorular var", body: schema.title, url: "/panel/anket", tag: `survey-${version}` });
+  const title = input.title.trim() || "İsimsiz anket";
+  if (input.id) {
+    await db.update(surveys).set({ title, intro: input.intro, sections: input.sections, questions }).where(eq(surveys.id, input.id));
+    revalidatePath("/admin/anketler"); revalidatePath("/panel/anket");
+    return { ok: true, id: input.id, message: "Kaydedildi." };
   }
-  revalidatePath("/admin/anketler"); revalidatePath("/panel");
-  return { ok: true, message: `Kaydedildi (sürüm ${version}).` };
+  // Anahtar başlıktan türetilir; çakışırsa sonek eklenir
+  const base = slugify(title).replace(/-/g, "_") || "anket";
+  let key = base;
+  for (let i = 2; i < 100; i++) {
+    const [ex] = await db.select({ id: surveys.id }).from(surveys).where(eq(surveys.key, key)).limit(1);
+    if (!ex) break;
+    key = `${base}_${i}`;
+  }
+  const [c] = await db.insert(surveys).values({ key, title, intro: input.intro, sections: input.sections, questions, status: "draft" }).returning({ id: surveys.id });
+  revalidatePath("/admin/anketler");
+  return { ok: true, id: c.id, message: "Anket oluşturuldu (taslak)." };
 }
 
-export async function resetUserSurvey(userId: number): Promise<ActionResult> {
+export async function publishSurvey(id: number, publish: boolean): Promise<ActionResult> {
   await requireAdmin();
-  await db.update(users).set({ surveyVersion: 0, surveySkipped: false }).where(eq(users.id, userId));
+  const [s] = await db.select().from(surveys).where(eq(surveys.id, id)).limit(1);
+  if (!s) return { ok: false, error: "Anket bulunamadı." };
+  await db.update(surveys).set({ status: publish ? "published" : "draft", publishedAt: publish ? new Date() : s.publishedAt }).where(eq(surveys.id, id));
+  if (publish) {
+    // Yayına girince tüm öğrencilere bildirim; panel popup'ı da girişte otomatik görünür
+    const ids = (await db.select({ id: users.id }).from(users).where(eq(users.role, "student"))).map((r) => r.id);
+    await notifyUsers(ids, { title: "📋 Yeni anket yayında", body: s.title, url: `/panel/anket/${s.id}`, tag: `survey-${s.id}` });
+  }
+  revalidatePath("/admin/anketler"); revalidatePath("/panel/anket"); revalidatePath("/panel");
+  return { ok: true, message: publish ? "Anket yayınlandı, öğrencilere bildirildi." : "Anket yayından kaldırıldı." };
+}
+
+export async function deleteSurvey(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const [s] = await db.select().from(surveys).where(eq(surveys.id, id)).limit(1);
+  if (!s) return { ok: false, error: "Anket bulunamadı." };
+  await db.delete(surveyAnswers).where(eq(surveyAnswers.surveyKey, s.key));
+  await db.delete(surveyCompletions).where(eq(surveyCompletions.surveyKey, s.key));
+  await db.delete(surveys).where(eq(surveys.id, id));
+  revalidatePath("/admin/anketler"); revalidatePath("/panel/anket");
+  return { ok: true };
+}
+
+export async function resetUserSurvey(userId: number, surveyKey: string): Promise<ActionResult> {
+  await requireAdmin();
+  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, surveyKey)));
+  await db.delete(surveyCompletions).where(and(eq(surveyCompletions.userId, userId), eq(surveyCompletions.surveyKey, surveyKey)));
   return { ok: true };
 }
 

@@ -3,9 +3,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { unreadCount } from "@/lib/notify";
 import { Shell, type NavItem } from "@/components/panel/Shell";
 import { studentActions } from "@/lib/data/student";
-import { getSurveyState } from "@/lib/survey";
+import { pendingSurveyFor } from "@/lib/survey";
 import { initials } from "@/lib/format";
 import { PushBanner } from "@/components/panel/PushBanner";
+import { SurveyPopup } from "@/components/panel/SurveyPopup";
 import { getSetting } from "@/lib/settings";
 import { themeByKey } from "@/lib/panel-themes";
 
@@ -15,7 +16,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   if (user.role === "teacher" || user.role === "admin") {
     // Eğitmen/admin de öğrenci panelini görebilir ama varsayılan yönlendirme kendi paneli
   }
-  const [unread, actions, survey, panelSettings] = await Promise.all([unreadCount(user.id), studentActions(user.id), getSurveyState(user), getSetting("panel")]);
+  const [unread, actions, pendingSurvey, panelSettings] = await Promise.all([unreadCount(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel")]);
   const theme = themeByKey(user.panelTheme, panelSettings.defaultTheme);
   const pending = actions.items.filter((i) => !i.done).length;
 
@@ -30,7 +31,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     { href: "/panel/notlar", label: "Notlarım", icon: "edit" },
     { href: "/panel/sertifika", label: "Sertifikalarım", icon: "award" },
     { href: "/panel/belge", label: "Belge Yükle", icon: "upload" },
-    { href: "/panel/anket", label: survey.title, icon: "survey" },
+    { href: "/panel/anket", label: "Anketler", icon: "survey", badge: pendingSurvey ? 1 : undefined },
     { href: "/panel/siparis", label: "Satınalma Geçmişim", icon: "cart" },
     { href: "/panel/hesap", label: "Tercihler & Ayarlar", icon: "settings" },
   ];
@@ -48,6 +49,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     >
       {children}
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />
+      {pendingSurvey && <SurveyPopup survey={{ id: pendingSurvey.id, title: pendingSurvey.title, intro: pendingSurvey.intro }} />}
     </Shell>
   );
 }

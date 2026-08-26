@@ -263,7 +263,7 @@ export async function studentOrders(userId: number) {
 
 export async function studentCertificates(userId: number) {
   return db
-    .select({ ic: issuedCertificates, tplTitle: certificateTemplates.title })
+    .select({ ic: issuedCertificates, tplTitle: certificateTemplates.title, tpl: certificateTemplates })
     .from(issuedCertificates)
     .innerJoin(certificateTemplates, eq(issuedCertificates.templateId, certificateTemplates.id))
     .where(eq(issuedCertificates.userId, userId))

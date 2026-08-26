@@ -14,7 +14,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
   const q = courseId ? `&course=${courseId}` : "";
   return (
     <>
-      <PageTitle title="Gönderimler" sub="Görev teslimleri ve sınav sonuçları (tüm kurslar)" />
+      <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları (tüm kurslar)" />
       <div className="mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Kpi label="Görev teslimi" value={subs.length} icon="task" />
         <Kpi label="Değerlendirilmemiş görev" value={pendingSubs} icon="clock" color="amber" />

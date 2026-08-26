@@ -13,9 +13,10 @@ type Detail = NonNullable<Awaited<ReturnType<typeof quizAttemptDetail>>>;
 export function QuizAttemptRow({ row }: { row: AttemptRow }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [grades, setGrades] = useState<Record<string, { points: number; feedback: string }>>({});
+  const [feedback, setFeedback] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
-  const open = () => start(async () => { const d = await quizAttemptDetail(row.id); setDetail(d); const g: typeof grades = {}; d?.questions.forEach((q) => { if (q.type === "open_ended") g[q.id] = q.grade ?? { points: 0, feedback: "" }; }); setGrades(g); });
+  const open = () => start(async () => { const d = await quizAttemptDetail(row.id); setDetail(d); setFeedback(d?.feedback ?? ""); const g: typeof grades = {}; d?.questions.forEach((q) => { if (q.type === "open_ended") g[q.id] = q.grade ?? { points: 0, feedback: "" }; }); setGrades(g); });
   return (
     <div className="card flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -49,9 +50,15 @@ export function QuizAttemptRow({ row }: { row: AttemptRow }) {
                 </li>
               ))}
             </ol>
-            {detail.status === "pending_review" && (
-              <button disabled={pending} onClick={() => start(async () => { await gradeOpenEnded(detail.id, grades); setDetail(null); router.refresh(); })} className="btn-primary mt-4">{pending ? "…" : "Puanla ve bildir"}</button>
-            )}
+            {detail.status === "pending_review" ? (
+              <div className="mt-4 space-y-2">
+                <label className="label">Öğrenciye cevap / genel geri bildirim</label>
+                <textarea rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Değerlendirmeyle birlikte öğrenciye iletilecek cevabın…" className="input" />
+                <button disabled={pending} onClick={() => start(async () => { await gradeOpenEnded(detail.id, grades, feedback); setDetail(null); router.refresh(); })} className="btn-primary">{pending ? "…" : "Puanla ve bildir"}</button>
+              </div>
+            ) : detail.feedback ? (
+              <p className="mt-4 rounded-lg bg-surface p-3 text-sm"><b>Cevabın:</b> {detail.feedback}</p>
+            ) : null}
           </div>
         </div>
       )}

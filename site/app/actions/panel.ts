@@ -8,7 +8,7 @@ import { requireUser, getCurrentUser } from "@/lib/auth/session";
 import { saveUploadedFile } from "@/lib/uploads";
 import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
-import { saveSurvey } from "@/lib/survey";
+import { saveSurvey, getSurveyById } from "@/lib/survey";
 import type { FormState } from "@/app/actions/auth";
 
 const DOC_EXT = new Set(["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"]);
@@ -68,8 +68,10 @@ export async function removePushSubscription(endpoint: string) {
   await db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.userId, user.id)));
 }
 
-export async function submitSurvey(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function submitSurvey(surveyId: number, _prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
+  const survey = await getSurveyById(surveyId);
+  if (!survey || survey.status !== "published") return { error: "Anket bulunamadı." };
   const raw: Record<string, string | string[]> = {};
   for (const [k, v] of formData.entries()) {
     if (k.startsWith("q_")) {
@@ -84,15 +86,9 @@ export async function submitSurvey(_prev: FormState, formData: FormData): Promis
   for (const [k, v] of formData.entries()) {
     if (k.startsWith("q_") && formData.getAll(k).length > 1) raw[k.slice(2)] = formData.getAll(k).map(String);
   }
-  const res = await saveSurvey(user.id, raw);
+  const res = await saveSurvey(user.id, survey, raw);
   if ("error" in res && res.error) return { error: res.error };
   revalidatePath("/panel");
+  revalidatePath("/panel/anket");
   return { ok: "Anket kaydedildi, teşekkürler!" };
-}
-
-export async function skipSurvey() {
-  const user = await getCurrentUser();
-  if (!user) return;
-  await db.update(users).set({ surveySkipped: true }).where(eq(users.id, user.id));
-  revalidatePath("/panel");
 }

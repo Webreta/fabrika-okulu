@@ -13,7 +13,7 @@ export default async function TeacherLayout({ children }: Readonly<{ children: R
     { href: "/egitmen", label: "Panelim", icon: "home", exact: true },
     { href: "/egitmen/kurslarim", label: "Eğitimlerim", icon: "book" },
     { href: "/egitmen/ogrenciler", label: "Öğrencilerim", icon: "users" },
-    { href: "/egitmen/gonderim", label: "Gönderimler", icon: "task", badge: ov.pendingSubs + ov.pendingQuizzes || undefined },
+    { href: "/egitmen/gonderim", label: "Görevler & Sınavlar", icon: "task", badge: ov.pendingSubs + ov.pendingQuizzes || undefined },
     { href: "/egitmen/sorular", label: "Sorular", icon: "message", badge: ov.pendingQuestions || undefined },
   ];
   const secondary: NavItem[] = [

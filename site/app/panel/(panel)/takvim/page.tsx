@@ -9,8 +9,11 @@ const MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl",
 export default async function CalendarPage() {
   const user = (await getCurrentUser())!;
   const { calendar } = await studentActions(user.id);
-  const past = calendar.filter((e) => e.date.getTime() < Date.now() - 86400000);
-  const upcoming = calendar.filter((e) => e.date.getTime() >= Date.now() - 86400000);
+  // Tamamlananlar (✓) tarihi ne olursa olsun en altta ayrı bölümde gösterilir
+  const done = calendar.filter((e) => e.done);
+  const pending = calendar.filter((e) => !e.done);
+  const past = pending.filter((e) => e.date.getTime() < Date.now() - 86400000);
+  const upcoming = pending.filter((e) => e.date.getTime() >= Date.now() - 86400000);
 
   const Card = ({ e }: { e: (typeof calendar)[number] }) => (
     <div className={`card flex gap-4 ${e.done ? "opacity-60" : ""}`}>
@@ -44,6 +47,12 @@ export default async function CalendarPage() {
             <div>
               <h2 className="mb-3 font-bold text-muted">Geçmiş</h2>
               <div className="grid gap-3 md:grid-cols-2">{past.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
+            </div>
+          )}
+          {done.length > 0 && (
+            <div>
+              <h2 className="mb-3 font-bold text-muted">Tamamlanan</h2>
+              <div className="grid gap-3 md:grid-cols-2">{done.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
             </div>
           )}
         </div>

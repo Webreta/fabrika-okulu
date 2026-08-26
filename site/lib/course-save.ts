@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments } from "@/db/schema";
+import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations } from "@/db/schema";
 import { slugify } from "@/lib/uploads";
 import { normalizeDuration } from "@/lib/course-logic";
 import { todayISO } from "@/lib/format";
@@ -28,6 +28,9 @@ const lessonSchema = z.object({
   preview: z.boolean().default(false),
   description: z.string().default(""),
   dueDays: z.coerce.number().int().min(0).catch(0),
+  // Takvimli kursta teslim mutlak tarihle girilir (YYYY-MM-DD + isteğe bağlı HH:MM)
+  dueDate: z.string().default(""),
+  dueTime: z.string().default(""),
   fileUrl: z.string().default(""),
   fileName: z.string().default(""),
   fileMime: z.string().default(""),
@@ -58,6 +61,14 @@ const scheduleSchema = z.object({
   notes: z.string().default(""),
 });
 
+// İlişkili kurs önerisi (yalnızca admin kaydeder)
+const relationSchema = z.object({
+  relatedCourseId: z.coerce.number().int().min(1),
+  trigger: z.enum(["completed", "purchased"]).default("completed"),
+  discountPercent: z.coerce.number().int().min(0).max(100).catch(0),
+  note: z.string().default(""),
+});
+
 const periodSchema = z.object({
   id: z.number().optional(),
   name: z.string().trim(),
@@ -69,7 +80,7 @@ const periodSchema = z.object({
   schedule: z.array(scheduleSchema).default([]),
 });
 
-export const courseInputSchema = z.object({
+const courseObjectSchema = z.object({
   id: z.number().optional(),
   title: z.string().trim().min(2, "Başlık gerekli."),
   shortDescription: z.string().default(""),
@@ -92,13 +103,42 @@ export const courseInputSchema = z.object({
   instructorId: z.number().nullable().optional(),
   modules: z.array(moduleSchema).default([]),
   periods: z.array(periodSchema).default([]),
+  relations: z.array(relationSchema).optional(),
   featured: z.boolean().optional(),
   closed: z.boolean().optional(),
   whatsappNumber: z.string().optional(),
   whatsappMessage: z.string().optional(),
 });
 
-export type CourseInput = z.infer<typeof courseInputSchema>;
+/**
+ * Kurs tipi kuralları:
+ * - Esnek/ücretsiz (dönemsiz) kursta görev olmaz ve sınavlarda açık uçlu soru olamaz
+ *   (öğrenci eğitmene bir şey göndermez; test/D-Y anında değerlendirilir).
+ * - Takvimli kursta test/D-Y sınavlar otomatik değerlendirilir; açık uçlu sorular
+ *   ayrı bir sınavda toplanır (karma olamaz), eğitmen değerlendirir.
+ */
+export const courseInputSchema = courseObjectSchema.superRefine((c, ctx) => {
+  const scheduled = c.periods.filter((p) => p.name && p.startDate && p.endDate).length > 0;
+  c.modules.forEach((m, mi) =>
+    m.lessons.forEach((l, li) => {
+      if (!scheduled && l.type === "assign") {
+        ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "type"], message: "görev yalnızca takvimli (dönemli) eğitimlerde olabilir" });
+      }
+      if (l.type === "quiz") {
+        const filled = l.questions.filter((q) => q.text.trim());
+        const open = filled.filter((q) => q.qtype === "open_ended").length;
+        if (!scheduled && open > 0) {
+          ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "questions"], message: "esnek/ücretsiz eğitimde açık uçlu soru olamaz; yalnızca test ve doğru/yanlış" });
+        }
+        if (scheduled && open > 0 && open < filled.length) {
+          ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "questions"], message: "açık uçlu sorular test/D-Y ile aynı sınavda olamaz; ayrı bir sınav oluştur" });
+        }
+      }
+    })
+  );
+});
+
+export type CourseInput = z.infer<typeof courseObjectSchema>;
 
 async function uniqueSlug(title: string, id?: number) {
   const base = slugify(title) || "program";
@@ -158,10 +198,21 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
 
   let created: Created = { quizzes: [], assignments: [] };
   if (!opts.locked) {
-    created = await syncCurriculum(courseId, input.modules, opts.authorId);
+    created = await syncCurriculum(courseId, input.modules, opts.authorId, input.periods.length > 0);
     await syncPeriods(courseId, input.periods, false, opts.isAdmin);
   } else {
     await syncPeriods(courseId, input.periods, true);
+  }
+
+  // İlişkili kurs önerileri (yalnızca admin düzenler)
+  if (opts.isAdmin && input.relations !== undefined) {
+    await db.delete(courseRelations).where(eq(courseRelations.courseId, courseId));
+    const seenRel = new Set<string>();
+    const rels = input.relations
+      .filter((r) => r.relatedCourseId !== courseId)
+      .filter((r) => { const k = `${r.relatedCourseId}-${r.trigger}`; if (seenRel.has(k)) return false; seenRel.add(k); return true; })
+      .map((r, i) => ({ courseId, relatedCourseId: r.relatedCourseId, trigger: r.trigger, discountPercent: r.discountPercent, note: r.note.slice(0, 300), sortOrder: i }));
+    if (rels.length) await db.insert(courseRelations).values(rels);
   }
 
   // Grup: dönem varsa takvimli, ücretsizse ucretsiz, değilse esnek
@@ -173,7 +224,7 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
 
 export type Created = { quizzes: { id: number; title: string }[]; assignments: { id: number; title: string }[] };
 
-async function syncCurriculum(courseId: number, mods: CourseInput["modules"], authorId: number): Promise<Created> {
+async function syncCurriculum(courseId: number, mods: CourseInput["modules"], authorId: number, scheduled: boolean): Promise<Created> {
   const created: Created = { quizzes: [], assignments: [] };
   const keepModules: number[] = [];
   const keepLessons: number[] = [];
@@ -193,10 +244,16 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
     mi++;
     let li = 0;
     for (const l of m.lessons) {
+      const isTask = l.type === "quiz" || l.type === "assign";
+      // Takvimli kursta mutlak teslim tarihi; saat boşsa günün sonu (23:59:59).
+      // Tarih girilmemişse eski göreli gün değeri (dueDays) geçerli kalır.
+      const dueAt = scheduled && isTask && /^\d{4}-\d{2}-\d{2}$/.test(l.dueDate)
+        ? new Date(`${l.dueDate}T${/^\d{1,2}:\d{2}$/.test(l.dueTime) ? `${l.dueTime}:00` : "23:59:59"}`)
+        : null;
       const values = {
         courseId, moduleId, type: l.type, title: l.title || (l.type === "video" ? "Ders" : l.type === "quiz" ? "Sınav" : l.type === "assign" ? "Görev" : l.fileName || "Dosya"),
         sortOrder: li, videoUrl: l.type === "video" ? l.videoUrl : "", duration: l.type === "video" ? normalizeDuration(l.duration) : "",
-        preview: l.type === "video" ? l.preview : false, description: l.description, dueDays: l.type === "quiz" || l.type === "assign" ? l.dueDays : 0,
+        preview: l.type === "video" ? l.preview : false, description: l.description, dueDays: isTask && !dueAt ? l.dueDays : 0,
         fileUrl: l.type === "file" ? l.fileUrl : "", fileName: l.type === "file" ? l.fileName : "", fileMime: l.type === "file" ? l.fileMime : "",
       };
       let lessonId = l.id;
@@ -213,7 +270,7 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
 
       if (l.type === "quiz") {
         const [existing] = await db.select().from(quizzes).where(eq(quizzes.lessonId, lessonId)).limit(1);
-        const qv = { courseId, lessonId, title: values.title, description: l.description, timeLimit: l.timeLimit, passScore: l.passScore, maxAttempts: l.maxAttempts, shuffleQuestions: l.shuffleQuestions, showCorrectAnswers: l.showCorrectAnswers, extraDays: l.dueDays > 0 ? l.dueDays : null, status: "active" as const };
+        const qv = { courseId, lessonId, title: values.title, description: l.description, timeLimit: l.timeLimit, passScore: l.passScore, maxAttempts: l.maxAttempts, shuffleQuestions: l.shuffleQuestions, showCorrectAnswers: l.showCorrectAnswers, extraDays: dueAt ? null : l.dueDays > 0 ? l.dueDays : null, endDate: dueAt, status: "active" as const };
         let quizId = existing?.id;
         if (quizId) await db.update(quizzes).set(qv).where(eq(quizzes.id, quizId));
         else { const [c] = await db.insert(quizzes).values(qv).returning({ id: quizzes.id }); quizId = c.id; created.quizzes.push({ id: quizId, title: values.title }); }
@@ -238,7 +295,7 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
       }
       if (l.type === "assign") {
         const [existing] = await db.select().from(assignments).where(eq(assignments.lessonId, lessonId)).limit(1);
-        const av = { courseId, lessonId, title: values.title, description: l.description, extraDays: l.dueDays, status: "active", isGraded: l.isGraded, maxScore: l.isGraded ? l.maxScore : 0, allowFile: l.allowFile, allowVoice: l.allowVoice, allowText: l.allowText };
+        const av = { courseId, lessonId, title: values.title, description: l.description, extraDays: dueAt ? 0 : l.dueDays, dueDate: dueAt, status: "active", isGraded: l.isGraded, maxScore: l.isGraded ? l.maxScore : 0, allowFile: l.allowFile, allowVoice: l.allowVoice, allowText: l.allowText };
         if (existing) await db.update(assignments).set(av).where(eq(assignments.id, existing.id));
         else { const [c] = await db.insert(assignments).values({ ...av, createdBy: authorId }).returning({ id: assignments.id }); created.assignments.push({ id: c.id, title: values.title }); }
       }
