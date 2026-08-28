@@ -48,23 +48,14 @@ export async function teacherOverview(user: SessionUser) {
     .where(inArray(courses.id, ids))
     .orderBy(desc(courses.createdAt));
   const [sc] = await db.select({ n: sql<number>`count(distinct ${enrollments.userId})`.mapWith(Number) }).from(enrollments).where(and(inArray(enrollments.courseId, ids), eq(enrollments.status, "active")));
-  const [ps] = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(assignmentSubmissions)
-    .innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id))
-    .where(and(inArray(assignments.courseId, ids), eq(assignmentSubmissions.status, "pending"), eq(assignments.isGraded, true)));
-  const [pq] = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(quizAttempts)
-    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
-    .where(and(inArray(quizzes.courseId, ids), eq(quizAttempts.status, "pending_review")));
+  // Görev/sınav değerlendirmesi kaldırıldı; puanlama bekleyen sayaçları yok (yalnızca cevaplanmamış sorular).
   const [pqs] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(questions).where(and(inArray(questions.courseId, ids), eq(questions.status, "pending")));
   return {
     ids,
     courses: cs.map((r) => ({ ...r.c, students: r.students, lessonCount: r.lessonCount, hasPeriods: r.periodCount > 0 })),
     studentCount: sc.n,
-    pendingSubs: ps.n,
-    pendingQuizzes: pq.n,
+    pendingSubs: 0,
+    pendingQuizzes: 0,
     pendingQuestions: pqs.n,
   };
 }

@@ -27,7 +27,7 @@ export async function grantCertificate(opts: { templateId: number; userId: numbe
     .returning({ id: issuedCertificates.id });
   if (!r[0]) return { ok: false as const, error: "Bu sertifika zaten verilmiş." };
   const url = `/sertifika/${token}`;
-  await notifyUser(s.id, { title: "🎓 Sertifikan hazır", body: `${t.title} · ${c.title}`, url, tag: `cert-${t.id}-${c.id}` });
+  await notifyUser(s.id, { title: "Sertifikan hazır", body: `${t.title} · ${c.title}`, url, tag: `cert-${t.id}-${c.id}` });
   await sendMail({
     type: "certificate",
     to: s.email,

@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions } from "@/lib/player";
 import { getEnrollment } from "@/lib/data/student";
 import { db } from "@/db";
-import { quizzes, assignments, progress, quizAttempts } from "@/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { quizzes, assignments, progress, courseSuggestions } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 import { parseVideo } from "@/lib/course-logic";
 import { unreadCount } from "@/lib/notify";
 import { Icon } from "@/components/site/Icon";
@@ -88,8 +88,8 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const prevUrl = prev ? `/kurs-izle/${courseId}?ders=${prev.id}` : null;
   const unread = await unreadCount(user!.id);
   const themeKey = themeByKey(user!.panelTheme, (await getSetting("panel")).defaultTheme).key;
-  // Esnek/ücretsiz kurslarda sınavlar anlık geri bildirimli çözülür (eğitmene gönderim yok)
-  const instant = course.group !== "takvimli";
+  // Tüm sınavlar anlık geri bildirimli çözülür (test/D-Y anında; açık uçlu yalnız kaydedilir, eğitmene gönderim/değerlendirme yok)
+  const instant = true;
 
   // Sahne verisi
   let stage: React.ReactNode = null;
@@ -101,7 +101,15 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     stage = p ? <AssignmentStage payload={serializeAssignment(p)} nextUrl={null} preview={acc.preview} /> : <p className="card">Görev bulunamadı.</p>;
   } else if (active) {
     if (active.type === "video") {
-      const [qs, myNotes] = await Promise.all([lessonQuestions(user!.id, courseId), listCourseNotes(courseId)]);
+      const [qs, myNotes, mySuggestions] = await Promise.all([
+        lessonQuestions(user!.id, courseId),
+        listCourseNotes(courseId),
+        db
+          .select({ id: courseSuggestions.id, text: courseSuggestions.text, createdAt: courseSuggestions.createdAt })
+          .from(courseSuggestions)
+          .where(and(eq(courseSuggestions.userId, user!.id), eq(courseSuggestions.courseId, courseId)))
+          .orderBy(desc(courseSuggestions.id)),
+      ]);
       stage = (
         <VideoStage
           key={active.id}
@@ -115,6 +123,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
           questions={qs}
           userName={user!.name}
           notes={myNotes}
+          suggestions={mySuggestions.map((s) => ({ id: s.id, text: s.text, createdAt: s.createdAt.toISOString() }))}
           startAt={sp.t ? Number(sp.t) : null}
         />
       );
@@ -133,54 +142,29 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     stage = <div className="card text-center text-muted">Bu programda henüz içerik yok.</div>;
   }
 
-  // Esnek/ücretsiz kurs tamamlandığında sınav istatistikleri: kendi puanın + tüm katılımcıların ortalaması
-  let completionCard: React.ReactNode = null;
-  if (instant && !acc.preview && prog.total > 0 && prog.percent === 100) {
-    const courseQuizzes = await db.select().from(quizzes).where(and(eq(quizzes.courseId, courseId), eq(quizzes.status, "active")));
-    if (courseQuizzes.length) {
-      const atts = await db
-        .select()
-        .from(quizAttempts)
-        .where(and(inArray(quizAttempts.quizId, courseQuizzes.map((q) => q.id)), eq(quizAttempts.status, "completed")));
-      const stats = courseQuizzes.map((q) => {
-        const qa = atts.filter((a) => a.quizId === q.id && a.score !== null);
-        // Kişi başına en iyi puan üzerinden ortalama
-        const best = new Map<number, number>();
-        for (const a of qa) best.set(a.userId, Math.max(best.get(a.userId) ?? 0, Number(a.score)));
-        const scores = [...best.values()];
-        return {
-          id: q.id,
-          title: q.title,
-          mine: best.get(user!.id) ?? null,
-          avg: scores.length ? Math.round((scores.reduce((s, x) => s + x, 0) / scores.length) * 10) / 10 : null,
-          people: scores.length,
-        };
-      }).filter((s) => s.people > 0);
-      if (stats.length) {
-        completionCard = (
-          <div className="card border-2 border-emerald-200">
-            <h2 className="text-lg font-bold text-navy-800">🎉 Tebrikler, bu programı tamamladın!</h2>
-            <p className="mt-1 text-sm text-muted">Sınav sonuçların ve tüm katılımcıların ortalaması:</p>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-line text-left text-xs uppercase text-muted"><th className="py-2 pr-3">Sınav</th><th className="py-2 pr-3">Senin puanın</th><th className="py-2 pr-3">Katılımcı ortalaması</th><th className="py-2">Katılımcı</th></tr></thead>
-                <tbody>
-                  {stats.map((s) => (
-                    <tr key={s.id} className="border-b border-line last:border-0">
-                      <td className="py-2 pr-3 font-semibold text-navy-800">{s.title}</td>
-                      <td className="py-2 pr-3">{s.mine !== null ? `%${s.mine}` : "—"}</td>
-                      <td className="py-2 pr-3">{s.avg !== null ? `%${s.avg}` : "—"}</td>
-                      <td className="py-2 text-muted">{s.people} kişi</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      }
-    }
-  }
+  // Eğitim tümüyle tamamlandığında kutlama kartı (sertifika + yeni eğitim keşfet)
+  const courseComplete = !acc.preview && prog.total > 0 && prog.percent === 100;
+  const celebrationCard = courseComplete ? (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-6 text-[#fff] shadow-xl md:p-8">
+      <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-[#fff]/10 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-1/3 size-56 rounded-full bg-[#fff]/10 blur-3xl" />
+      <div className="relative">
+        <p className="text-4xl">🎉</p>
+        <h2 className="mt-2 text-2xl font-bold md:text-3xl">Tebrikler, eğitimi tamamladın!</h2>
+        <p className="mt-2 max-w-2xl text-[#fff]/90">
+          <span className="font-semibold">{course.title}</span> programındaki tüm içerikleri bitirdin. Emeğine sağlık! Sertifikan hazırsa profilinden görüntüleyebilir, yeni eğitimlerle öğrenmeye devam edebilirsin.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link href="/panel/sertifika" className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-emerald-700 shadow transition hover:bg-emerald-50">
+            <Icon name="award" className="size-4" /> Sertifikanı gör
+          </Link>
+          <Link href="/kesfet" className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">
+            <Icon name="book" className="size-4" /> Yeni eğitimler keşfet
+          </Link>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="fo-theme min-h-screen bg-surface" data-theme={themeKey}>
@@ -227,7 +211,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
 
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />
       <div className="mx-auto grid max-w-[1310px] gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
-        <div className="min-w-0 space-y-5">{completionCard}{stage}</div>
+        <div className="min-w-0 space-y-5">{celebrationCard}{stage}</div>
         <Curriculum
           courseId={courseId}
           modules={course.modules.map((m) => ({
@@ -259,7 +243,6 @@ function serializeQuiz(p: NonNullable<Awaited<ReturnType<typeof quizPayload>>>) 
     canAttempt: p.canAttempt,
     due: p.due?.toISOString() ?? null,
     review: p.review,
-    feedback: p.feedback,
   };
 }
 

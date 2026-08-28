@@ -53,13 +53,6 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
       {s ? (
         <div className="mt-6 rounded-xl bg-emerald-50 p-4">
           <p className="font-semibold text-emerald-700">✓ Bu görevi teslim ettin. <span className="font-normal text-muted">({fmtDateTime(s.at)})</span></p>
-          {s.status === "graded" && (
-            <div className="mt-2 rounded-lg bg-white p-3 text-sm">
-              {payload.isGraded && <p className="font-bold text-navy-800">Puan: {s.score}/{payload.maxScore}</p>}
-              {s.feedback && <p className="mt-1 whitespace-pre-line">{s.feedback}</p>}
-            </div>
-          )}
-          {s.status !== "graded" && <p className="mt-1 text-sm text-muted">Eğitmen değerlendirmesi bekleniyor.</p>}
           {s.text && <p className="mt-3 whitespace-pre-line text-sm">{s.text}</p>}
           {s.files.length > 0 && <ul className="mt-2 space-y-1 text-sm">{s.files.map((f, i) => <li key={i}><a href={f.url} target="_blank" className="text-sky-600 underline">📎 {f.name}</a></li>)}</ul>}
           {s.voices.map((v, i) => <audio key={i} src={v.url} controls className="mt-2 w-full" />)}

@@ -40,7 +40,7 @@ export async function runFrequent() {
       const diff = (start - now) / 60000;
       if (diff < 45 || diff > 90) continue;
       if (!(await once(`sess:${p.id}:${i}:${s.date}:${userId}`))) continue;
-      await notifyUser(userId, { title: "⏰ Birazdan canlı oturumun var", body: `${s.title || "Canlı oturum"} · ${s.time} · ${courseTitle}`, url: s.link || "/panel/takvim", tag: `sess-${p.id}-${i}` });
+      await notifyUser(userId, { title: "Birazdan canlı oturumun var", body: `${s.title || "Canlı oturum"} · ${s.time} · ${courseTitle}`, url: s.link || "/panel/takvim", tag: `sess-${p.id}-${i}` });
       sent++;
     }
   }
@@ -60,7 +60,7 @@ export async function runFrequent() {
       const diff = (due.getTime() - now) / 60000;
       if (diff < -15 || diff > 60) continue;
       if (!(await once(`due1h:${a.id}:${userId}:${today}`))) continue;
-      await notifyUser(userId, { title: "⏰ Görevde son 1 saat", body: `${a.title} · ${fmtDateTime(due)}`, url: `/kurs-izle/${a.courseId}?gorev=${a.id}`, tag: `due-${a.id}` });
+      await notifyUser(userId, { title: "Görevde son 1 saat", body: `${a.title} · ${fmtDateTime(due)}`, url: `/kurs-izle/${a.courseId}?gorev=${a.id}`, tag: `due-${a.id}` });
       sent++;
     }
   }
@@ -89,7 +89,7 @@ export async function runDaily() {
       const due = a.extraDays > 0 ? taskDue(await studentTaskBase(s.userId, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
       if (!due || due.toISOString().slice(0, 10) !== tISO) continue;
       const url = `/kurs-izle/${a.courseId}?gorev=${a.id}`;
-      await notifyUser(s.userId, { title: "⏰ Teslim yaklaşıyor", body: `${a.title} · yarın ${fmtDateTime(due)}`, url, tag: `due-${a.id}` });
+      await notifyUser(s.userId, { title: "Teslim yaklaşıyor", body: `${a.title} · yarın ${fmtDateTime(due)}`, url, tag: `due-${a.id}` });
       await sendMail({ type: "due_reminder", to: s.email, subject: `Görev son teslim yarın: ${a.title}`, html: emailTemplate({ title: "Teslim yaklaşıyor", html: `<p>Merhaba ${s.name},</p><p><b>${a.title}</b> görevinin son teslimi <b>${fmtDateTime(due)}</b>.</p>`, buttonText: "Göreve git", buttonUrl: siteUrl(url) }) });
       dueSent++;
     }
@@ -111,7 +111,7 @@ export async function runDaily() {
   }
   for (const [userId, u] of byUser) {
     await sendMail({ type: "event_reminder", to: u.email, subject: `Yarınki etkinliklerin (${u.items.length})`, html: emailTemplate({ title: `Yarın ${u.items.length} etkinliğin var`, html: `<p>Merhaba ${u.name},</p><ul>${u.items.join("")}</ul>`, buttonText: "Takvimim", buttonUrl: siteUrl("/panel/takvim") }) });
-    await notifyUser(userId, { title: "📅 Yarın canlı oturumun var", body: `${u.items.length} etkinlik`, url: "/panel/takvim", tag: `ev-${tISO}` });
+    await notifyUser(userId, { title: "Yarın canlı oturumun var", body: `${u.items.length} etkinlik`, url: "/panel/takvim", tag: `ev-${tISO}` });
     eventSent++;
   }
   await logNotification({ channel: "reminder", title: "Günlük hatırlatmalar", target: "öğrenciler", sentCount: dueSent + eventSent });

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { logout } from "@/app/actions/auth";
+import { NotificationWatcher } from "@/components/panel/NotificationWatcher";
 
 export type NavItem = { href: string; label: string; icon: IconName; badge?: number; exact?: boolean };
 
@@ -125,6 +126,7 @@ export function Shell({
       )}
 
       <div className="mx-auto max-w-[1310px] px-4 py-6 lg:px-6 lg:py-7">{children}</div>
+      <NotificationWatcher />
     </div>
   );
 }

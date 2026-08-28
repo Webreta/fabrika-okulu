@@ -3,23 +3,36 @@ import { teacherOverview, teacherSubmissions, teacherQuizAttempts } from "@/lib/
 import { PageTitle, Kpi, Tabs } from "@/components/panel/ui";
 import { SubmissionCard } from "@/components/teacher/SubmissionCard";
 import { QuizAttemptRow } from "@/components/teacher/QuizAttemptRow";
+import { Icon } from "@/components/site/Icon";
 
 export default async function AdminSubmissionsPage({ searchParams }: { searchParams: Promise<{ course?: string; sekme?: string }> }) {
   const { course, sekme = "gorev" } = await searchParams;
   const user = await requireAdmin();
   const courseId = Number(course) || undefined;
   const [ov, subs, attempts] = await Promise.all([teacherOverview(user), teacherSubmissions(user, courseId, 200), teacherQuizAttempts(user, courseId, 200)]);
-  const pendingSubs = subs.filter((r) => r.s.status === "pending").length;
-  const pendingQuiz = attempts.filter((r) => r.at.status === "pending_review").length;
   const q = courseId ? `&course=${courseId}` : "";
   return (
     <>
-      <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları (tüm kurslar)" />
-      <div className="mb-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları (tüm kurslar)" />
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <a
+            href={`/api/admin/disa-aktar/gonderimler?tur=gorev${courseId ? `&course=${courseId}` : ""}`}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Icon name="download" className="size-4" /> Görevler (Excel)
+          </a>
+          <a
+            href={`/api/admin/disa-aktar/gonderimler?tur=sinav${courseId ? `&course=${courseId}` : ""}`}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Icon name="download" className="size-4" /> Sınavlar (Excel)
+          </a>
+        </div>
+      </div>
+      <div className="mb-5 grid grid-cols-2 gap-4">
         <Kpi label="Görev teslimi" value={subs.length} icon="task" />
-        <Kpi label="Değerlendirilmemiş görev" value={pendingSubs} icon="clock" color="amber" />
         <Kpi label="Sınav sonucu" value={attempts.length} icon="quiz" color="sky" />
-        <Kpi label="Değerlendirme bekleyen sınav" value={pendingQuiz} icon="alert" color={pendingQuiz ? "red" : "green"} />
       </div>
       <form className="mb-4 flex gap-2" method="get">
         <input type="hidden" name="sekme" value={sekme} />

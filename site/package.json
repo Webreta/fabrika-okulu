@@ -17,6 +17,7 @@
     "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
+    "@vimeo/player": "^2.30.4",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "iyzipay": "^2.0.64",

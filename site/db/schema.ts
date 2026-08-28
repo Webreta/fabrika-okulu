@@ -789,6 +789,24 @@ export const notes = pgTable(
   (t) => [index("notes_user_idx").on(t.userId, t.courseId)]
 );
 
+// ---------- Kurs önerileri (öğrenci → kurs; cevaplanmaz, kurs başına en çok 5) ----------
+
+export const courseSuggestions = pgTable(
+  "course_suggestions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("course_suggestions_user_idx").on(t.userId, t.courseId)]
+);
+
 // ---------- Tipler ----------
 
 export type User = typeof users.$inferSelect;

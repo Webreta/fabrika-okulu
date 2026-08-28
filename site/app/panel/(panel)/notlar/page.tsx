@@ -10,7 +10,7 @@ export default async function NotesPage() {
   const rows = await db.select({ n: notes, courseTitle: courses.title }).from(notes).leftJoin(courses, eq(notes.courseId, courses.id)).where(eq(notes.userId, user.id)).orderBy(desc(notes.createdAt));
   return (
     <>
-      <PageTitle title="Notlarım" sub="Ders içinde aldığın zaman damgalı notlar ve genel notların" />
+      <PageTitle title="Notlarım" />
       {rows.length === 0 ? (
         <Empty text="Henüz notun yok. Ders izlerken 'Notlar' sekmesinden not alabilirsin." />
       ) : (

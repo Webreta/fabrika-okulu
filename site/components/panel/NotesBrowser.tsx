@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { relTime } from "@/lib/format";
 import { Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
@@ -9,14 +9,17 @@ import { NoteActions } from "@/components/panel/NoteActions";
 
 export type BrowserNote = { id: number; courseId: number | null; courseTitle: string | null; lessonId: number | null; lessonTitle: string; seconds: number | null; text: string; createdAt: string };
 
+const PAGE_SIZE = 20;
+
 function fmtSecs(s: number) { return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`; }
 function norm(s: string) { return s.toLocaleLowerCase("tr-TR"); }
 
-/** Notlarım: kurs / ders filtresi + anlık arama (sayfa yenilenmeden) */
+/** Notlarım: kurs / ders filtresi + anlık arama (sayfa yenilenmeden), 20'şerli sayfalama */
 export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
   const [q, setQ] = useState("");
   const [courseId, setCourseId] = useState<number | "">("");
   const [lessonId, setLessonId] = useState<number | "">("");
+  const [page, setPage] = useState(1);
 
   const courses = useMemo(() => {
     const m = new Map<number, string>();
@@ -39,8 +42,15 @@ export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
     return true;
   });
 
+  // Filtre değişince ilk sayfaya dön
+  useEffect(() => { setPage(1); }, [q, courseId, lessonId]);
+
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageItems = list.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
   const groups = new Map<string, BrowserNote[]>();
-  for (const n of list) { const k = n.courseTitle ?? "Genel notlar"; groups.set(k, [...(groups.get(k) ?? []), n]); }
+  for (const n of pageItems) { const k = n.courseTitle ?? "Genel notlar"; groups.set(k, [...(groups.get(k) ?? []), n]); }
 
   return (
     <div className="space-y-5">
@@ -64,7 +74,8 @@ export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
       {list.length === 0 ? (
         <p className="card text-center text-muted">Eşleşen not yok.</p>
       ) : (
-        [...groups.entries()].map(([title, items]) => (
+        <>
+        {[...groups.entries()].map(([title, items]) => (
           <div key={title}>
             <h2 className="mb-2 font-bold text-navy-800">{title} <span className="text-xs font-normal text-muted">({items.length})</span></h2>
             <ul className="space-y-2">
@@ -89,7 +100,19 @@ export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
               })}
             </ul>
           </div>
-        ))
+        ))}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => setPage(current - 1)} disabled={current <= 1} className="flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold text-navy-800 hover:bg-surface disabled:opacity-40">
+              <Icon name="arrowLeft" className="size-4" /> Önceki
+            </button>
+            <span className="text-sm text-muted">Sayfa {current} / {totalPages}</span>
+            <button onClick={() => setPage(current + 1)} disabled={current >= totalPages} className="flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold text-navy-800 hover:bg-surface disabled:opacity-40">
+              Sonraki <Icon name="arrowRight" className="size-4" />
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

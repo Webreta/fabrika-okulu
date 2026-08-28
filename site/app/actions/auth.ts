@@ -30,6 +30,11 @@ function safeNext(next: string | undefined, area: Area) {
   return next;
 }
 
+/** Rolün varsayılan ana paneli: admin ve eğitmen doğrudan yönetim paneline gider. */
+function homeForRole(role: "admin" | "teacher" | "student") {
+  return role === "admin" ? "/admin" : role === "teacher" ? "/egitmen" : "/panel";
+}
+
 async function clientIp() {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -72,7 +77,11 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
 
   await createSession(user.id, remember !== undefined ? remember === "1" : true);
-  redirect(safeNext(next, area));
+  // Yönlendirme role göre: admin → /admin, eğitmen → /egitmen, öğrenci → /panel.
+  // Geçerli bir derin bağlantı (next) verildiyse ona öncelik verilir.
+  const home = homeForRole(user.role);
+  const dest = next && next.startsWith("/") && !next.startsWith("//") ? next : home;
+  redirect(dest);
 }
 
 const registerSchema = z.object({
@@ -188,7 +197,8 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
   await db.delete(passwordResets).where(eq(passwordResets.userId, pr.userId));
   await destroyAllSessions(pr.userId);
   await createSession(pr.userId, true);
-  redirect("/panel?sifirlandi=1");
+  const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, pr.userId)).limit(1);
+  redirect(`${homeForRole(u?.role ?? "student")}?sifirlandi=1`);
 }
 
 /** Öğrenci + eğitmen paneli ortak hesap güncelleme */

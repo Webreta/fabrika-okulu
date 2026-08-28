@@ -57,25 +57,44 @@ export async function quizPayload(quizId: number, userId: number) {
   const finished = attempts.filter((a) => a.status !== "in_progress");
   const base = await studentTaskBase(userId, q.courseId);
   const due = q.extraDays && q.extraDays > 0 ? taskDue(base, q.extraDays) : deadlineOf(q.endDate);
-  // Değerlendirilmiş açık uçlu soruların özeti (doğru cevap sızdırılmaz; yalnız kendi cevabı + puan + geri bildirim)
+  // Tamamlanmış deneme varsa: sınavın tümü salt-okunur tekrar görüntülenebilir.
+  // Doğru cevaplar YALNIZCA tamamlandıktan sonra istemciye gider (çözerken sızmaz).
   const lastDone = finished[finished.length - 1];
-  const review = lastDone?.status === "completed" && Object.keys(lastDone.grades).length
-    ? qs.filter((x) => x.type === "open_ended").map((x) => ({
-        text: x.text,
-        points: x.points,
-        answer: lastDone.answers[String(x.id)] != null ? String(lastDone.answers[String(x.id)]) : null,
-        grade: lastDone.grades[String(x.id)] ?? null,
-      }))
+  const review = lastDone
+    ? qs.map((x) => {
+        const a = lastDone.answers[String(x.id)];
+        const yourAnswer =
+          a === undefined || a === null || a === ""
+            ? null
+            : x.type === "multiple_choice"
+              ? (x.options[Number(a)] ?? String(a))
+              : x.type === "true_false"
+                ? (a === "true" ? "Doğru" : "Yanlış")
+                : String(a);
+        const correctAnswer =
+          x.type === "multiple_choice"
+            ? (Array.isArray(x.correct) ? x.correct.map((i) => x.options[i]).filter(Boolean).join(", ") : "")
+            : x.type === "true_false"
+              ? (String(x.correct) === "true" ? "Doğru" : "Yanlış")
+              : "";
+        const isCorrect =
+          x.type === "multiple_choice"
+            ? (Array.isArray(x.correct) && x.correct.includes(Number(a)))
+            : x.type === "true_false"
+              ? String(a) === String(x.correct)
+              : null; // açık uçlu: doğru/yanlış yok
+        return { text: x.text, type: x.type, options: x.options, image: x.image, points: x.points, yourAnswer, correctAnswer, isCorrect, explanation: x.explanation ?? "" };
+      })
     : [];
   return {
     quiz: q,
-    // correct cevaplar istemciye gitmez
+    // correct cevaplar çözerken istemciye gitmez (yalnız review'da, tamamlandıktan sonra)
     questions: qs.map((x) => ({ id: x.id, text: x.text, type: x.type, options: x.options, image: x.image, points: x.points })),
     attempts: finished,
-    canAttempt: q.maxAttempts === 0 || finished.length < q.maxAttempts,
+    // Tek deneme hakkı: bir kez tamamlandıysa tekrar çözülemez
+    canAttempt: finished.length === 0,
     due,
     review,
-    feedback: lastDone?.feedback ?? "",
   };
 }
 

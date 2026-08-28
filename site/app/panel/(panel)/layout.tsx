@@ -27,7 +27,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "task", badge: pending || undefined },
   ];
   const secondary: NavItem[] = [
-    { href: "/panel/bildirim", label: "Mesajlarım", icon: "mail", badge: unread || undefined },
+    { href: "/panel/bildirim", label: "Bildirimler", icon: "mail", badge: unread || undefined },
     { href: "/panel/notlar", label: "Notlarım", icon: "edit" },
     { href: "/panel/sertifika", label: "Sertifikalarım", icon: "award" },
     { href: "/panel/belge", label: "Belge Yükle", icon: "upload" },

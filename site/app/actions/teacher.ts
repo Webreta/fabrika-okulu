@@ -56,11 +56,11 @@ export async function saveCourseAction(raw: unknown): Promise<ActionResult> {
     const studs = await db.select({ id: users.id, email: users.email }).from(enrollments).innerJoin(users, eq(enrollments.userId, users.id)).where(and(eq(enrollments.courseId, r.courseId), eq(enrollments.status, "active")));
     const ids = studs.map((s) => s.id);
     for (const q of r.created.quizzes) {
-      await notifyUsers(ids, { title: "📝 Yeni sınav", body: `${q.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?quiz=${q.id}`, tag: `qz-${q.id}` });
+      await notifyUsers(ids, { title: "Yeni sınav", body: `${q.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?quiz=${q.id}`, tag: `qz-${q.id}` });
       for (const st of studs) await sendMail({ type: "new_quiz", to: st.email, subject: `Yeni sınav: ${q.title}`, html: emailTemplate({ title: "Yeni sınav atandı", html: `<p><b>${input.title}</b> programına <b>${q.title}</b> sınavı eklendi.</p>`, buttonText: "Sınava git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?quiz=${q.id}`) }) });
     }
     for (const a of r.created.assignments) {
-      await notifyUsers(ids, { title: "📚 Yeni görev", body: `${a.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?gorev=${a.id}`, tag: `asg-${a.id}` });
+      await notifyUsers(ids, { title: "Yeni görev", body: `${a.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?gorev=${a.id}`, tag: `asg-${a.id}` });
       for (const st of studs) await sendMail({ type: "new_assignment", to: st.email, subject: `Yeni görev: ${a.title}`, html: emailTemplate({ title: "Yeni görev atandı", html: `<p><b>${input.title}</b> programına <b>${a.title}</b> görevi eklendi.</p>`, buttonText: "Göreve git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?gorev=${a.id}`) }) });
     }
   }
@@ -134,62 +134,12 @@ export async function answerQuestion(studentId: number, courseId: number, text: 
   const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId)).limit(1);
   const [s] = await db.select().from(users).where(eq(users.id, studentId)).limit(1);
   const url = `/kurs-izle/${courseId}`;
-  await notifyUser(studentId, { title: `💬 Sorun yanıtlandı — ${c?.title ?? ""}`, body: t.slice(0, 100), url, tag: `qa-${courseId}` });
+  await notifyUser(studentId, { title: `Sorun yanıtlandı: ${c?.title ?? ""}`, body: t.slice(0, 100), url, tag: `qa-${courseId}` });
   if (s) {
     await sendMail({ type: "question_answered", to: s.email, subject: "Sorun cevaplandı", html: emailTemplate({ title: "Sorun cevaplandı", html: `<p><b>${c?.title}</b> programındaki sorun yanıtlandı:</p><blockquote>${t}</blockquote>`, buttonText: "Cevabı gör", buttonUrl: siteUrl(url) }) });
   }
   revalidatePath("/egitmen/sorular");
   return { ok: true };
-}
-
-export async function gradeSubmission(submissionId: number, score: number, feedback: string): Promise<ActionResult> {
-  const user = await requireTeacher();
-  const [row] = await db.select({ s: assignmentSubmissions, a: assignments }).from(assignmentSubmissions).innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id)).where(eq(assignmentSubmissions.id, submissionId)).limit(1);
-  if (!row || !(await ownsCourse(user, row.a.courseId))) return { ok: false, error: "Yetki yok." };
-  const max = row.a.isGraded ? row.a.maxScore : 100;
-  const sc = Math.max(0, Math.min(max, Math.round(score)));
-  await db.update(assignmentSubmissions).set({ score: sc, feedback: feedback.slice(0, 5000), status: "graded", gradedBy: user.id, gradedAt: new Date() }).where(eq(assignmentSubmissions.id, submissionId));
-  const url = `/kurs-izle/${row.a.courseId}?gorev=${row.a.id}`;
-  await notifyUser(row.s.userId, { title: "✅ Görevin değerlendirildi", body: `${row.a.title} · ${sc}/${max}`, url, tag: `asgg-${submissionId}` });
-  const [st] = await db.select().from(users).where(eq(users.id, row.s.userId)).limit(1);
-  if (st) await sendMail({ type: "assignment_graded", to: st.email, subject: `Görevin değerlendirildi: ${row.a.title}`, html: emailTemplate({ title: "Görevin değerlendirildi", html: `<p><b>${row.a.title}</b> · Puan: <b>${sc}/${max}</b></p>${feedback ? `<p>${feedback}</p>` : ""}`, buttonText: "Göreve git", buttonUrl: siteUrl(url) }) });
-  revalidatePath("/egitmen/gonderim");
-  return { ok: true };
-}
-
-export async function gradeOpenEnded(attemptId: number, grades: Record<string, { points: number; feedback: string }>, feedback = ""): Promise<ActionResult> {
-  const user = await requireTeacher();
-  const [row] = await db.select({ at: quizAttempts, q: quizzes }).from(quizAttempts).innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id)).where(eq(quizAttempts.id, attemptId)).limit(1);
-  if (!row || !(await ownsCourse(user, row.q.courseId))) return { ok: false, error: "Yetki yok." };
-  const qs = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, row.q.id));
-  let total = 0, earned = 0;
-  for (const x of qs) {
-    total += x.points;
-    const a = row.at.answers[String(x.id)];
-    if (x.type === "open_ended") {
-      const g = grades[String(x.id)];
-      earned += Math.max(0, Math.min(x.points, Number(g?.points ?? 0)));
-    } else if (x.type === "multiple_choice") {
-      if (Array.isArray(x.correct) && x.correct.includes(Number(a))) earned += x.points;
-    } else if (String(a) === String(x.correct)) earned += x.points;
-  }
-  const score = total ? Math.round((earned / total) * 10000) / 100 : 0;
-  const passed = row.q.passScore === 0 ? true : score >= row.q.passScore;
-  const fb = feedback.trim().slice(0, 5000);
-  await db.update(quizAttempts).set({ score: score.toFixed(2), earnedPoints: earned.toFixed(2), totalPoints: total, passed, status: "completed", grades, feedback: fb }).where(eq(quizAttempts.id, attemptId));
-  const url = `/kurs-izle/${row.q.courseId}?quiz=${row.q.id}`;
-  await notifyUser(row.at.userId, { title: "✅ Sınavın değerlendirildi", body: `${row.q.title} · %${score}${fb ? " · eğitmenden cevap var" : ""}`, url, tag: `qzg-${attemptId}` });
-  const [st] = await db.select().from(users).where(eq(users.id, row.at.userId)).limit(1);
-  if (st) {
-    await sendMail({
-      type: "quiz_graded",
-      to: st.email,
-      subject: `Sınavın değerlendirildi: ${row.q.title}`,
-      html: emailTemplate({ title: "Sınavın değerlendirildi", html: `<p><b>${row.q.title}</b> · Puan: <b>%${score}</b></p>${fb ? `<p>${fb}</p>` : ""}`, buttonText: "Sınava git", buttonUrl: siteUrl(url) }),
-    });
-  }
-  revalidatePath("/egitmen/gonderim");
-  return { ok: true, message: `Puan: %${score}` };
 }
 
 export async function quizAttemptDetail(attemptId: number) {
@@ -308,7 +258,7 @@ export async function issueCoupon(input: { docId?: number; email?: string; cours
   await db.insert(coupons).values({ code, percent, userId, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: 1, expiresAt });
   if (input.docId) await db.update(documents).set({ status: "coupon_issued", couponCode: code, courseId: input.courseId }).where(eq(documents.id, input.docId));
   const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  await notifyUser(userId, { title: "🎁 İndirim kuponun hazır", body: `%${percent} indirim · ${code}`, url: "/panel/belge", tag: `coupon-${code}` });
+  await notifyUser(userId, { title: "İndirim kuponun hazır", body: `%${percent} indirim · ${code}`, url: "/panel/belge", tag: `coupon-${code}` });
   if (u) await sendMail({ type: "coupon", to: u.email, subject: "İndirim kuponun hazır", html: emailTemplate({ title: "İndirim kuponun hazır 🎁", html: `<p>%${percent} indirim kuponu: <b style="font-size:20px">${code}</b></p><p>Sepette kupon alanına yaz.${expiresAt ? ` Son kullanım: ${expiresAt.toLocaleDateString("tr-TR")}` : ""}</p>`, buttonText: "Programları gör", buttonUrl: siteUrl("/kesfet") }) });
   revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler");
   return { ok: true, message: `Kupon oluşturuldu: ${code}` };
@@ -337,7 +287,7 @@ export async function notifyPeriodStudents(periodId: number): Promise<ActionResu
   if (!p || !(await ownsCourse(user, p.courseId))) return { ok: false, error: "Yetki yok." };
   const ids = (await db.select({ id: periodEnrollments.userId }).from(periodEnrollments).where(eq(periodEnrollments.periodId, periodId))).map((r) => r.id);
   const next = (p.schedule ?? []).find((s) => s.date >= new Date().toISOString().slice(0, 10) && s.link);
-  const n = await notifyUsers(ids, { title: "📅 Ders programı güncellendi", body: next ? `${next.date} ${next.time} ${next.title}` : p.name, url: next?.link || "/panel/takvim", tag: `period-${periodId}` });
+  const n = await notifyUsers(ids, { title: "Ders programı güncellendi", body: next ? `${next.date} ${next.time} ${next.title}` : p.name, url: next?.link || "/panel/takvim", tag: `period-${periodId}` });
   return { ok: true, message: `${n} öğrenciye bildirildi.` };
 }
 

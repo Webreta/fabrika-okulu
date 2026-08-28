@@ -81,7 +81,7 @@ export async function enrollUser(opts: {
         }),
       });
       await notifyUser(u.id, {
-        title: "🎉 Programa kaydın tamamlandı",
+        title: "Programa kaydın tamamlandı",
         body: c.title,
         url: `/kurs-izle/${c.id}`,
         tag: `enroll-${c.id}`,

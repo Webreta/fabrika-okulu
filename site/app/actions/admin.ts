@@ -249,7 +249,7 @@ export async function publishSurvey(id: number, publish: boolean): Promise<Actio
   if (publish) {
     // Yayına girince tüm öğrencilere bildirim; panel popup'ı da girişte otomatik görünür
     const ids = (await db.select({ id: users.id }).from(users).where(eq(users.role, "student"))).map((r) => r.id);
-    await notifyUsers(ids, { title: "📋 Yeni anket yayında", body: s.title, url: `/panel/anket/${s.id}`, tag: `survey-${s.id}` });
+    await notifyUsers(ids, { title: "Yeni anket yayında", body: s.title, url: `/panel/anket/${s.id}`, tag: `survey-${s.id}` });
   }
   revalidatePath("/admin/anketler"); revalidatePath("/panel/anket"); revalidatePath("/panel");
   return { ok: true, message: publish ? "Anket yayınlandı, öğrencilere bildirildi." : "Anket yayından kaldırıldı." };

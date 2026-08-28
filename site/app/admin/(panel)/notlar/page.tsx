@@ -35,6 +35,12 @@ export default async function AdminNotesPage({ searchParams }: { searchParams: P
         <input name="s" defaultValue={q} placeholder="Öğrenci / e-posta / not içinde ara" className="input max-w-xs" />
         <select name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm kurslar</option>{cs.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
         <button className="btn-secondary">Filtrele</button>
+        <a
+          href={`/api/admin/disa-aktar/notlar?${new URLSearchParams({ ...(q ? { s: q } : {}), ...(courseId ? { course: String(courseId) } : {}) }).toString()}`}
+          className="btn-primary ml-auto flex items-center gap-2"
+        >
+          <Icon name="download" className="size-4" /> Excel indir
+        </a>
       </form>
       <div className="card overflow-x-auto p-0">
         <table className="table">

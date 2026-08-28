@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  progress, lessons, quizzes, quizQuestions, quizAttempts, assignments, assignmentSubmissions, questions, courses, instructors,
+  progress, lessons, quizzes, quizQuestions, quizAttempts, assignments, assignmentSubmissions, questions, courses, instructors, courseSuggestions,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
 import { playerAccess } from "@/lib/player";
@@ -14,6 +14,7 @@ import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
 import { taskDue, deadlineOf } from "@/lib/course-logic";
 import { studentTaskBase } from "@/lib/data/student";
 import { autoIssueCertificates } from "@/lib/cert-issue";
+import { SUGGESTION_MAX_LEN, SUGGESTION_MAX_COUNT, type SuggestionItem } from "@/lib/suggestions";
 
 async function access(courseId: number) {
   const user = await getCurrentUser();
@@ -82,9 +83,13 @@ export async function answerQuizQuestion(quizId: number, questionId: number, ans
 
 export type QuizResult =
   | { ok: false; error: string }
-  | { ok: true; pending: true }
-  | { ok: true; pending: false; score: number; earned: number; total: number; passed: boolean; correct: number; count: number };
+  | { ok: true; score: number; earned: number; total: number; passed: boolean; correct: number; count: number };
 
+/**
+ * Sınav gönderimi. Tek deneme hakkı vardır (tekrar çözülemez). Test/D-Y soruları
+ * otomatik puanlanır; açık uçlu sorular yalnızca kaydedilir (puanlanmaz, eğitmen değerlendirmesi yoktur).
+ * Puan yalnızca otomatik puanlanan soruların üzerinden hesaplanır.
+ */
 export async function submitQuiz(quizId: number, answers: Record<string, number | string>): Promise<QuizResult> {
   const [q] = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).limit(1);
   if (!q) return { ok: false, error: "Sınav bulunamadı." };
@@ -97,14 +102,16 @@ export async function submitQuiz(quizId: number, answers: Record<string, number 
     .from(quizAttempts)
     .where(and(eq(quizAttempts.quizId, quizId), eq(quizAttempts.userId, ctx.user.id)));
   const finished = prev.filter((p) => p.status !== "in_progress").length;
-  if (q.maxAttempts > 0 && finished >= q.maxAttempts) return { ok: false, error: "Deneme hakkın doldu." };
+  if (finished > 0) return { ok: false, error: "Bu sınavı zaten tamamladın." };
 
   const qs = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quizId));
-  let total = 0, earned = 0, correct = 0, hasOpen = false;
+  // total: yalnızca otomatik puanlanan (test/D-Y) soruların puanı; açık uçlu puana katılmaz
+  let total = 0, earned = 0, correct = 0, count = 0;
   for (const x of qs) {
-    total += x.points;
     const a = answers[String(x.id)];
-    if (x.type === "open_ended") { hasOpen = true; continue; }
+    if (x.type === "open_ended") continue;
+    total += x.points;
+    count++;
     let ok = false;
     if (x.type === "multiple_choice") {
       const idx = typeof a === "number" ? a : parseInt(String(a), 10);
@@ -119,30 +126,17 @@ export async function submitQuiz(quizId: number, answers: Record<string, number 
   await db.insert(quizAttempts).values({
     quizId,
     userId: ctx.user.id,
-    score: hasOpen ? null : score.toFixed(2),
+    score: score.toFixed(2),
     totalPoints: total,
     earnedPoints: earned.toFixed(2),
-    passed: hasOpen ? null : passed,
-    status: hasOpen ? "pending_review" : "completed",
+    passed,
+    status: "completed",
     answers,
     completedAt: new Date(),
   });
   revalidatePath(`/kurs-izle/${q.courseId}`);
-
-  // Yönetici + eğitmen bilgilendirme (son tarih geçtiyse "geç teslim" olarak işaretle)
-  const qDue = q.extraDays && q.extraDays > 0 ? taskDue(await studentTaskBase(ctx.user.id, q.courseId), q.extraDays) : deadlineOf(q.endDate);
-  const qLate = !!qDue && qDue.getTime() < Date.now();
-  const teacher = await courseTeacherUserId(q.courseId);
-  if (teacher) {
-    await notifyUser(teacher, { title: hasOpen ? "📝 Değerlendirme bekleyen sınav" : "📝 Sınav tamamlandı", body: `${ctx.user.name} · ${q.title}${qLate ? " · ⏰ Geç teslim" : ""}`, url: `/egitmen/gonderim#sinav`, tag: `qz-${quizId}` });
-  }
-  const admins = await adminEmails();
-  if (admins.length) {
-    await sendMail({ type: "quiz_completed", to: admins, subject: `Sınav tamamlandı: ${ctx.user.name}${qLate ? " (geç teslim)" : ""}`, html: emailTemplate({ title: "Sınav tamamlandı", html: `<p><b>${ctx.user.name}</b> "${q.title}" sınavını tamamladı.${hasOpen ? " Açık uçlu sorular değerlendirme bekliyor." : ` Puan: %${score}`}${qLate ? " <b>Son tarihten sonra teslim edildi.</b>" : ""}</p>`, buttonText: "Sonuçlar", buttonUrl: siteUrl("/admin/gonderimler") }) });
-  }
   await autoIssueCertificates(ctx.user.id, q.courseId);
-  if (hasOpen) return { ok: true, pending: true };
-  return { ok: true, pending: false, score, earned, total, passed, correct, count: qs.filter((x) => x.type !== "open_ended").length };
+  return { ok: true, score, earned, total, passed, correct, count };
 }
 
 export async function uploadAssignmentFile(formData: FormData) {
@@ -197,7 +191,7 @@ export async function submitAssignment(input: {
   const aLate = !!aDue && aDue.getTime() < Date.now();
   const teacher = await courseTeacherUserId(a.courseId);
   if (teacher) {
-    await notifyUser(teacher, { title: aLate ? "📤 Geç görev gönderimi" : "📤 Yeni görev gönderimi", body: `${ctx.user.name} · ${a.title}${aLate ? " · ⏰ Geç teslim" : ""}`, url: `/egitmen/gonderim#gorev`, tag: `asg-${a.id}` });
+    await notifyUser(teacher, { title: aLate ? "Geç görev gönderimi" : "Yeni görev gönderimi", body: `${ctx.user.name} · ${a.title}${aLate ? " · Geç teslim" : ""}`, url: `/egitmen/gonderim#gorev`, tag: `asg-${a.id}` });
   }
   const admins = await adminEmails();
   if (admins.length) {
@@ -212,6 +206,39 @@ export async function submitAssignment(input: {
   return { ok: true };
 }
 
+/** Kurs önerisi ekle. Kurs başına en çok 5, her biri en çok 1000 karakter. Cevaplanmaz. */
+export async function addSuggestion(
+  courseId: number,
+  text: string,
+): Promise<{ ok: true; items: SuggestionItem[] } | { ok: false; error: string }> {
+  const ctx = await access(courseId);
+  if (!ctx) return { ok: false, error: "Erişim yok." };
+  if (ctx.preview) return { ok: false, error: "Önizleme modunda öneri gönderilemez." };
+  const t = text.trim().slice(0, SUGGESTION_MAX_LEN);
+  if (t.length < 3) return { ok: false, error: "Önerini yaz." };
+
+  const mine = await db
+    .select({ id: courseSuggestions.id })
+    .from(courseSuggestions)
+    .where(and(eq(courseSuggestions.userId, ctx.user.id), eq(courseSuggestions.courseId, courseId)));
+  if (mine.length >= SUGGESTION_MAX_COUNT) {
+    return { ok: false, error: `Bu kurs için en fazla ${SUGGESTION_MAX_COUNT} öneri bırakabilirsin.` };
+  }
+
+  await db.insert(courseSuggestions).values({ userId: ctx.user.id, courseId, text: t });
+  revalidatePath(`/kurs-izle/${courseId}`);
+  return { ok: true, items: await listSuggestions(courseId, ctx.user.id) };
+}
+
+async function listSuggestions(courseId: number, userId: number): Promise<SuggestionItem[]> {
+  const rows = await db
+    .select({ id: courseSuggestions.id, text: courseSuggestions.text, createdAt: courseSuggestions.createdAt })
+    .from(courseSuggestions)
+    .where(and(eq(courseSuggestions.userId, userId), eq(courseSuggestions.courseId, courseId)))
+    .orderBy(desc(courseSuggestions.id));
+  return rows.map((r) => ({ id: r.id, text: r.text, createdAt: r.createdAt.toISOString() }));
+}
+
 export async function askQuestion(courseId: number, lessonId: number | null, lessonTitle: string, text: string) {
   const ctx = await access(courseId);
   if (!ctx) return { ok: false, error: "Erişim yok." };
@@ -220,7 +247,7 @@ export async function askQuestion(courseId: number, lessonId: number | null, les
   await db.insert(questions).values({ userId: ctx.user.id, courseId, lessonId, lessonTitle, text: t });
   const teacher = await courseTeacherUserId(courseId);
   if (teacher) {
-    await notifyUser(teacher, { title: "❓ Yeni soru", body: `${ctx.user.name}: ${t.slice(0, 80)}`, url: `/egitmen/sorular?chat=${ctx.user.id}_${courseId}`, tag: `qa-${ctx.user.id}-${courseId}` });
+    await notifyUser(teacher, { title: "Yeni soru", body: `${ctx.user.name}: ${t.slice(0, 80)}`, url: `/egitmen/sorular?chat=${ctx.user.id}_${courseId}`, tag: `qa-${ctx.user.id}-${courseId}` });
   }
   const admins = await adminEmails();
   if (admins.length) {

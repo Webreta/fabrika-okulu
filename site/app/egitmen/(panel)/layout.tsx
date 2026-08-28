@@ -19,7 +19,7 @@ export default async function TeacherLayout({ children }: Readonly<{ children: R
   const secondary: NavItem[] = [
     { href: "/egitmen/editor/yeni", label: "Yeni Eğitim", icon: "plus" },
     { href: "/egitmen/takvim", label: "Takvim", icon: "calendar" },
-    { href: "/egitmen/bildirim", label: "Mesajlarım", icon: "mail", badge: unread || undefined },
+    { href: "/egitmen/bildirim", label: "Bildirimler", icon: "mail", badge: unread || undefined },
   ];
   if (certs.length) secondary.push({ href: "/egitmen/sertifika", label: "Sertifikalar", icon: "award" });
   if (user.isSuperTeacher) {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { gradeSubmission, saveTranscript } from "@/app/actions/teacher";
+import { useState } from "react";
+import { saveTranscript } from "@/app/actions/teacher";
 import { fmtDateTime } from "@/lib/format";
 import { Chip } from "@/components/panel/ui";
 
@@ -57,15 +56,9 @@ async function transcribe(url: string, onProgress: (msg: string) => void): Promi
 }
 
 export function SubmissionCard({ row }: { row: SubmissionRow }) {
-  const [open, setOpen] = useState(false);
-  const [score, setScore] = useState(row.score ?? (row.isGraded ? 0 : 100));
-  const [feedback, setFeedback] = useState(row.feedback);
   const [tr, setTr] = useState<Record<string, string>>(row.transcript ?? {});
   const [busy, setBusy] = useState<number | null>(null);
   const [progress, setProgress] = useState("");
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  const max = row.isGraded ? row.maxScore : 100;
   const doTranscribe = async (i: number) => {
     setBusy(i);
     setProgress("Hazırlanıyor…");
@@ -86,7 +79,7 @@ export function SubmissionCard({ row }: { row: SubmissionRow }) {
           <p className="font-semibold text-navy-800">{row.title}</p>
           <p className="text-xs text-muted">{row.student} · {row.course} · {fmtDateTime(row.at)}</p>
         </div>
-        <Chip color={row.status === "graded" ? "green" : "amber"}>{row.status === "graded" ? `Değerlendirildi · ${row.score}/${max}` : "Bekliyor"}</Chip>
+        <Chip color="sky">Gönderildi</Chip>
       </div>
       {row.text && <p className="mt-3 whitespace-pre-line rounded-lg bg-surface p-3 text-sm">{row.text}</p>}
       {row.files.length > 0 && <ul className="mt-2 space-y-1 text-sm">{row.files.map((f, i) => <li key={i}><a href={f.url} target="_blank" className="text-sky-600 underline">📎 {f.name}</a></li>)}</ul>}
@@ -97,15 +90,6 @@ export function SubmissionCard({ row }: { row: SubmissionRow }) {
           {tr[i] && <p className="mt-1 rounded-lg bg-surface p-2 text-xs text-muted">{tr[i]}</p>}
         </div>
       ))}
-      {row.status === "graded" && row.feedback && <p className="mt-2 text-sm text-muted">Geri bildirim: {row.feedback}</p>}
-      <button onClick={() => setOpen(!open)} className="mt-3 text-sm font-semibold text-navy-800">{open ? "▾" : "▸"} {row.status === "graded" ? "Yeniden değerlendir" : "Değerlendir"}</button>
-      {open && (
-        <div className="mt-2 space-y-2 rounded-lg border border-line p-3">
-          <div className="flex items-center gap-2 text-sm"><span>Puan</span><input type="number" min={0} max={max} value={score} onChange={(e) => setScore(Number(e.target.value))} className="input w-24" /><span className="text-muted">/ {max}</span></div>
-          <textarea rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Geri bildirim" className="input" />
-          <button disabled={pending} onClick={() => start(async () => { await gradeSubmission(row.id, score, feedback); setOpen(false); router.refresh(); })} className="btn-primary btn-sm">{pending ? "Kaydediliyor…" : "Kaydet ve bildir"}</button>
-        </div>
-      )}
     </div>
   );
 }

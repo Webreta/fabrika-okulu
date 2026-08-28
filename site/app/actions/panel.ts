@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documents, notifications, pushSubscriptions, users } from "@/db/schema";
 import { requireUser, getCurrentUser } from "@/lib/auth/session";
@@ -38,10 +38,40 @@ export async function uploadDocument(_prev: FormState, formData: FormData): Prom
   return { ok: "Belgen alındı. İncelendikten sonra kupon kodun burada görünecek." };
 }
 
+/**
+ * Panel açıkken canlı bildirim yoklaması için son bildirimler.
+ * En yeni id'ye göre sıralı; watcher yeni gelenleri masaüstü + köşe bildirimi olarak gösterir.
+ */
+export async function recentNotifications(): Promise<{
+  items: { id: number; title: string; body: string; url: string }[];
+  unread: number;
+}> {
+  const user = await getCurrentUser();
+  if (!user) return { items: [], unread: 0 };
+  const rows = await db
+    .select({ id: notifications.id, title: notifications.title, body: notifications.body, url: notifications.url, read: notifications.read })
+    .from(notifications)
+    .where(eq(notifications.userId, user.id))
+    .orderBy(desc(notifications.id))
+    .limit(15);
+  return {
+    items: rows.map((r) => ({ id: r.id, title: r.title, body: r.body, url: r.url })),
+    unread: rows.filter((r) => !r.read).length,
+  };
+}
+
 export async function markNotificationRead(id: number) {
   const user = await getCurrentUser();
   if (!user) return;
   await db.update(notifications).set({ read: true }).where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
+}
+
+export async function deleteNotification(id: number) {
+  const user = await getCurrentUser();
+  if (!user) return;
+  await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
+  revalidatePath("/panel/bildirim");
+  revalidatePath("/egitmen/bildirim");
 }
 
 export async function markAllNotificationsRead() {

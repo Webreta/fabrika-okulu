@@ -112,10 +112,10 @@ const courseObjectSchema = z.object({
 
 /**
  * Kurs tipi kuralları:
- * - Esnek/ücretsiz (dönemsiz) kursta görev olmaz ve sınavlarda açık uçlu soru olamaz
- *   (öğrenci eğitmene bir şey göndermez; test/D-Y anında değerlendirilir).
- * - Takvimli kursta test/D-Y sınavlar otomatik değerlendirilir; açık uçlu sorular
- *   ayrı bir sınavda toplanır (karma olamaz), eğitmen değerlendirir.
+ * - Esnek/ücretsiz (dönemsiz) kursta görev olmaz.
+ * - Sınavlar her kurs tipinde anlık geri bildirimlidir: test/D-Y otomatik değerlendirilir,
+ *   açık uçlu sorular yalnızca kaydedilir (puanlanmaz, eğitmen değerlendirmesi yoktur).
+ *   Açık uçlu ve test/D-Y sorular aynı sınavda birlikte yer alabilir.
  */
 export const courseInputSchema = courseObjectSchema.superRefine((c, ctx) => {
   const scheduled = c.periods.filter((p) => p.name && p.startDate && p.endDate).length > 0;
@@ -124,16 +124,8 @@ export const courseInputSchema = courseObjectSchema.superRefine((c, ctx) => {
       if (!scheduled && l.type === "assign") {
         ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "type"], message: "görev yalnızca takvimli (dönemli) eğitimlerde olabilir" });
       }
-      if (l.type === "quiz") {
-        const filled = l.questions.filter((q) => q.text.trim());
-        const open = filled.filter((q) => q.qtype === "open_ended").length;
-        if (!scheduled && open > 0) {
-          ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "questions"], message: "esnek/ücretsiz eğitimde açık uçlu soru olamaz; yalnızca test ve doğru/yanlış" });
-        }
-        if (scheduled && open > 0 && open < filled.length) {
-          ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "questions"], message: "açık uçlu sorular test/D-Y ile aynı sınavda olamaz; ayrı bir sınav oluştur" });
-        }
-      }
+      // Sınavlarda açık uçlu + test/D-Y karışık olabilir. Açık uçlu sorular puanlanmaz,
+      // yalnızca kaydedilir; test/D-Y otomatik değerlendirilir.
     })
   );
 });

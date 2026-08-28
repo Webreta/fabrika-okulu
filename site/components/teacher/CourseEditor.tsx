@@ -438,7 +438,7 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
         <label className="flex items-center gap-1"><input type="checkbox" checked={lesson.shuffleQuestions} onChange={(e) => onChange({ ...lesson, shuffleQuestions: e.target.checked })} /> Soruları karıştır</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={lesson.showCorrectAnswers} onChange={(e) => onChange({ ...lesson, showCorrectAnswers: e.target.checked })} /> Sonuçta doğru cevapları göster</label>
       </div>
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2">
         {hasPeriods ? (
           <div>
             <div className="flex gap-1">
@@ -450,14 +450,10 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
         ) : (
           <div><input type="number" min={0} value={lesson.dueDays} onChange={(e) => onChange({ ...lesson, dueDays: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Süre (gün) · 0 = süresiz</p></div>
         )}
-        <div><input type="number" min={0} value={lesson.timeLimit} onChange={(e) => onChange({ ...lesson, timeLimit: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Süre sınırı (dk) · 0 = yok</p></div>
         <div><input type="number" min={0} max={100} value={lesson.passScore} onChange={(e) => onChange({ ...lesson, passScore: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Geçme notu % · 0 = otomatik geçer</p></div>
-        <div><input type="number" min={0} value={lesson.maxAttempts} onChange={(e) => onChange({ ...lesson, maxAttempts: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Deneme hakkı · 0 = sınırsız</p></div>
       </div>
       <p className="mb-1 text-[11px] text-muted">
-        {hasPeriods
-          ? "Test ve doğru/yanlış sorular otomatik değerlendirilir. Açık uçlu soru soracaksan onları ayrı bir sınavda topla; eğitmen değerlendirir (karma sınav kaydedilmez)."
-          : "Esnek/ücretsiz eğitimde yalnızca test ve doğru/yanlış soru sorulur; öğrenci her sorudan sonra doğru cevabı ve açıklamayı anında görür."}
+        Sınav tek deneme haklıdır. Test ve doğru/yanlış sorular otomatik değerlendirilir; öğrenci her sorudan sonra doğru cevabı ve açıklamayı anında görür. Açık uçlu sorular aynı sınavda yer alabilir ancak puanlanmaz (yalnızca kaydedilir, eğitmen değerlendirmesi yoktur).
       </p>
       <button onClick={() => setOpen(!open)} className="mt-2 text-sm font-semibold text-navy-800">{open ? "▾" : "▸"} Sorular ({lesson.questions.filter((q) => q.text).length})</button>
       {open && (
@@ -467,7 +463,7 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-muted">{i + 1}.</span>
                 <select value={q.qtype} onChange={(e) => setQ(i, { ...q, qtype: e.target.value as Question["qtype"], correct: e.target.value === "true_false" ? "true" : 0 })} className="input w-auto">
-                  <option value="multiple_choice">Çoktan seçmeli</option><option value="true_false">Doğru / Yanlış</option>{hasPeriods && <option value="open_ended">Açık uçlu</option>}
+                  <option value="multiple_choice">Çoktan seçmeli</option><option value="true_false">Doğru / Yanlış</option><option value="open_ended">Açık uçlu</option>
                 </select>
                 <input type="number" min={1} value={q.points} onChange={(e) => setQ(i, { ...q, points: Number(e.target.value) })} className="input w-20" title="Puan" />
                 <button onClick={() => onChange({ ...lesson, questions: lesson.questions.filter((_, j) => j !== i) })} className="ml-auto rounded p-1 text-red-600 hover:bg-red-50"><Icon name="trash" className="size-4" /></button>
@@ -495,7 +491,7 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
                   <label className="flex items-center gap-1"><input type="radio" checked={String(q.correct) === "false"} onChange={() => setQ(i, { ...q, correct: "false" })} /> Yanlış</label>
                 </div>
               )}
-              {q.qtype === "open_ended" && <p className="mt-1 text-xs text-muted">Açık uçlu sorular eğitmen tarafından puanlanır.</p>}
+              {q.qtype === "open_ended" && <p className="mt-1 text-xs text-muted">Açık uçlu sorular puanlanmaz; yalnızca kaydedilir. Öğrenci çözerken doğru/yanlış görmez.</p>}
             </div>
           ))}
           <button onClick={() => onChange({ ...lesson, questions: [...lesson.questions, newQuestion()] })} className="btn-secondary btn-sm"><Icon name="plus" className="size-3.5" /> Soru ekle</button>

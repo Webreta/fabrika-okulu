@@ -1,21 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { submitQuiz, answerQuizQuestion, type QuizResult } from "@/app/actions/player";
 import { fmtDateTime } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 
 type Q = { id: number; text: string; type: string; options: string[]; image: string; points: number };
+type ReviewItem = { text: string; type: string; options: string[]; image: string; points: number; yourAnswer: string | null; correctAnswer: string; isCorrect: boolean | null; explanation: string };
 type Payload = {
   id: number; title: string; description: string; timeLimit: number; passScore: number; maxAttempts: number; shuffle?: boolean;
   questions: Q[];
   attempts: { id: number; score: number | null; earned: number; total: number; status: string; passed: boolean | null; at: string }[];
   canAttempt: boolean;
   due: string | null;
-  review?: { text: string; points: number; answer: string | null; grade: { points: number; feedback: string } | null }[];
-  feedback?: string;
+  review?: ReviewItem[];
 };
 
 type Feedback = { correct: boolean; correctAnswer: number | string | null; explanation: string };
@@ -27,7 +27,6 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
   const [result, setResult] = useState<QuizResult | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [pending, start] = useTransition();
-  const [left, setLeft] = useState<number | null>(null);
   const router = useRouter();
   const [qs] = useState(() => payload.shuffle ? [...payload.questions].sort(() => Math.random() - 0.5) : payload.questions);
   const q = qs[idx];
@@ -40,31 +39,22 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
       if (r.ok) router.refresh();
     });
 
-  useEffect(() => {
-    if (!started || !payload.timeLimit || result) return;
-    if (left === null) setLeft(payload.timeLimit * 60);
-    if (left === 0) { finish(); return; }
-    const t = setTimeout(() => setLeft((x) => (x === null ? null : x - 1)), 1000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started, left, result]);
-
   if (result) {
     return (
       <div className="card text-center">
         {!result.ok ? (
           <p className="text-red-600">{result.error}</p>
-        ) : result.pending ? (
-          <>
-            <Icon name="clock" className="mx-auto size-12 text-amber-500" />
-            <h2 className="mt-3 text-xl font-bold text-navy-800">Yanıtların alındı</h2>
-            <p className="text-muted">Açık uçlu sorular eğitmenin tarafından değerlendirilecek.</p>
-          </>
-        ) : (
+        ) : result.count > 0 ? (
           <>
             <p className="text-6xl font-bold text-navy-800">{result.correct}<span className="text-2xl text-muted">/{result.count}</span></p>
             <h2 className="mt-2 text-xl font-bold text-navy-800">Tamamlandı 🎉</h2>
-            <p className="text-muted">Puan: %{result.score}{payload.passScore > 0 && (result.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)}</p>
+            <p className="text-muted">Test soruların: {result.correct}/{result.count} doğru · Puan: %{result.score}{payload.passScore > 0 && (result.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)}</p>
+          </>
+        ) : (
+          <>
+            <Icon name="check" className="mx-auto size-12 text-emerald-500" />
+            <h2 className="mt-3 text-xl font-bold text-navy-800">Yanıtların kaydedildi 🎉</h2>
+            <p className="text-muted">Sınavı tamamladın.</p>
           </>
         )}
         <div className="mt-5 flex justify-center gap-2">
@@ -76,12 +66,6 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
   }
 
   if (!started) {
-    const tiles: { icon: "list" | "timer" | "refresh" | "calendar"; label: string; value: string }[] = [
-      { icon: "list", label: "Soru", value: `${qs.length}` },
-      { icon: "timer", label: "Süre", value: payload.timeLimit ? `${payload.timeLimit} dk` : "Sınırsız" },
-      { icon: "refresh", label: "Deneme hakkı", value: payload.maxAttempts ? `${payload.attempts.length}/${payload.maxAttempts}` : "Sınırsız" },
-      ...(payload.due ? [{ icon: "calendar" as const, label: "Son tarih", value: fmtDateTime(payload.due) }] : []),
-    ];
     return (
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#142b56] via-[#1d4a7a] to-[#3d97bd] text-[#fff] shadow-xl">
         <div className="relative p-6 md:p-8">
@@ -90,34 +74,27 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           <span className="relative inline-flex items-center gap-1.5 rounded-full border border-[#fff]/40 bg-[#fff]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"><Icon name="quiz" className="size-3.5" /> Sınav</span>
           <h1 className="relative mt-4 text-2xl font-bold md:text-3xl">{payload.title}</h1>
           {payload.description && <p className="relative mt-2 max-w-2xl text-[#fff]/80">{payload.description}</p>}
-          <div className="relative mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {tiles.map((t) => (
-              <div key={t.label} className="flex items-center gap-3 rounded-xl border border-[#fff]/25 bg-[#fff]/10 p-3 backdrop-blur-sm">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#fff]/40 bg-[#fff]/10"><Icon name={t.icon} className="size-5" /></span>
-                <div className="min-w-0"><p className="text-[11px] uppercase tracking-wide text-[#fff]/70">{t.label}</p><p className="truncate font-semibold">{t.value}</p></div>
-              </div>
-            ))}
-          </div>
+          {payload.due && <p className="relative mt-3 text-sm text-[#fff]/80">Son tarih: <span className="font-semibold">{fmtDateTime(payload.due)}</span></p>}
           {last && (
             <div className="relative mt-4 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-3 text-sm">
-              <span className="font-semibold">Son denemen:</span> {last.status === "pending_review" ? "Değerlendirme bekliyor" : `${last.earned}/${last.total} puan · %${last.score}`} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
-            </div>
-          )}
-          {payload.feedback && (
-            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#fff]/10 p-3 text-sm">
-              <p className="font-semibold">💬 Eğitmenin cevabı</p>
-              <p className="mt-1 whitespace-pre-line text-[#fff]/90">{payload.feedback}</p>
+              <span className="font-semibold">Sonucun:</span> {last.total > 0 ? `${last.earned}/${last.total} puan · %${last.score}` : "Yanıtların kaydedildi"} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
             </div>
           )}
           {(payload.review?.length ?? 0) > 0 && (
-            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-3 text-sm">
-              <p className="mb-2 font-semibold">Açık uçlu soruların değerlendirmesi</p>
+            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-4 text-sm">
+              <p className="mb-3 font-semibold">Cevapların</p>
               <ol className="space-y-2">
                 {payload.review!.map((r, i) => (
-                  <li key={i} className="rounded-lg bg-[#fff]/10 p-2.5">
+                  <li key={i} className={`rounded-lg p-3 ${r.isCorrect === true ? "bg-emerald-500/20" : r.isCorrect === false ? "bg-red-500/20" : "bg-[#fff]/10"}`}>
                     <p className="font-semibold">{i + 1}. {r.text}</p>
-                    {r.answer && <p className="mt-1 text-[#fff]/80">Cevabın: {r.answer}</p>}
-                    <p className="mt-1 text-[#fff]/90">Puan: <b>{r.grade?.points ?? 0}/{r.points}</b>{r.grade?.feedback && <> · {r.grade.feedback}</>}</p>
+                    <p className="mt-1 text-[#fff]/85">
+                      Senin cevabın: <b>{r.yourAnswer ?? "—"}</b>
+                      {r.isCorrect === true && <span className="ml-1 font-semibold text-emerald-200">✓ Doğru</span>}
+                      {r.isCorrect === false && <span className="ml-1 font-semibold text-red-200">✗ Yanlış</span>}
+                    </p>
+                    {r.isCorrect === false && r.correctAnswer && <p className="text-[#fff]/85">Doğru cevap: <b>{r.correctAnswer}</b></p>}
+                    {r.type === "open_ended" && <p className="text-[11px] text-[#fff]/60">Açık uçlu soru — puanlanmaz</p>}
+                    {r.explanation && <p className="mt-1 text-[#fff]/75">{r.explanation}</p>}
                   </li>
                 ))}
               </ol>
@@ -127,7 +104,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
             {payload.canAttempt && !preview && qs.length > 0 ? (
               <button onClick={() => setStarted(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> Sınava başla</button>
             ) : (
-              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : "Deneme hakkın doldu."}</span>
+              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : "Bu sınavı tamamladın. Cevaplarını yukarıda görebilirsin."}</span>
             )}
             {nextUrl && last && <Link href={nextUrl} className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
           </div>
@@ -160,7 +137,6 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
     <div className="card">
       <div className="flex items-center justify-between text-sm text-muted">
         <span>Soru {idx + 1} / {qs.length}</span>
-        {left !== null && <span className={left < 60 ? "font-bold text-red-600" : ""}>⏱ {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</span>}
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy-100"><div className="h-full bg-sky-400" style={{ width: `${((idx + 1) / qs.length) * 100}%` }} /></div>
       <h2 className="mt-5 text-lg font-semibold text-navy-800">{q.text}</h2>
