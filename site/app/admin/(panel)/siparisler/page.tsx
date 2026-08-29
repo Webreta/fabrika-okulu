@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                 <td className="font-semibold">{fmtMoney(o.total)}{Number(o.discount) > 0 && <span className="block text-xs text-emerald-600">-{fmtMoney(o.discount)} {o.couponCode}</span>}</td>
                 <td className="text-xs">{o.provider}</td>
                 <td><Chip color={ORDER_STATUS[o.status]?.color ?? "gray"}>{ORDER_STATUS[o.status]?.label ?? o.status}</Chip></td>
-                <td className="text-xs">{fmtDateTime(o.createdAt)}</td>
+                <td className="text-xs"><span className="date-chip">{fmtDateTime(o.createdAt)}</span></td>
                 <td><Link href={`/admin/siparisler/${o.id}`} className="btn-secondary btn-sm">Detay</Link></td>
               </tr>
             ))}

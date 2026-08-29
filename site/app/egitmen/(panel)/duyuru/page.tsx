@@ -20,7 +20,7 @@ export default async function AnnouncePage() {
           <h2 className="mb-3 font-bold text-navy-800">Son gönderimler</h2>
           <ul className="divide-y divide-line text-sm">
             {log.length === 0 && <li className="py-2 text-muted">Henüz yok.</li>}
-            {log.map((l) => <li key={l.id} className="py-2"><p className="font-semibold text-navy-800">{l.title}</p><p className="text-xs text-muted">{l.target} · {l.sentCount} kişi · {fmtDateTime(l.createdAt)}</p></li>)}
+            {log.map((l) => <li key={l.id} className="py-2"><p className="font-semibold text-navy-800">{l.title}</p><p className="text-xs text-muted">{l.target} · {l.sentCount} kişi · <span className="date-chip">{fmtDateTime(l.createdAt)}</span></p></li>)}
           </ul>
         </div>
       </div>

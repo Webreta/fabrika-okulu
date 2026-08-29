@@ -85,7 +85,7 @@ export function NotesPanel({ courseId, lessonId, lessonTitle, notes, getTime, de
                     ) : (
                       <span className="font-semibold text-navy-800">Genel not</span>
                     )}
-                    <span> · {relTime(n.createdAt)}</span>
+                    <span className="date-chip ml-1.5">{relTime(n.createdAt)}</span>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button onClick={() => { setEditing(n.id); setEditText(n.text); }} className="rounded p-1 text-muted hover:bg-surface" title="Düzenle"><Icon name="edit" className="size-3.5" /></button>

@@ -84,7 +84,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                     <tr key={x.id}>
                       <td className="font-semibold text-navy-800">{title}</td>
                       <td className="text-sm">{courseTitle}</td>
-                      <td className="text-xs">{fmtDateTime(x.submittedAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDateTime(x.submittedAt)}</span></td>
                       <td>{x.status === "graded" ? <Chip color="green">Değerlendirildi</Chip> : <Chip color="amber">Bekliyor</Chip>}</td>
                       <td className="text-sm">{x.score ?? "—"}</td>
                       <td className="max-w-[240px] truncate text-xs text-muted">{x.feedback || "—"}</td>
@@ -105,7 +105,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                     <tr key={a.id}>
                       <td className="font-semibold text-navy-800">{title}</td>
                       <td className="text-sm">{courseTitle}</td>
-                      <td className="text-xs">{fmtDateTime(a.completedAt ?? a.startedAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDateTime(a.completedAt ?? a.startedAt)}</span></td>
                       <td>{a.status === "completed" ? <Chip color="green">Tamamlandı</Chip> : a.status === "pending_review" ? <Chip color="amber">Değerlendirme bekliyor</Chip> : <Chip color="gray">Devam ediyor</Chip>}</td>
                       <td className="text-sm">{a.score !== null ? `%${Number(a.score)}` : "—"}</td>
                       <td className="text-sm">{a.passed === null ? "—" : a.passed ? "Geçti" : "Kaldı"}</td>
@@ -128,7 +128,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                       <td className="text-xs">{q.lessonTitle || "—"}</td>
                       <td className="text-sm">{courseTitle}</td>
                       <td>{q.status === "answered" ? <Chip color="green">Yanıtlandı</Chip> : <Chip color="amber">Bekliyor</Chip>}</td>
-                      <td className="text-xs">{fmtDate(q.createdAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDate(q.createdAt)}</span></td>
                       <td><Link href={`/admin/sorular?chat=${uid}_${q.courseId}`} className="text-xs text-sky-600 underline">Sohbet</Link></td>
                     </tr>
                   ))}
@@ -148,7 +148,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                       <td className="max-w-[380px] text-sm">{excerpt(n.text)}</td>
                       <td className="text-xs">{n.lessonTitle || "Genel"}{n.seconds != null && ` · ${Math.floor(n.seconds / 60)}:${String(n.seconds % 60).padStart(2, "0")}`}</td>
                       <td className="text-sm">{courseTitle ?? "—"}</td>
-                      <td className="text-xs">{fmtDate(n.createdAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDate(n.createdAt)}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -167,7 +167,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                       <td className="font-mono text-xs">{certSerial(ic.id, ic.issuedAt)}</td>
                       <td className="font-semibold text-navy-800">{tplTitle}</td>
                       <td className="text-sm">{ic.courseName}</td>
-                      <td className="text-xs">{fmtDate(ic.issuedAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDate(ic.issuedAt)}</span></td>
                       <td><a href={`/sertifika/${ic.token}`} target="_blank" className="text-xs text-sky-600 underline">Görüntüle</a></td>
                     </tr>
                   ))}
@@ -188,7 +188,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                       <td className="max-w-[280px] truncate text-sm">{o.items.map((i) => i.title).join(", ")}</td>
                       <td className="text-sm">{fmtMoney(o.total)}</td>
                       <td>{o.status === "paid" ? <Chip color="green">Ödendi</Chip> : o.status === "pending" ? <Chip color="amber">Bekliyor</Chip> : <Chip color="gray">{o.status}</Chip>}</td>
-                      <td className="text-xs">{fmtDate(o.createdAt)}</td>
+                      <td className="text-xs"><span className="date-chip">{fmtDate(o.createdAt)}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -248,7 +248,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                   <td><p className="font-semibold text-navy-800">{u.firstName} {u.lastName}</p><p className="text-xs text-muted">{u.email}</p></td>
                   <td><div className="flex flex-wrap gap-1">{t.slice(0, 2).map((x) => <Chip key={x} color="navy">{x}</Chip>)}{t.length > 2 && <Chip color="gray">+{t.length - 2}</Chip>}</div></td>
                   <td>{total}</td>
-                  <td className="text-xs">{fmtDate(last)}</td>
+                  <td className="text-xs">{last ? <span className="date-chip">{fmtDate(last)}</span> : "—"}</td>
                   <td><Link href={`/admin/ogrenciler?detail=${u.id}`} className="btn-secondary btn-sm">Detay</Link></td>
                 </tr>
               );

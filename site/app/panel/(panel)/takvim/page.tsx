@@ -26,7 +26,7 @@ export default async function CalendarPage() {
           {e.type === "session" ? "Canlı ders" : e.type === "quiz" ? "Sınav" : "Görev"}{e.done && e.type !== "session" ? " ✓" : ""}
         </Chip>
         <p className="mt-1 truncate font-semibold text-navy-800">{e.title}</p>
-        <p className="text-xs text-muted">{fmtTime(e.date)} · {e.courseTitle}</p>
+        <p className="mt-1 text-xs text-muted"><span className="date-chip">{fmtTime(e.date)}</span> · {e.courseTitle}</p>
       </div>
       <Link href={e.link} target={e.external ? "_blank" : undefined} className="btn-secondary btn-sm self-center">{e.type === "session" ? "Katıl" : "Git"}</Link>
     </div>
@@ -34,7 +34,7 @@ export default async function CalendarPage() {
 
   return (
     <>
-      <PageTitle title="Eğitim Takvimim" sub="Canlı oturumlar, görev ve sınav son tarihleri" />
+      <PageTitle title="Eğitim Takvimim" />
       {calendar.length === 0 ? (
         <Empty text="Takviminde henüz bir etkinlik yok." />
       ) : (

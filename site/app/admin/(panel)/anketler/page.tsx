@@ -47,7 +47,7 @@ export default async function AdminSurveyPage({ searchParams }: { searchParams: 
                 <td>{s.status === "published" ? <Chip color="green">Yayında</Chip> : <Chip color="gray">Taslak</Chip>}</td>
                 <td>{s.questions.length}</td>
                 <td>{countOf(s.key)} kişi</td>
-                <td className="text-xs">{s.publishedAt ? fmtDate(s.publishedAt) : "—"}</td>
+                <td className="text-xs">{s.publishedAt ? <span className="date-chip">{fmtDate(s.publishedAt)}</span> : "—"}</td>
                 <td>
                   <div className="flex flex-wrap justify-end gap-2">
                     <Link href={`/admin/anketler?sonuc=${s.id}`} className="btn-secondary btn-sm">Sonuçlar</Link>

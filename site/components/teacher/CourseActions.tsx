@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { duplicateCourseAction, deleteCourseAction, toggleCourseClosed } from "@/app/actions/teacher";
 import { Icon } from "@/components/site/Icon";
 
-export function CourseActions({ courseId, slug, closed, base = "/egitmen" }: { courseId: number; slug: string; closed: boolean; base?: string }) {
+export function CourseActions({ courseId, slug, closed, base = "/egitmen", showDetail = true }: { courseId: number; slug: string; closed: boolean; base?: string; showDetail?: boolean }) {
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState<"dup" | "del" | null>(null);
   const router = useRouter();
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      <Link href={`${base}/detay/${courseId}`} className="btn-secondary btn-sm">Detay</Link>
+      {showDetail && <Link href={`${base}/detay/${courseId}`} className="btn-secondary btn-sm">Detay</Link>}
       <Link href={`${base}/editor/${courseId}`} className="btn-primary btn-sm"><Icon name="edit" className="size-3.5" /> Düzenle</Link>
       <button onClick={() => setConfirm("dup")} className="btn-secondary btn-sm" title="Çoğalt"><Icon name="copy" className="size-3.5" /></button>
       <Link href={`/program/${slug}`} target="_blank" className="btn-secondary btn-sm" title="Sayfa"><Icon name="eye" className="size-3.5" /></Link>

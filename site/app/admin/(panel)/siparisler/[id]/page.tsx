@@ -50,7 +50,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="card">
             <p className="text-xs text-muted">Durum</p>
             <p className="mt-1"><Chip color={ORDER_STATUS[o.status]?.color ?? "gray"}>{ORDER_STATUS[o.status]?.label ?? o.status}</Chip> <span className="text-xs text-muted">· {o.provider}</span></p>
-            {o.paidAt && <p className="mt-1 text-xs text-muted">Ödeme: {fmtDateTime(o.paidAt)}</p>}
+            {o.paidAt && <p className="mt-1 text-xs text-muted">Ödeme: <span className="date-chip">{fmtDateTime(o.paidAt)}</span></p>}
             <StatusButtons orderId={o.id} status={o.status} />
           </div>
           <div className="card text-sm">

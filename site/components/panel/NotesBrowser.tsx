@@ -90,7 +90,7 @@ export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
                         ) : (
                           <Chip color="gray">Genel not</Chip>
                         )}
-                        <span>· {relTime(n.createdAt)}</span>
+                        <span className="date-chip">{relTime(n.createdAt)}</span>
                       </div>
                       <p className="mt-1 whitespace-pre-line text-sm">{n.text}</p>
                     </div>

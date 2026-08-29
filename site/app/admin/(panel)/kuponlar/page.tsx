@@ -27,7 +27,7 @@ export default async function CouponsPage() {
                 <td className="text-sm">{courseTitle ?? "Tüm eğitimler"}</td>
                 <td className="text-xs">{email ?? "Herkes"}</td>
                 <td className="text-xs">{c.usedCount}/{c.usageLimit || "∞"} {c.usageLimit > 0 && c.usedCount >= c.usageLimit && <Chip color="gray">Bitti</Chip>}</td>
-                <td className="text-xs">{c.expiresAt ? fmtDate(c.expiresAt) : "—"}</td>
+                <td className="text-xs">{c.expiresAt ? <span className="date-chip">{fmtDate(c.expiresAt)}</span> : "—"}</td>
                 <td><DeleteCouponButton id={c.id} /></td>
               </tr>
             ))}

@@ -219,11 +219,13 @@ function FileVideo({ src, posKey, unlocked, onComplete, onEnded, timeRef, startA
 
   const v = () => ref.current!;
   const seekTo = (s: number) => {
+    // Kilitli bölgeye tıklama: hiç seek yapma — akış kesintiye uğramasın, yalnızca uyar
     if (!unlocked && s > watchedMax.current + 0.5) {
       setWarn(true);
       setTimeout(() => setWarn(false), 2200);
+      return;
     }
-    v().currentTime = unlocked ? s : Math.min(s, watchedMax.current);
+    v().currentTime = Math.max(0, s);
   };
   const barClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -274,20 +276,27 @@ function FileVideo({ src, posKey, unlocked, onComplete, onEnded, timeRef, startA
 }
 
 /**
- * Vimeo oynatıcı: dosya videolarındaki kurallar Vimeo Player SDK ile uygulanır.
- * - Durdur/oynat, ses, tam ekran, hız → Vimeo'nun kendi kontrolleri.
- * - İleri sarma kapalı (izlenen en ileri noktadan öteye atlayınca geri alınır); geri sarma serbest.
- * - Not alırken anlık video saniyesi (timeRef) güncel tutulur.
- * - Kaldığı yerden devam (localStorage) ve nottan gelince ilgili saniyeye gitme.
- * - %98'e ulaşınca veya video bitince otomatik tamamlanır; bitince sonraki içeriğe geçiş sayacı başlar.
+ * Vimeo oynatıcı: dosya videolarıyla birebir aynı özel kontrol barı (Vimeo kontrolleri kapalı, controls: false).
+ * - Oynat/duraklat, ±10s, hız, ses, tam ekran → SDK üzerinden bizim barımız; sarı (izlenen) + mavi (konum) çubuk.
+ * - İleri sarma kapalı: bar tıklamasında kilit uygulanır, ayrıca yoklama güvenlik ağı olarak izinsiz ileri
+ *   atlamayı geri alır. Tam ekran kendi sarmalayıcımızda açıldığı için uyarı ve bar orada da görünür.
+ * - Kaldığı yerden devam (localStorage), nottan gelince ilgili saniyeye gitme, %95'te otomatik tamamlama.
  * unlocked (ders tamamlandı ya da önizleme) durumunda tüm çubuk serbesttir.
  */
 function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, startAt }: { videoId: string; posKey: string; unlocked: boolean; onComplete: () => void; onEnded: () => void; timeRef: React.MutableRefObject<number>; startAt: number | null }) {
   const holder = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<Player | null>(null);
   const watchedMax = useRef(0);
   const durationRef = useRef(0);
   const completedRef = useRef(false);
   const endedRef = useRef(false);
+  const [playing, setPlaying] = useState(false);
+  const [t, setT] = useState(0);
+  const [d, setD] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [rate, setRate] = useState(1);
+  const [maxT, setMaxT] = useState(0); // izlenen en ileri nokta (sarı alan)
   const [warn, setWarn] = useState(false);
   const cbs = useRef({ onComplete, onEnded });
   cbs.current = { onComplete, onEnded };
@@ -301,9 +310,11 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
     durationRef.current = 0;
     completedRef.current = false;
     endedRef.current = false;
+    setT(0); setMaxT(0); setD(0); setPlaying(false);
 
     const player = new Player(el, {
       id: Number(videoId),
+      controls: false, // kendi barımızı çiziyoruz
       title: false,
       byline: false,
       portrait: false,
@@ -311,6 +322,7 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
       pip: false,
       playsinline: true,
     });
+    playerRef.current = player;
     let disposed = false;
     let poll: ReturnType<typeof setInterval> | null = null;
     let seeking = false;
@@ -331,7 +343,8 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
         return;
       }
       timeRef.current = cur;
-      if (cur > watchedMax.current) watchedMax.current = cur;
+      setT(cur);
+      if (cur > watchedMax.current) { watchedMax.current = cur; setMaxT(cur); }
       try { localStorage.setItem(posKey, String(cur)); } catch {}
       const dur = durationRef.current;
       if (dur > 0) {
@@ -343,29 +356,35 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
     player.ready().then(async () => {
       if (disposed) return;
       try {
-        const d = await player.getDuration();
-        durationRef.current = d || 0;
+        const dur = await player.getDuration();
+        durationRef.current = dur || 0;
+        setD(dur || 0);
         if (unlocked) {
-          watchedMax.current = d;
-          if (startAt != null && startAt >= 0 && startAt < d) await player.setCurrentTime(startAt).catch(() => {});
+          watchedMax.current = dur;
+          setMaxT(dur);
+          if (startAt != null && startAt >= 0 && startAt < dur) await player.setCurrentTime(startAt).catch(() => {});
         } else {
           let resume = 0;
           try { resume = parseFloat(localStorage.getItem(posKey) ?? "0"); } catch {}
           const target = startAt != null && startAt >= 0 ? startAt : resume;
-          if (target > 5 && target < d - 5) { watchedMax.current = target; await player.setCurrentTime(target).catch(() => {}); }
+          if (target > 5 && target < dur - 5) { watchedMax.current = target; setMaxT(target); await player.setCurrentTime(target).catch(() => {}); }
         }
       } catch {}
-      // Yoklama: SDK olayları tetiklenmese bile zaman takibi ve ileri sarma engeli garanti çalışsın
+      // Yoklama: SDK olayları tetiklenmese bile zaman takibi, oynuyor/duruyor durumu ve
+      // ileri sarma engeli garanti çalışsın (play/pause olayı kaçarsa UI gerçek durumla eşitlenir)
       poll = setInterval(async () => {
         if (disposed || seeking) return;
         try {
-          if (durationRef.current === 0) { const d = await player.getDuration(); if (d) durationRef.current = d; }
+          if (durationRef.current === 0) { const dur = await player.getDuration(); if (dur) { durationRef.current = dur; setD(dur); } }
+          setPlaying(!(await player.getPaused()));
           track(await player.getCurrentTime());
         } catch {}
       }, 350);
     });
 
     player.on("timeupdate", (data: { seconds: number }) => track(data.seconds));
+    player.on("play", () => setPlaying(true));
+    player.on("pause", () => setPlaying(false));
     player.on("ended", () => {
       if (endedRef.current) return;
       endedRef.current = true; completedRef.current = true;
@@ -375,19 +394,80 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
     return () => {
       disposed = true;
       if (poll) clearInterval(poll);
+      playerRef.current = null;
       player.destroy().catch(() => {});
     };
   }, [videoId, posKey, unlocked, timeRef, startAt]);
 
+  const p = () => playerRef.current;
+  // Gerçek duruma göre aç/kapat — state gecikirse bile yanlış yöne komut gitmesin
+  const togglePlay = async () => {
+    const pl = p();
+    if (!pl) return;
+    try {
+      const paused = await pl.getPaused();
+      if (paused) { await pl.play(); setPlaying(true); } else { await pl.pause(); setPlaying(false); }
+    } catch {}
+  };
+  const seekTo = (s: number) => {
+    const pl = p();
+    if (!pl) return;
+    // Kilitli bölgeye tıklama: hiç seek yapma — akış kesintiye uğramasın, yalnızca uyar
+    if (!unlocked && s > watchedMax.current + 0.5) {
+      setWarn(true);
+      setTimeout(() => setWarn(false), 2200);
+      return;
+    }
+    const target = Math.max(0, s);
+    pl.setCurrentTime(target).catch(() => {});
+    setT(target);
+  };
+  const barClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    seekTo(((e.clientX - r.left) / r.width) * (d || 0));
+  };
+
   return (
-    <div className="relative aspect-video w-full overflow-hidden bg-black [&>div]:size-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:size-full">
+    <div ref={wrap} className="group relative aspect-video w-full overflow-hidden bg-black [&>div:first-child]:size-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:size-full">
       <div ref={holder} className="size-full" />
-      {!unlocked && <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-[#fff]">İleri sarma kapalı</span>}
-      {warn && (
-        <div className="absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-[#0b1220] shadow-lg">
-          İzlemediğiniz yerleri ileri saramazsınız!
-        </div>
+      {/* İframe tıklamayı yutmasın: şeffaf katman oynat/duraklat yapar */}
+      <div className="absolute inset-0" onClick={togglePlay} />
+      {!playing && (
+        <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center" aria-label="Oynat">
+          <span className="flex size-20 items-center justify-center rounded-full bg-[#fff]/20 text-[#fff] backdrop-blur"><Icon name="play" className="size-10" /></span>
+        </button>
       )}
+      {!unlocked && <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-[#fff]">İleri sarma kapalı</span>}
+      <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-3 text-[#fff]">
+        <div className="relative">
+          {warn && (
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-[#0b1220] shadow-lg">
+              İzlemediğiniz yerleri ileri saramazsınız!
+              <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-amber-400" />
+            </div>
+          )}
+          <div onClick={barClick} className="group/bar relative h-1.5 w-full cursor-pointer rounded-full bg-[#fff]/25" role="slider" aria-valuemin={0} aria-valuemax={d || 0} aria-valuenow={t}>
+            {/* izlenen (sarı) */}
+            <div className="absolute inset-y-0 left-0 rounded-full bg-amber-400/80" style={{ width: `${d ? Math.min(100, (maxT / d) * 100) : 0}%` }} />
+            {/* mevcut konum (mavi) */}
+            <div className="absolute inset-y-0 left-0 rounded-full bg-sky-400" style={{ width: `${d ? (t / d) * 100 : 0}%` }} />
+            <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#fff] shadow" style={{ left: `${d ? (t / d) * 100 : 0}%` }} />
+          </div>
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-xs">
+          <button onClick={togglePlay} className="rounded p-1 hover:bg-[#fff]/20"><Icon name={playing ? "pause" : "play"} className="size-5" /></button>
+          <button onClick={() => seekTo(Math.max(0, t - 10))} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">−10s</button>
+          <button onClick={() => seekTo(t + 10)} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">+10s</button>
+          <span className="tabular-nums">{fmt(t)} / {fmt(d)}</span>
+          <div className="ml-auto flex items-center gap-1">
+            {[1, 1.5, 2].map((r) => (
+              <button key={r} onClick={() => { p()?.setPlaybackRate(r).then(() => setRate(r)).catch(() => {}); }} className={`rounded px-1.5 py-0.5 ${rate === r ? "bg-sky-400 text-navy-900" : "hover:bg-[#fff]/20"}`}>{r}x</button>
+            ))}
+            <button onClick={() => { const m = !muted; p()?.setMuted(m).then(() => setMuted(m)).catch(() => {}); }} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="volume" className={`size-5 ${muted ? "opacity-40" : ""}`} /></button>
+            <button onClick={() => wrap.current?.requestFullscreen?.()} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="expand" className="size-5" /></button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

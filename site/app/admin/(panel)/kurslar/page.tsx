@@ -19,14 +19,14 @@ export default async function AdminCoursesPage() {
             {list.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-muted">Kurs yok.</td></tr>}
             {list.map((c) => (
               <tr key={c.id}>
-                <td><div className="flex items-center gap-3"><div className="h-10 w-16 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={96} height={60} className="h-full w-full object-cover" />}</div><span className="font-semibold text-navy-800">{c.title}{c.featured && <span className="ml-1 text-amber-500" title="Öne çıkan">★</span>}</span></div></td>
+                <td><div className="flex items-center gap-3"><div className="h-10 w-25 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={125} height={50} className="h-full w-full object-cover" />}</div><span className="font-semibold text-navy-800"><Link href={`/admin/kurslar/detay/${c.id}`} className="hover:text-sky-600">{c.title}</Link>{c.featured && <span className="ml-1 text-amber-500" title="Öne çıkan">★</span>}</span></div></td>
                 <td className="text-sm">{c.instructor?.name ?? "—"}</td>
                 <td className="text-xs">{GROUP_LABELS[c.group]}</td>
                 <td className="text-sm">{c.studentCount}</td>
                 <td className="text-sm">{c.lessonCount}</td>
                 <td className="text-sm">{c.isFree ? <Chip color="green">Ücretsiz</Chip> : fmtMoney(c.salePrice ?? c.price)}</td>
                 <td><Chip color={c.closed ? "gray" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.status === "published" ? "Yayında" : "Taslak"}</Chip></td>
-                <td className="w-72"><CourseActions courseId={c.id} slug={c.slug} closed={c.closed} base="/admin/kurslar" /></td>
+                <td className="w-72"><CourseActions courseId={c.id} slug={c.slug} closed={c.closed} base="/admin/kurslar" showDetail={false} /></td>
               </tr>
             ))}
           </tbody>

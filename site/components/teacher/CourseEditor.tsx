@@ -169,9 +169,9 @@ export function CourseEditor({
             <textarea rows={6} value={c.description} onChange={(e) => set("description", e.target.value)} className="input font-mono text-xs" />
           </div>
           <div>
-            <label className="label">Kapak görseli</label>
+            <label className="label">Kapak görseli <span className="text-muted">(önerilen oran 2,5:1 — ör. 1000×400 px)</span></label>
             <div className="flex items-center gap-3">
-              {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-16 w-24 rounded-lg object-cover" /> : <div className="flex h-16 w-24 items-center justify-center rounded-lg bg-surface text-muted"><Icon name="upload" className="size-5" /></div>}
+              {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-16 w-40 rounded-lg object-cover" /> : <div className="flex h-16 w-40 items-center justify-center rounded-lg bg-surface text-muted"><Icon name="upload" className="size-5" /></div>}
               <label className="btn-secondary btn-sm cursor-pointer">{busy === "cover" ? "Yükleniyor…" : "Görsel seç"}<input type="file" accept="image/*" className="hidden" onChange={(e) => uploadCover(e.target.files?.[0])} /></label>
               {c.imageUrl && <button onClick={() => set("imageUrl", "")} className="text-xs text-red-600">Kaldır</button>}
             </div>

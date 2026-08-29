@@ -41,7 +41,7 @@ export function NotificationList({ items, unread }: { items: N[]; unread: number
                 <div className="min-w-0 flex-1">
                   <p className={`font-semibold ${n.read ? "text-navy-800" : "text-white"}`}>{cleanTitle(n.title)}</p>
                   {n.body && <p className={`text-sm ${n.read ? "text-muted" : "text-white/85"}`}>{n.body}</p>}
-                  <p className={`mt-0.5 text-xs ${n.read ? "text-muted" : "text-white/70"}`}>{relTime(n.createdAt)}</p>
+                  <p className="mt-1"><span className={`date-chip ${n.read ? "" : "bg-white/15 text-white"}`}>{relTime(n.createdAt)}</span></p>
                 </div>
                 {n.url && <Icon name="arrowRight" className={`size-4 self-center ${n.read ? "text-muted" : "text-white/80"}`} />}
               </Link>

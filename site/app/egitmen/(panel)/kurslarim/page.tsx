@@ -18,8 +18,8 @@ export default async function MyCoursesPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ov.courses.map((c) => (
             <div key={c.id} className="card p-0 overflow-hidden">
-              <div className="relative h-36 bg-navy-50">
-                {c.imageUrl && <Image src={c.imageUrl} alt="" width={480} height={280} className="h-full w-full object-cover" />}
+              <div className="relative aspect-[5/2] bg-navy-50">
+                {c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
                 <span className="absolute left-3 top-3"><Chip color={c.closed ? "gray" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : `${c.hasPeriods ? "Dönemli · " : ""}${c.status === "published" ? "Yayında" : "Taslak"}`}</Chip></span>
               </div>
               <div className="p-4">

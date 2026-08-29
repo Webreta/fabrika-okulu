@@ -52,7 +52,7 @@ export function QuestionsPanel({ courseId, lessonId, lessonTitle, items }: { cou
               {m.lesson && <p className={`mb-0.5 text-[11px] ${m.who === "me" ? "text-white/70" : "text-muted"}`}>{m.lesson}</p>}
               {m.who === "teacher" && <p className="mb-0.5 text-[11px] font-semibold text-sky-700">Eğitmen</p>}
               <p className="whitespace-pre-line">{m.text}</p>
-              <p className={`mt-1 text-[10px] ${m.who === "me" ? "text-white/60" : "text-muted"}`}>{relTime(m.at)}</p>
+              <p className="mt-1"><span className={`date-chip ${m.who === "me" ? "bg-white/15 text-white" : ""}`}>{relTime(m.at)}</span></p>
             </div>
           </div>
         ))}

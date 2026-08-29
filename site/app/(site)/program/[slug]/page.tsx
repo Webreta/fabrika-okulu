@@ -207,7 +207,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
               {preview.type === "youtube" || preview.type === "vimeo" ? (
                 <iframe src={preview.embed} className="aspect-video w-full" allow="autoplay; fullscreen" allowFullScreen title="Önizleme" />
               ) : course.imageUrl ? (
-                <Image src={course.imageUrl} alt={course.title} width={800} height={550} sizes="400px" className="h-auto w-full" />
+                <Image src={course.imageUrl} alt={course.title} width={800} height={320} sizes="400px" className="aspect-[5/2] w-full object-cover" />
               ) : null}
               <div className="p-5">
                 <div className="text-2xl"><Price course={course} /></div>

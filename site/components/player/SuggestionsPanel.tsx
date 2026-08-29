@@ -88,7 +88,7 @@ export function SuggestionsPanel({
             {items.map((s) => (
               <li key={s.id} className="rounded-xl border border-line bg-surface p-3">
                 <p className="whitespace-pre-line text-sm text-ink">{s.text}</p>
-                <p className="mt-1 text-[11px] text-muted">{relTime(s.createdAt)}</p>
+                <p className="mt-1"><span className="date-chip">{relTime(s.createdAt)}</span></p>
               </li>
             ))}
           </ul>

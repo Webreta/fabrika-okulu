@@ -18,8 +18,8 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
   if (!completed || duzenle) {
     return (
       <>
-        <PageTitle title={survey.title} sub={completed ? "Cevaplarını güncelliyorsun." : undefined} action={<Link href="/panel/anket" className="btn-secondary btn-sm">← Anketler</Link>} />
-        <div className="card max-w-2xl">
+        <PageTitle title={survey.title} action={<Link href="/panel/anket" className="btn-secondary btn-sm">← Anketler</Link>} />
+        <div className="card mx-auto max-w-2xl">
           <SurveyForm schema={{ id: survey.id, title: survey.title, intro: survey.intro, sections: survey.sections, questions: survey.questions }} answers={answers} />
         </div>
       </>

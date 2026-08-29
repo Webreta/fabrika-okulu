@@ -25,7 +25,7 @@ export default async function SurveyListPage() {
                 </div>
                 <h3 className="mt-3 font-bold text-navy-800">{s.title}</h3>
                 {s.intro && <p className="mt-1 line-clamp-3 text-sm text-muted">{s.intro}</p>}
-                {s.publishedAt && <p className="mt-1 text-xs text-muted">Yayın: {fmtDate(s.publishedAt)}</p>}
+                {s.publishedAt && <p className="mt-1 text-xs text-muted">Yayın: <span className="date-chip">{fmtDate(s.publishedAt)}</span></p>}
                 <Link href={`/panel/anket/${s.id}`} className={`mt-4 w-full ${completed ? "btn-secondary" : "btn-primary"}`}>
                   {completed ? "Sonuçları gör" : "Anketi doldur"}
                 </Link>

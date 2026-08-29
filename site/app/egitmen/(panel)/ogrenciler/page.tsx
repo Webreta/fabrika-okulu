@@ -23,7 +23,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <td><p className="font-semibold text-navy-800">{s.name}</p><p className="text-xs text-muted">{s.email}</p></td>
                 <td className="text-sm">{s.courseTitle}</td>
                 <td className="w-56"><div className="flex items-center gap-2"><Progress percent={s.percent} /><span className="text-xs">%{s.percent}</span></div></td>
-                <td className="text-xs">{fmtDate(s.enrolledAt)}</td>
+                <td className="text-xs"><span className="date-chip">{fmtDate(s.enrolledAt)}</span></td>
               </tr>
             ))}
           </tbody>

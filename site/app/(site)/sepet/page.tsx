@@ -27,8 +27,8 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
           <div className="space-y-4">
             {t.lines.map((l) => (
               <div key={l.courseId} className="card flex items-center gap-4">
-                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-navy-50">
-                  {l.imageUrl && <Image src={l.imageUrl} alt="" width={160} height={110} className="h-full w-full object-cover" />}
+                <div className="h-16 w-40 shrink-0 overflow-hidden rounded-lg bg-navy-50">
+                  {l.imageUrl && <Image src={l.imageUrl} alt="" width={200} height={80} className="h-full w-full object-cover" />}
                 </div>
                 <div className="flex-1">
                   <Link href={`/program/${l.slug}`} className="font-semibold text-navy-800 hover:text-sky-600">{l.title}</Link>

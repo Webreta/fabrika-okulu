@@ -33,7 +33,7 @@ export default async function AdminIssueCertificatesPage({ searchParams }: { sea
                   <td><Chip color={r.level === 3 ? "green" : r.level === 2 ? "sky" : "gray"}>{r.level === 3 ? "Kursu bitirdi" : r.level === 2 ? "Kursu başlattı" : "Kayıt oldu"}</Chip></td>
                   <td>
                     <div className="flex flex-wrap items-center gap-2">
-                      {r.issued.map((i) => <span key={i.id} className="flex items-center gap-1 text-xs"><a href={`/sertifika/${i.token}`} target="_blank" className="text-sky-600 underline">{i.title}</a><span className="text-muted">({fmtDate(i.issuedAt)})</span><RevokeCertButton id={i.id} /></span>)}
+                      {r.issued.map((i) => <span key={i.id} className="flex items-center gap-1 text-xs"><a href={`/sertifika/${i.token}`} target="_blank" className="text-sky-600 underline">{i.title}</a><span className="date-chip">{fmtDate(i.issuedAt)}</span><RevokeCertButton id={i.id} /></span>)}
                       <IssueCertButton userId={r.userId} courseId={r.courseId} eligible={r.eligible.map((t) => ({ id: t.id, title: t.title }))} />
                     </div>
                   </td>

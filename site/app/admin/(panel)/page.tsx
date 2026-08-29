@@ -69,7 +69,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           )}
           <h3 className="mb-2 mt-5 text-sm font-bold text-navy-800">Satın aldı ama başlamadı</h3>
           {idle.length === 0 ? <p className="text-sm text-muted">Yok</p> : (
-            <ul className="divide-y divide-line text-sm">{idle.map(({ e, u, c }) => <li key={e.id} className="flex justify-between py-2"><span><b>{u.firstName} {u.lastName}</b> · {c.title}</span><span className="text-xs text-muted">{fmtDate(e.enrolledAt)}</span></li>)}</ul>
+            <ul className="divide-y divide-line text-sm">{idle.map(({ e, u, c }) => <li key={e.id} className="flex justify-between py-2"><span><b>{u.firstName} {u.lastName}</b> · {c.title}</span><span className="date-chip">{fmtDate(e.enrolledAt)}</span></li>)}</ul>
           )}
         </div>
         <div className="space-y-6">
@@ -77,7 +77,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             <h2 className="mb-3 font-bold text-navy-800">Son kayıtlar</h2>
             <ul className="divide-y divide-line text-sm">
               {recent.length === 0 && <li className="py-2 text-muted">Henüz kayıt yok.</li>}
-              {recent.map(({ e, u, c }) => <li key={e.id} className="flex items-center justify-between py-2"><span><b className="text-navy-800">{u.firstName} {u.lastName}</b><span className="block text-xs text-muted">{c.title}</span></span><span className="text-xs text-muted">{fmtDateTime(e.enrolledAt)}</span></li>)}
+              {recent.map(({ e, u, c }) => <li key={e.id} className="flex items-center justify-between py-2"><span><b className="text-navy-800">{u.firstName} {u.lastName}</b><span className="block text-xs text-muted">{c.title}</span></span><span className="date-chip">{fmtDateTime(e.enrolledAt)}</span></li>)}
             </ul>
           </div>
           <div className="card">

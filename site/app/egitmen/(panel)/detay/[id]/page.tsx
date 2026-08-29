@@ -27,7 +27,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
   return (
     <>
       <div className="card mb-6 flex flex-col gap-4 md:flex-row">
-        <div className="h-36 w-full shrink-0 overflow-hidden rounded-xl bg-navy-50 md:w-56">{course.imageUrl && <Image src={course.imageUrl} alt="" width={400} height={260} className="h-full w-full object-cover" />}</div>
+        <div className="aspect-[5/2] w-full shrink-0 overflow-hidden rounded-xl bg-navy-50 md:w-56">{course.imageUrl && <Image src={course.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}</div>
         <div className="flex-1">
           <div className="flex flex-wrap gap-2">
             <Chip color={course.status === "published" ? "green" : "amber"}>{course.status === "published" ? "Yayında" : "Taslak"}</Chip>
@@ -60,8 +60,8 @@ export default async function CourseDetailPage({ params, searchParams }: { param
                 <tr key={s.userId}>
                   <td><p className="font-semibold text-navy-800">{s.name}</p><p className="text-xs text-muted">{s.email}</p></td>
                   <td className="w-56"><div className="flex items-center gap-2"><Progress percent={s.percent} /><span className="text-xs">{s.completed}/{s.total}</span></div></td>
-                  <td className="text-xs">{fmtDate(s.enrolledAt)}</td>
-                  <td className="text-xs">{s.startedAt ? fmtDateTime(s.startedAt) : <span className="text-amber-600">Başlamadı</span>}</td>
+                  <td className="text-xs"><span className="date-chip">{fmtDate(s.enrolledAt)}</span></td>
+                  <td className="text-xs">{s.startedAt ? <span className="date-chip">{fmtDateTime(s.startedAt)}</span> : <span className="text-amber-600">Başlamadı</span>}</td>
                 </tr>
               ))}
             </tbody>

@@ -49,10 +49,10 @@ export default async function CertificatePage({ params }: { params: Promise<{ to
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="mb-6 text-center print:hidden">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted">Sertifika Doğrulama</p>
-          <h1 className="mt-1 text-2xl font-bold text-navy-800">{row.t.title}</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-muted">
-            Bu sayfa, <b className="text-navy-800">{row.ic.holderName}</b> adlı katılımcının <b className="text-navy-800">{row.ic.courseName}</b> eğitimini başarıyla tamamlayarak bu sertifikayı almaya hak kazandığını doğrular.
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Sertifika Doğrulama</p>
+          <h1 className="mt-1 text-lg font-semibold text-navy-800">{row.t.title}</h1>
+          <p className="mx-auto mt-1.5 max-w-xl text-xs text-muted">
+            <b>{row.ic.holderName}</b>, <b>{row.ic.courseName}</b> eğitimini başarıyla tamamlamıştır.
           </p>
           <PrintButton />
         </div>
@@ -69,18 +69,18 @@ export default async function CertificatePage({ params }: { params: Promise<{ to
           />
         </div>
         <div className="mx-auto mt-6 max-w-4xl print:hidden">
-          <div className="card p-0 overflow-hidden">
-            <div className="border-b border-line bg-navy-800 px-5 py-2.5 text-sm font-bold text-white">Belge Bilgileri</div>
-            <dl className="grid gap-x-8 gap-y-3 p-5 text-sm sm:grid-cols-2">
-              <div className="flex justify-between gap-4 border-b border-line pb-2"><dt className="text-muted">Seri No</dt><dd className="font-mono font-semibold text-navy-800">{serial}</dd></div>
-              <div className="flex justify-between gap-4 border-b border-line pb-2"><dt className="text-muted">Belge sahibi</dt><dd className="font-semibold text-navy-800">{row.ic.holderName}</dd></div>
-              <div className="flex justify-between gap-4 border-b border-line pb-2"><dt className="text-muted">Eğitim</dt><dd className="text-right font-semibold text-navy-800">{row.ic.courseName}</dd></div>
-              <div className="flex justify-between gap-4 border-b border-line pb-2"><dt className="text-muted">Veriliş tarihi</dt><dd className="font-semibold text-navy-800">{date}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">Belge türü</dt><dd className="font-semibold text-navy-800">{row.t.title}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">Düzenleyen</dt><dd className="font-semibold text-navy-800">Fabrika Okulu</dd></div>
+          <div className="mx-auto max-w-2xl overflow-hidden rounded-lg border border-line bg-white">
+            <div className="border-b border-line bg-surface px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Belge Bilgileri</div>
+            <dl className="grid gap-x-8 gap-y-2 p-4 text-xs sm:grid-cols-2">
+              <div className="flex justify-between gap-4 border-b border-line pb-1.5"><dt className="text-muted">Seri No</dt><dd className="font-mono text-navy-800">{serial}</dd></div>
+              <div className="flex justify-between gap-4 border-b border-line pb-1.5"><dt className="text-muted">Belge sahibi</dt><dd className="text-navy-800">{row.ic.holderName}</dd></div>
+              <div className="flex justify-between gap-4 border-b border-line pb-1.5"><dt className="text-muted">Eğitim</dt><dd className="text-right text-navy-800">{row.ic.courseName}</dd></div>
+              <div className="flex justify-between gap-4 border-b border-line pb-1.5"><dt className="text-muted">Veriliş tarihi</dt><dd className="text-navy-800">{date}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted">Belge türü</dt><dd className="text-right text-navy-800">{row.t.title}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted">Düzenleyen</dt><dd className="text-navy-800">Fabrika Okulu</dd></div>
             </dl>
           </div>
-          <p className="mt-4 text-center text-xs text-muted">Bu belgenin geçerliliği yukarıdaki bilgilerle sınırlıdır ve yalnızca bu sayfa üzerinden doğrulanabilir.<br />Doğrulama adresi: {url}</p>
+          <p className="mt-4 text-center text-xs text-muted">Bu belgenin geçerliliği yukarıdaki bilgilerle sınırlıdır ve yalnızca bu sayfa üzerinden doğrulanabilir.<br />Doğrulama adresi için <a href={url} className="font-semibold text-sky-600 hover:underline">tıklayın</a>.</p>
         </div>
       </main>
       <style>{`@media print { @page { size: ${row.t.imageWidth}px ${row.t.imageHeight}px; margin: 0 } body { background: #fff } main { padding: 0; max-width: none } }`}</style>

@@ -33,7 +33,7 @@ export function ChatUI({ threads, initialKey, isAdmin = false }: { threads: Thre
             <button key={x.key} onClick={() => setSel(x.key)} className={`flex w-full gap-3 border-b border-line px-3 py-3 text-left hover:bg-surface ${sel === x.key ? "bg-sky-50" : ""}`}>
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy-800 text-xs font-bold text-white">{initials(x.name)}</span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center justify-between"><span className="truncate text-sm font-semibold text-navy-800">{x.name}</span><span className="text-[11px] text-muted">{relTime(x.lastAt)}</span></span>
+                <span className="flex items-center justify-between"><span className="truncate text-sm font-semibold text-navy-800">{x.name}</span><span className="date-chip">{relTime(x.lastAt)}</span></span>
                 <span className="block truncate text-xs text-muted">{x.courseTitle}</span>
                 <span className="block truncate text-xs">{x.messages[x.messages.length - 1]?.text}</span>
               </span>
@@ -63,7 +63,7 @@ export function ChatUI({ threads, initialKey, isAdmin = false }: { threads: Thre
                   <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${m.who === "teacher" ? "bg-navy-800 text-white" : "bg-surface text-ink"}`}>
                     {m.lesson && <p className={`mb-0.5 text-[11px] ${m.who === "teacher" ? "text-white/70" : "text-muted"}`}>{m.lesson}</p>}
                     <p className="whitespace-pre-line">{m.text}</p>
-                    <p className={`mt-1 text-[10px] ${m.who === "teacher" ? "text-white/60" : "text-muted"}`}>{relTime(m.at)}</p>
+                    <p className="mt-1"><span className={`date-chip ${m.who === "teacher" ? "bg-white/15 text-white" : ""}`}>{relTime(m.at)}</span></p>
                   </div>
                 </div>
               ))}

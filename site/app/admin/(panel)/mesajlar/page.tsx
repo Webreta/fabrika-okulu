@@ -15,7 +15,7 @@ export default async function MessagesPage() {
         {list.map((m) => (
           <div key={m.id} className={`card ${m.read ? "" : "border-sky-300 bg-sky-50/40"}`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div><p className="font-semibold text-navy-800">{m.name} <a href={`mailto:${m.email}`} className="text-sm font-normal text-sky-600">{m.email}</a></p><p className="text-xs text-muted">{m.subject && `${m.subject} · `}{fmtDateTime(m.createdAt)}</p></div>
+              <div><p className="font-semibold text-navy-800">{m.name} <a href={`mailto:${m.email}`} className="text-sm font-normal text-sky-600">{m.email}</a></p><p className="text-xs text-muted">{m.subject && `${m.subject} · `}<span className="date-chip">{fmtDateTime(m.createdAt)}</span></p></div>
               <MessageActions id={m.id} read={m.read} />
             </div>
             <p className="mt-3 whitespace-pre-line text-sm">{m.message}</p>

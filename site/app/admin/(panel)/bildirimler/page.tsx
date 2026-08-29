@@ -35,7 +35,7 @@ async function History() {
     <div className="card overflow-x-auto p-0">
       <table className="table">
         <thead><tr><th>Tarih</th><th>Kanal</th><th>Başlık</th><th>Hedef</th><th>Adet</th></tr></thead>
-        <tbody>{log.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-muted">Kayıt yok.</td></tr>}{log.map((l) => <tr key={l.id}><td className="text-xs">{fmtDateTime(l.createdAt)}</td><td className="text-xs">{l.channel}</td><td className="font-semibold text-navy-800">{l.title}</td><td className="text-sm">{l.target}</td><td>{l.sentCount}</td></tr>)}</tbody>
+        <tbody>{log.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-muted">Kayıt yok.</td></tr>}{log.map((l) => <tr key={l.id}><td className="text-xs"><span className="date-chip">{fmtDateTime(l.createdAt)}</span></td><td className="text-xs">{l.channel}</td><td className="font-semibold text-navy-800">{l.title}</td><td className="text-sm">{l.target}</td><td>{l.sentCount}</td></tr>)}</tbody>
       </table>
     </div>
   );

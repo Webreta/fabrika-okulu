@@ -39,7 +39,7 @@ export default async function CertificatesAdminPage({ searchParams }: { searchPa
                   <td><p className="font-semibold text-navy-800">{ic.holderName}</p><p className="text-xs text-muted">{email}</p></td>
                   <td className="text-sm">{ic.courseName}</td>
                   <td className="text-sm">{tplTitle}</td>
-                  <td className="text-xs">{fmtDate(ic.issuedAt)}</td>
+                  <td className="text-xs"><span className="date-chip">{fmtDate(ic.issuedAt)}</span></td>
                   <td><a href={`/sertifika/${ic.token}`} target="_blank" className="text-xs text-sky-600 underline">/sertifika/{ic.token.slice(0, 8)}…</a></td>
                   <td><RevokeCertButton id={ic.id} /></td>
                 </tr>

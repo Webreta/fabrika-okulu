@@ -26,7 +26,7 @@ export default async function TeacherHome() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {ov.courses.slice(0, 6).map((c) => (
                 <div key={c.id} className="card p-0 overflow-hidden">
-                  <div className="relative h-28 bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={400} height={200} className="h-full w-full object-cover" />}
+                  <div className="relative aspect-[5/2] bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
                     <span className="absolute left-2 top-2"><Chip color={c.closed ? "gray" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.status === "published" ? "Yayında" : "Taslak"}</Chip></span>
                   </div>
                   <div className="p-3">

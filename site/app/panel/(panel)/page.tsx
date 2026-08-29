@@ -94,7 +94,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
               {upcoming.map((e, i) => (
                 <div key={i} className={`card ${e.done ? "opacity-60" : ""}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted">{fmtDate(e.date)} · {fmtTime(e.date)}</span>
+                    <span className="date-chip">{fmtDate(e.date)} · {fmtTime(e.date)}</span>
                     <Chip color={e.type === "session" ? "purple" : e.type === "quiz" ? "sky" : "amber"}>{e.type === "session" ? "Canlı ders" : e.type === "quiz" ? "Sınav" : "Görev"}</Chip>
                   </div>
                   <p className="mt-2 font-semibold text-navy-800">{e.title}</p>

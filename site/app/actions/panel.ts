@@ -18,7 +18,9 @@ export async function uploadDocument(_prev: FormState, formData: FormData): Prom
   const up = await saveUploadedFile(formData.get("file"), `belgeler/${user.id}`, DOC_EXT, 10 * 1024 * 1024);
   if (!up.ok) return { error: up.error };
   if (!up.publicPath) return { error: "Bir dosya seçin." };
-  const note = String(formData.get("note") ?? "").slice(0, 1000);
+  const kindLabel = formData.get("kind") === "mezun" ? "Yeni mezun (diploma)" : "Öğrenci belgesi";
+  const userNote = String(formData.get("note") ?? "").slice(0, 900);
+  const note = userNote ? `${kindLabel} — ${userNote}` : kindLabel;
   await db.insert(documents).values({ userId: user.id, fileUrl: up.publicPath, fileName: up.name ?? "belge", note });
 
   const smtp = await getSetting("smtp");
@@ -29,7 +31,7 @@ export async function uploadDocument(_prev: FormState, formData: FormData): Prom
     subject: `Yeni belge yüklendi: ${user.name}`,
     html: emailTemplate({
       title: "Yeni belge",
-      html: `<p><b>${user.name}</b> (${user.email}) bir belge yükledi.</p><p>${note ? `Not: ${note}` : ""}</p>`,
+      html: `<p><b>${user.name}</b> (${user.email}) bir belge yükledi.</p><p>Not: ${note}</p>`,
       buttonText: "Belgeleri gör",
       buttonUrl: siteUrl("/admin/belgeler"),
     }),

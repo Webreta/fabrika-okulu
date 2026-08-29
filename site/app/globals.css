@@ -69,7 +69,10 @@ body {
 .table tr:last-child td { @apply border-b-0; }
 
 /* Kurs kapak görselleri sabit oran */
-.cover { @apply aspect-[16/11] w-full object-cover; }
+.cover { @apply aspect-[5/2] w-full object-cover; }
+
+/* Tarih göstergeleri: köşeleri hafif oval, koyu renkli küçük etiket */
+.date-chip { @apply inline-block rounded-md bg-navy-100/70 px-1.5 py-0.5 text-[11px] font-medium text-navy-700; }
 }
 
 /* Admin sayfa başlıkları: üste yapışık, içeriğin üstüne binmez */

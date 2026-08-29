@@ -41,7 +41,7 @@ export default async function CertificatesPage() {
                   <div className="min-w-0">
                     <h3 className="truncate font-bold text-navy-800">{tplTitle}</h3>
                     <p className="truncate text-sm text-muted">{ic.courseName}</p>
-                    <p className="mt-0.5 text-xs text-muted">{fmtDate(ic.issuedAt, true)}</p>
+                    <p className="mt-1"><span className="date-chip">{fmtDate(ic.issuedAt, true)}</span></p>
                   </div>
                 </div>
                 <a href={`/sertifika/${ic.token}`} target="_blank" className="btn-primary mt-4 w-full">Görüntüle / indir</a>

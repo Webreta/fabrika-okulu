@@ -56,7 +56,7 @@ export default async function AdminNotesPage({ searchParams }: { searchParams: P
                     <Link href={`/kurs-izle/${n.courseId}?ders=${n.lessonId}${n.seconds != null ? `&t=${n.seconds}` : ""}`} target="_blank" className="mt-0.5 flex items-center gap-1 text-xs text-sky-600 hover:underline"><Icon name="play" className="size-3" /> {n.lessonTitle}{n.seconds != null && ` · ${fmtSecs(n.seconds)}`}</Link>
                   )}
                 </td>
-                <td className="text-xs">{fmtDateTime(n.createdAt)}</td>
+                <td className="text-xs"><span className="date-chip">{fmtDateTime(n.createdAt)}</span></td>
                 <td><NoteViewButton text={n.text} student={`${u.firstName} ${u.lastName}`.trim()} meta={`${courseTitle ?? "Genel not"}${n.lessonTitle ? ` · ${n.lessonTitle}` : ""}${n.seconds != null ? ` · ${fmtSecs(n.seconds)}` : ""} · ${fmtDateTime(n.createdAt)}`} /></td>
               </tr>
             ))}

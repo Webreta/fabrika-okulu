@@ -35,50 +35,61 @@ export function RecoSlider({ items }: { items: RecoCard[] }) {
     return () => clearInterval(t);
   }, [many, items.length]);
 
-  const r = items[idx];
-  if (!r) return null;
-  const headline = r.trigger === "completed"
-    ? `🎉 ${r.sourceTitle} programını bitirmeni tebrik ederiz!`
-    : `${r.sourceTitle} ile birlikte iyi gider`;
-  const sub = r.note || (r.trigger === "completed"
-    ? (r.discountPercent > 0 ? `Sana özel %${r.discountPercent} indirimle bu programla devam edebilirsin!` : "Yolculuğuna bu programla devam edebilirsin.")
-    : (r.discountPercent > 0 ? `Sana özel %${r.discountPercent} indirim seni bekliyor.` : "Bu program da ilgini çekebilir."));
+  if (!items[idx]) return null;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-      <div className="relative h-28 bg-navy-50">
-        {r.imageUrl ? (
-          <Image src={r.imageUrl} alt="" width={400} height={140} className="h-full w-full object-cover" />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-sky-400 to-navy-700" />
-        )}
-        {r.discountPercent > 0 && (
-          <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white shadow">%{r.discountPercent} İNDİRİM</span>
-        )}
-        {r.trigger === "completed" && (
-          <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow">SANA ÖZEL</span>
-        )}
+      {/* Tüm kartlar aynı grid hücresinde üst üste durur: kutu yüksekliği en uzun karta
+          göre sabitlenir, slider geçişlerinde daralıp büyümez. */}
+      <div className="grid">
+        {items.map((r, i) => {
+          const headline = r.trigger === "completed"
+            ? `🎉 ${r.sourceTitle} programını bitirmeni tebrik ederiz!`
+            : `${r.sourceTitle} ile birlikte iyi gider`;
+          const sub = r.note || (r.trigger === "completed"
+            ? (r.discountPercent > 0 ? `Sana özel %${r.discountPercent} indirimle bu programla devam edebilirsin!` : "Yolculuğuna bu programla devam edebilirsin.")
+            : (r.discountPercent > 0 ? `Sana özel %${r.discountPercent} indirim seni bekliyor.` : "Bu program da ilgini çekebilir."));
+          return (
+            <div key={r.courseId} aria-hidden={i !== idx} className={`col-start-1 row-start-1 flex flex-col transition-opacity duration-300 ${i === idx ? "opacity-100" : "invisible opacity-0"}`}>
+              <div className="relative aspect-[5/2] shrink-0 bg-navy-50">
+                {r.imageUrl ? (
+                  <Image src={r.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-sky-400 to-navy-700" />
+                )}
+                {r.discountPercent > 0 && (
+                  <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white shadow">%{r.discountPercent} İNDİRİM</span>
+                )}
+                {r.trigger === "completed" && (
+                  <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow">SANA ÖZEL</span>
+                )}
+              </div>
+              <div className={`flex flex-1 flex-col p-4 ${many ? "pb-0" : ""}`}>
+                <p className="text-xs font-semibold text-sky-600">{headline}</p>
+                <h3 className="mt-1 font-bold leading-snug text-navy-800">{r.title}</h3>
+                <p className="mt-1 text-sm text-muted">{sub}</p>
+                <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                  <div>
+                    {r.price > 0 ? (
+                      r.discountPercent > 0 ? (
+                        <><span className="text-xs text-muted line-through">{fmt(r.price)}</span> <span className="font-bold text-navy-800">{fmt(r.finalPrice)}</span></>
+                      ) : (
+                        <span className="font-bold text-navy-800">{fmt(r.price)}</span>
+                      )
+                    ) : (
+                      <span className="font-bold text-emerald-600">Ücretsiz</span>
+                    )}
+                  </div>
+                  <Link href={`/program/${r.slug}`} className="btn-primary btn-sm" tabIndex={i === idx ? undefined : -1}>İncele</Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="p-4">
-        <p className="text-xs font-semibold text-sky-600">{headline}</p>
-        <h3 className="mt-1 font-bold leading-snug text-navy-800">{r.title}</h3>
-        <p className="mt-1 text-sm text-muted">{sub}</p>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div>
-            {r.price > 0 ? (
-              r.discountPercent > 0 ? (
-                <><span className="text-xs text-muted line-through">{fmt(r.price)}</span> <span className="font-bold text-navy-800">{fmt(r.finalPrice)}</span></>
-              ) : (
-                <span className="font-bold text-navy-800">{fmt(r.price)}</span>
-              )
-            ) : (
-              <span className="font-bold text-emerald-600">Ücretsiz</span>
-            )}
-          </div>
-          <Link href={`/program/${r.slug}`} className="btn-primary btn-sm">İncele</Link>
-        </div>
-        {many && (
-          <div className="mt-3 flex items-center justify-between">
+      {many && (
+        <div className="p-4 pt-3">
+          <div className="flex items-center justify-between">
             <button onClick={() => setIdx((idx - 1 + items.length) % items.length)} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Önceki"><Icon name="chevronUp" className="size-4 -rotate-90" /></button>
             <div className="flex gap-1.5">
               {items.map((_, i) => (
@@ -87,8 +98,8 @@ export function RecoSlider({ items }: { items: RecoCard[] }) {
             </div>
             <button onClick={() => setIdx((idx + 1) % items.length)} className="rounded-lg p-1.5 text-muted hover:bg-surface" aria-label="Sonraki"><Icon name="chevronDown" className="size-4 -rotate-90" /></button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

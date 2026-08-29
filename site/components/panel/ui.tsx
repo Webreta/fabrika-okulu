@@ -57,12 +57,12 @@ export function Empty({ text, action }: { text: string; action?: React.ReactNode
   );
 }
 
-export function Tabs({ items }: { items: { href: string; label: string; count?: number; active: boolean }[] }) {
+export function Tabs({ items }: { items: { href: string; label: string; icon?: IconName; count?: number; active: boolean }[] }) {
   return (
     <div className="mb-5 flex flex-wrap gap-2">
       {items.map((t) => (
         <Link key={t.href} href={t.href} className={`flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-semibold ${t.active ? "border-navy-800 text-navy-800" : "border-line bg-white text-muted hover:border-navy-300"}`}>
-          {t.label}{t.count !== undefined && <span className="rounded-full bg-surface px-1.5 text-xs">{t.count}</span>}
+          {t.icon && <Icon name={t.icon} className="size-4" />}{t.label}{t.count !== undefined && <span className="rounded-full bg-surface px-1.5 text-xs">{t.count}</span>}
         </Link>
       ))}
     </div>
