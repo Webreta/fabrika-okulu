@@ -55,7 +55,7 @@ export function UserManager({ users, meId }: { users: U[]; meId: number }) {
         </table>
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setEdit(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(null)}>
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="font-bold text-navy-800">{edit.email}</p>
             <div className="grid grid-cols-2 gap-2">

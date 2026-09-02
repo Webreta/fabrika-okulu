@@ -46,7 +46,7 @@ export async function enrollUser(opts: {
       .select({
         id: periods.id,
         capacity: periods.capacity,
-        enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = ${periods.id})`.mapWith(Number),
+        enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
       })
       .from(periods)
       .where(and(eq(periods.id, periodId), eq(periods.courseId, opts.courseId)))

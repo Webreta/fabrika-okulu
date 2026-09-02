@@ -44,7 +44,7 @@ export function InstructorsManager({ list, users }: { list: Row[]; users: { id: 
         ))}
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setEdit(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-4 text-lg font-bold text-navy-800">{edit === "new" ? "Yeni eğitmen" : "Eğitmeni düzenle"}</h3>
             <InstructorProfileForm profile={edit === "new" ? null : edit} admin users={users} onDone={() => setEdit(null)} />

@@ -1,3 +1,4 @@
+import type { Address, Addresses } from "@/lib/address";
 import {
   pgTable,
   pgEnum,
@@ -53,6 +54,10 @@ export const users = pgTable("users", {
   // Süper eğitmen: tüm öğrencilere duyuru, belge/kupon ve anket sonuçlarına erişim
   isSuperTeacher: boolean("is_super_teacher").notNull().default(false),
   panelTheme: text("panel_theme").notNull().default(""),
+  /** Bildirim tercihleri: kategori -> açık mı (lib/notify-prefs.ts); boş = hepsi açık */
+  notifyPrefs: jsonb("notify_prefs").$type<Record<string, boolean>>().notNull().default({}),
+  /** Kayıtlı fatura + gönderim adresi (lib/address.ts); sipariş verirken ön tanımlı gelir ve otomatik güncellenir */
+  addresses: jsonb("addresses").$type<Addresses>().notNull().default({}),
   surveyVersion: integer("survey_version").notNull().default(0),
   surveySkipped: boolean("survey_skipped").notNull().default(false),
   active: boolean("active").notNull().default(true),
@@ -146,6 +151,10 @@ export const courses = pgTable("courses", {
   saleTo: date("sale_to", { mode: "string" }),
   // takvimli (dönemli) / esnek / ucretsiz — kaydedilirken otomatik türetilir
   group: courseGroupEnum("group").notNull().default("esnek"),
+  /** course: video/içerik eğitimi · meeting: yalnızca online görüşme (koltuk = dönem, oturum = Zoom görüşmesi), lib/meeting.ts */
+  type: text("type").$type<"course" | "meeting">().notNull().default("course"),
+  meetingMinutes: integer("meeting_minutes").notNull().default(0),
+  meetingLink: text("meeting_link").notNull().default(""),
   instructorId: integer("instructor_id").references(() => instructors.id, {
     onDelete: "set null",
   }),
@@ -239,6 +248,26 @@ export const periods = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("periods_course_idx").on(t.courseId)]
+);
+
+/** Online görüşme katılımı: öğrenci görüşme saati geçince "katıldım" işaretler (dönem + oturum sırası) */
+export const meetingAttendance = pgTable(
+  "meeting_attendance",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    periodId: integer("period_id")
+      .notNull()
+      .references(() => periods.id, { onDelete: "cascade" }),
+    sessionIndex: integer("session_index").notNull().default(0),
+    attendedAt: timestamp("attended_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("meeting_attendance_uq").on(t.userId, t.periodId, t.sessionIndex)]
 );
 
 // İlişkili kurslar: kaynak kurs tamamlanınca/satın alınınca hedef kurs önerilir (kişiye özel indirimle)
@@ -500,7 +529,11 @@ export type BillingInfo = {
   phone?: string;
   address?: string;
   city?: string;
+  district?: string;
+  postalCode?: string;
   identityNumber?: string;
+  /** Gönderim adresi (fatura adresiyle aynıysa boş bırakılır) */
+  shipping?: Address;
 };
 
 export const orders = pgTable(
@@ -553,6 +586,19 @@ export const documents = pgTable("documents", {
   status: documentStatusEnum("status").notNull().default("pending"),
   couponCode: text("coupon_code"),
   courseId: integer("course_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Özgeçmişim: öğrencinin CV ve sertifika/başarı/katılım belgeleri (tür başına 50 MB kota, lib/resume-kinds.ts) */
+export const resumeFiles = pgTable("resume_files", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").$type<"cv" | "belge">().notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  size: integer("size").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -668,6 +714,7 @@ export const sentKeys = pgTable("sent_keys", {
 
 // ---------- Anket ----------
 
+export type SurveyMode = "flow" | "steps";
 export type SurveyCondition = { q: string; op: "in" | "not_in" | "filled" | "empty"; val?: string[] };
 export type SurveyQuestion = {
   key: string;
@@ -679,7 +726,12 @@ export type SurveyQuestion = {
   help?: string;
   options?: { value: string; label: string }[];
   showIf?: SurveyCondition[];
+  /** Birden çok koşul varsa: "any" = herhangi biri sağlanınca göster (varsayılan), "all" = hepsi sağlanınca */
+  showIfMode?: "any" | "all";
+  /** Soru altında gösterilen bağlantı/butonlar; hepsi yeni sekmede açılır */
+  links?: SurveyLink[];
 };
+export type SurveyLink = { label: string; url: string; style: "button" | "link" };
 
 /** Çoklu anket: tanım satır olarak tutulur; cevaplar surveyAnswers'ta surveyKey ile bağlanır. */
 export const surveys = pgTable("surveys", {
@@ -688,6 +740,10 @@ export const surveys = pgTable("surveys", {
   title: text("title").notNull(),
   intro: text("intro").notNull().default(""),
   status: text("status").notNull().default("draft"), // draft|published
+  /** Öğrenci görünümü: flow = tek sayfa, cevaba göre aşağıda açılır; steps = her seferinde bir soru kartı, "Devam" ile kayar */
+  mode: text("mode").$type<SurveyMode>().notNull().default("flow"),
+  /** true: öğrenci cevaplarını sonradan güncelleyebilir; false: tek seferlik, tamamlanınca kilitlenir */
+  editable: boolean("editable").notNull().default(true),
   sections: jsonb("sections").$type<Record<string, string>>().notNull().default({}),
   questions: jsonb("questions").$type<SurveyQuestion[]>().notNull().default([]),
   publishedAt: timestamp("published_at", { withTimezone: true }),

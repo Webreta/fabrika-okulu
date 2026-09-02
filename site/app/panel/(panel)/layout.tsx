@@ -21,19 +21,19 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const pending = actions.items.filter((i) => !i.done).length;
 
   const primary: NavItem[] = [
-    { href: "/panel", label: "Panelim", icon: "home", exact: true },
-    { href: "/panel/egitim", label: "Eğitimlerim", icon: "book" },
-    { href: "/panel/takvim", label: "Takvim", icon: "calendar" },
-    { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "task", badge: pending || undefined },
+    { href: "/panel", label: "Çalışma Odam", icon: "home", exact: true },
+    { href: "/panel/takvim", label: "Gündemim", icon: "calendar" },
+    { href: "/kesfet", label: "Keşfet", icon: "compass", newTab: true },
   ];
   const secondary: NavItem[] = [
-    { href: "/panel/bildirim", label: "Bildirimler", icon: "mail", badge: unread || undefined },
+    { href: "/panel/bildirim", label: "Gelen Kutusu", icon: "mail", badge: unread || undefined },
+    { href: "/panel/egitim?sekme=devam", label: "Devam Eden Programlar", icon: "play" },
+    { href: "/panel/egitim", label: "Kitaplığım", icon: "library" },
     { href: "/panel/notlar", label: "Notlarım", icon: "edit" },
+    { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "bolt", badge: pending || undefined },
     { href: "/panel/sertifika", label: "Sertifikalarım", icon: "award" },
-    { href: "/panel/belge", label: "Belge Yükle", icon: "upload" },
-    { href: "/panel/anket", label: "Anketler", icon: "survey", badge: pendingSurvey ? 1 : undefined },
-    { href: "/panel/siparis", label: "Satınalma Geçmişim", icon: "cart" },
-    { href: "/panel/hesap", label: "Tercihler & Ayarlar", icon: "settings" },
+    { href: "/panel/anket", label: "Kariyer Hedefim", icon: "target", badge: pendingSurvey ? 1 : undefined },
+    { href: "/panel/hesap", label: "Tercihler & Ayarlar", icon: "settings", match: ["/panel/gorunum", "/panel/bildirim-ayar", "/panel/ozgecmis", "/panel/belge", "/panel/adres", "/panel/siparis"], end: true },
   ];
   if (user.role !== "student") secondary.unshift({ href: "/egitmen", label: "Eğitmen Paneli", icon: "users" });
   if (user.role === "admin") secondary.unshift({ href: "/admin", label: "Yönetim Paneli", icon: "settings" });
@@ -46,6 +46,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       unread={unread}
       homeHref="/panel"
       theme={theme.key}
+      menuStyle={panelSettings.menuStyle === "icon" ? "icon" : "normal"}
     >
       {children}
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />

@@ -6,7 +6,7 @@ import { InstructorsManager } from "@/components/admin/InstructorsManager";
 
 export default async function InstructorsPage() {
   const [list, us] = await Promise.all([
-    db.select({ i: instructors, courseCount: sql<number>`(select count(*) from ${courses} c where c.instructor_id = ${instructors.id})`.mapWith(Number), userName: users.firstName, userLast: users.lastName }).from(instructors).leftJoin(users, eq(instructors.userId, users.id)).orderBy(asc(instructors.name)),
+    db.select({ i: instructors, courseCount: sql<number>`(select count(*) from ${courses} c where c.instructor_id = "instructors"."id")`.mapWith(Number), userName: users.firstName, userLast: users.lastName }).from(instructors).leftJoin(users, eq(instructors.userId, users.id)).orderBy(asc(instructors.name)),
     db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email }).from(users).orderBy(users.firstName).limit(500),
   ]);
   return (

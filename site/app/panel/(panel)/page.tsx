@@ -48,7 +48,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
 
         {pendingSurvey && (
           <Link href={`/panel/anket/${pendingSurvey.id}`} className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <Icon name="survey" className="size-5" /> <span><b>{pendingSurvey.title}</b> anketini tamamla.</span>
+            <Icon name="survey" className="size-5" /> <span><b>{pendingSurvey.title}</b> hedef testini tamamla.</span>
             <span className="ml-auto font-semibold">Doldur →</span>
           </Link>
         )}

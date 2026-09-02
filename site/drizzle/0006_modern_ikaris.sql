@@ -1,0 +1,1 @@
+ALTER TABLE "surveys" ADD COLUMN "mode" text DEFAULT 'flow' NOT NULL;

@@ -17,7 +17,7 @@ export function NoteActions({ id, text, href }: { id: number; text: string; href
       <button onClick={() => setEdit(true)} className="rounded p-1.5 text-muted hover:bg-surface" title="Düzenle"><Icon name="edit" className="size-4" /></button>
       <button disabled={pending} onClick={() => { if (confirm("Not silinsin mi?")) start(async () => { await deleteNote(id); router.refresh(); }); }} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Sil"><Icon name="trash" className="size-4" /></button>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setEdit(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(false)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="mb-2 font-bold text-navy-800">Notu düzenle</p>
             <textarea rows={5} value={val} onChange={(e) => setVal(e.target.value)} maxLength={1000} className="input" /><p className="mt-1 text-right text-[11px] text-muted">{val.length}/1000</p>
@@ -38,7 +38,7 @@ export function GeneralNoteForm() {
     <>
       <button onClick={() => setOpen(true)} className="btn-primary"><Icon name="plus" className="size-4" /> Genel not</button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="mb-2 font-bold text-navy-800">Genel not</p>
             <textarea autoFocus rows={5} value={val} onChange={(e) => setVal(e.target.value)} placeholder="Notunu yaz…" className="input" />

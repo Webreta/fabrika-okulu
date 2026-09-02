@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { meetingSessions, nextSession, type MeetingSession } from "@/lib/meeting";
 import {
   enrollments,
   progress,
@@ -16,6 +17,7 @@ import {
   issuedCertificates,
   certificateTemplates,
   type Lesson,
+  meetingAttendance,
 } from "@/db/schema";
 import { computeProgress, taskBase, taskDue, deadlineOf, type TaskBase } from "@/lib/course-logic";
 
@@ -103,12 +105,24 @@ export async function studentTaskBase(userId: number, courseId: number): Promise
   return taskBase({ startedAt: e?.startedAt ?? null });
 }
 
+export type StudentMeeting = {
+  periodId: number;
+  periodName: string;
+  minutes: number;
+  sessions: MeetingSession[];
+  next: MeetingSession | null;
+  allDone: boolean;
+};
+
 export type StudentCourseSummary = {
   id: number;
   slug: string;
   title: string;
   imageUrl: string;
   group: string;
+  type: "course" | "meeting";
+  /** Online görüşme ürününde koltuk ve oturum bilgisi */
+  meeting: StudentMeeting | null;
   total: number;
   completed: number;
   percent: number;
@@ -125,6 +139,17 @@ export async function studentCourses(userId: number): Promise<StudentCourseSumma
     .orderBy(desc(enrollments.enrolledAt));
   const out: StudentCourseSummary[] = [];
   for (const r of rows) {
+    if (r.c.type === "meeting") {
+      // Görüşme: ilerleme = katılınan oturum / toplam oturum
+      const m = await studentMeeting(userId, r.c.id, r.c.meetingMinutes, r.c.meetingLink);
+      const total = m?.sessions.length ?? 0;
+      const completed = m?.sessions.filter((s) => s.attended).length ?? 0;
+      out.push({
+        id: r.c.id, slug: r.c.slug, title: r.c.title, imageUrl: r.c.imageUrl, group: r.c.group, type: "meeting", meeting: m,
+        total, completed, percent: total ? Math.round((completed / total) * 100) : 0, enrolledAt: r.e.enrolledAt, startedAt: r.e.startedAt,
+      });
+      continue;
+    }
     const p = await courseProgress(userId, r.c.id);
     out.push({
       id: r.c.id,
@@ -132,6 +157,8 @@ export async function studentCourses(userId: number): Promise<StudentCourseSumma
       title: r.c.title,
       imageUrl: r.c.imageUrl,
       group: r.c.group,
+      type: "course",
+      meeting: null,
       total: p.total,
       completed: p.completed,
       percent: p.percent,
@@ -142,8 +169,22 @@ export async function studentCourses(userId: number): Promise<StudentCourseSumma
   return out;
 }
 
+/** Öğrencinin bu görüşme ürünündeki koltuğu ve oturumları (kayıtlı değilse null) */
+export async function studentMeeting(userId: number, courseId: number, minutes: number, fallbackLink: string): Promise<StudentMeeting | null> {
+  const [pe] = await db
+    .select({ p: periods })
+    .from(periodEnrollments)
+    .innerJoin(periods, eq(periodEnrollments.periodId, periods.id))
+    .where(and(eq(periodEnrollments.userId, userId), eq(periods.courseId, courseId)))
+    .limit(1);
+  if (!pe) return null;
+  const att = await db.select({ i: meetingAttendance.sessionIndex }).from(meetingAttendance).where(and(eq(meetingAttendance.userId, userId), eq(meetingAttendance.periodId, pe.p.id)));
+  const sessions = meetingSessions(pe.p.schedule ?? [], minutes, att.map((a) => a.i), fallbackLink);
+  return { periodId: pe.p.id, periodName: pe.p.name, minutes, sessions, next: nextSession(sessions), allDone: sessions.length > 0 && sessions.every((s) => s.attended) };
+}
+
 export type ActionItem = {
-  kind: "assignment" | "quiz";
+  kind: "assignment" | "quiz" | "meeting";
   id: number;
   title: string;
   courseId: number;
@@ -157,7 +198,7 @@ export type ActionItem = {
 };
 
 export type CalendarItem = {
-  type: "session" | "assignment" | "quiz";
+  type: "session" | "assignment" | "quiz" | "meeting";
   date: Date;
   title: string;
   courseTitle: string;
@@ -173,8 +214,9 @@ export async function studentActions(userId: number) {
   const calendar: CalendarItem[] = [];
   if (ids.length === 0) return { items, calendar };
 
-  const cs = await db.select({ id: courses.id, title: courses.title }).from(courses).where(inArray(courses.id, ids));
+  const cs = await db.select({ id: courses.id, title: courses.title, type: courses.type, meetingMinutes: courses.meetingMinutes, meetingLink: courses.meetingLink }).from(courses).where(inArray(courses.id, ids));
   const titleOf = new Map(cs.map((c) => [c.id, c.title]));
+  const meetingOf = new Map(cs.filter((c) => c.type === "meeting").map((c) => [c.id, c]));
   const bases = new Map<number, TaskBase>();
   for (const id of ids) bases.set(id, await studentTaskBase(userId, id));
 
@@ -231,7 +273,19 @@ export async function studentActions(userId: number) {
     .from(periodEnrollments)
     .innerJoin(periods, eq(periodEnrollments.periodId, periods.id))
     .where(eq(periodEnrollments.userId, userId));
+  const att = meetingOf.size ? await db.select().from(meetingAttendance).where(eq(meetingAttendance.userId, userId)) : [];
   for (const { p } of pes) {
+    const mc = meetingOf.get(p.courseId);
+    if (mc) {
+      // Online görüşme: her oturum bir aksiyon + gündem kaydı; katılım işaretlenince tamamlanır
+      const sessions = meetingSessions(p.schedule ?? [], mc.meetingMinutes, att.filter((a) => a.periodId === p.id).map((a) => a.sessionIndex), mc.meetingLink);
+      for (const s of sessions) {
+        const link = `/kurs-izle/${p.courseId}`;
+        items.push({ kind: "meeting", id: p.id * 100 + s.index, title: sessions.length > 1 ? `${s.title} · ${mc.title}` : mc.title, courseId: p.courseId, courseTitle: mc.title, due: s.start, done: s.attended, status: s.attended ? "attended" : "pending", score: null, best: null, link });
+        calendar.push({ type: "meeting", date: s.start, title: sessions.length > 1 ? s.title : "Birebir görüşme", courseTitle: mc.title, link, done: s.attended, external: false });
+      }
+      continue;
+    }
     for (const s of p.schedule ?? []) {
       if (!s.date) continue;
       const d = new Date(`${s.date}T${s.time || "00:00"}:00`);

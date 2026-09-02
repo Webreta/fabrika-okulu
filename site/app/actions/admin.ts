@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users, orders, enrollments, pages, certificateTemplates, issuedCertificates, contactMessages, coupons, surveys, surveyAnswers, surveyCompletions } from "@/db/schema";
-import type { CertFields, CertRule, SurveyQuestion } from "@/db/schema";
+import type { CertFields, CertRule, SurveyMode, SurveyQuestion } from "@/db/schema";
+import { normalizeSurveyDef, validateSurveyDef } from "@/lib/survey-logic";
 import { requireAdmin, destroyAllSessions } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { setSetting, setRawSetting, type SettingsKey, type SettingsMap } from "@/lib/settings";
@@ -217,14 +218,16 @@ export async function uploadCertificateImage(formData: FormData) {
 
 // ---------- Anket tanımı ----------
 
-export async function saveSurveyAdmin(input: { id?: number; title: string; intro: string; sections: Record<string, string>; questions: SurveyQuestion[] }): Promise<ActionResult> {
+export async function saveSurveyAdmin(input: { id?: number; title: string; intro: string; mode?: SurveyMode; editable?: boolean; sections: Record<string, string>; questions: SurveyQuestion[] }): Promise<ActionResult> {
   await requireAdmin();
-  const seen = new Set<string>();
-  const questions = input.questions.filter((q) => { const k = q.key.trim(); if (!k || seen.has(k)) return false; seen.add(k); return true; });
-  if (questions.length === 0) return { ok: false, error: "En az bir soru olmalı." };
-  const title = input.title.trim() || "İsimsiz anket";
+  const def = normalizeSurveyDef(input);
+  const errors = validateSurveyDef(def);
+  if (errors.length) return { ok: false, error: errors.join(" ") };
+  const { questions, sections, mode } = def;
+  const editable = def.editable !== false;
+  const title = def.title || "İsimsiz anket";
   if (input.id) {
-    await db.update(surveys).set({ title, intro: input.intro, sections: input.sections, questions }).where(eq(surveys.id, input.id));
+    await db.update(surveys).set({ title, intro: def.intro, mode, editable, sections, questions }).where(eq(surveys.id, input.id));
     revalidatePath("/admin/anketler"); revalidatePath("/panel/anket");
     return { ok: true, id: input.id, message: "Kaydedildi." };
   }
@@ -236,7 +239,7 @@ export async function saveSurveyAdmin(input: { id?: number; title: string; intro
     if (!ex) break;
     key = `${base}_${i}`;
   }
-  const [c] = await db.insert(surveys).values({ key, title, intro: input.intro, sections: input.sections, questions, status: "draft" }).returning({ id: surveys.id });
+  const [c] = await db.insert(surveys).values({ key, title, intro: def.intro, mode, editable, sections, questions, status: "draft" }).returning({ id: surveys.id });
   revalidatePath("/admin/anketler");
   return { ok: true, id: c.id, message: "Anket oluşturuldu (taslak)." };
 }

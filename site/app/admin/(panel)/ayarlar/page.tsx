@@ -42,6 +42,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           { key: "appName", label: "Uygulama adı", type: "text" }, { key: "iconUrl", label: "Uygulama ikonu (512×512)", type: "image" },
           { key: "loginBg", label: "Giriş ekranı arka planı", type: "image" }, { key: "loginLogo", label: "Giriş ekranı logosu", type: "image" },
           { key: "defaultTheme", label: "Varsayılan panel teması", type: "select", options: PANEL_THEMES.map((t) => ({ value: t.key, label: t.label })) },
+          { key: "menuStyle", label: "Öğrenci paneli menü stili", type: "select", options: [{ value: "normal", label: "Normal (ikon + metin)" }, { value: "icon", label: "İkon (büyük ikon, üzerine gelince metin açılır)" }] },
           { key: "registrationOpen", label: "Üye kaydı açık", type: "checkbox" },
         ]} />
       )}

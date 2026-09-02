@@ -16,7 +16,7 @@ export function IssueCertButton({ userId, courseId, eligible }: { userId: number
     <>
       <button onClick={() => setOpen(true)} className="btn-primary btn-sm"><Icon name="award" className="size-3.5" /> Sertifika tanımla</button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-sm rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="font-bold text-navy-800">Hangi sertifika?</p>
             <div className="mt-3 space-y-2">

@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import type { Address } from "@/lib/address";
+import { AddressFields } from "@/components/panel/AddressForm";
 import Link from "next/link";
 import { startCheckout, type CheckoutState } from "@/app/actions/cart";
 
-export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { name: string; phone: string }; mode: "free" | "manual" | "iyzico"; bankInfo: string }) {
+export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing: Address; shipping: Address; shippingSame: boolean }; mode: "free" | "manual" | "iyzico"; bankInfo: string }) {
   const [state, action, pending] = useActionState<CheckoutState, FormData>(startCheckout, {});
+  const [same, setSame] = useState(defaults.shippingSame);
   const holder = useRef<HTMLDivElement>(null);
 
   // iyzico checkoutFormContent bir <script> içerir; innerHTML ile eklenen script çalışmaz — elle çalıştırıyoruz.
@@ -32,14 +35,16 @@ export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { name: s
 
   return (
     <form action={action} className="card space-y-4">
-      <h2 className="font-bold text-navy-800">Fatura bilgileri</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="label">Ad Soyad</label><input name="name" required defaultValue={defaults.name} className="input" /></div>
-        <div><label className="label">Telefon</label><input name="phone" defaultValue={defaults.phone} className="input" placeholder="05xx xxx xx xx" /></div>
-        <div><label className="label">Şehir</label><input name="city" className="input" /></div>
-        <div><label className="label">TC Kimlik No <span className="text-muted">(fatura için)</span></label><input name="identityNumber" className="input" maxLength={11} /></div>
-        <div className="sm:col-span-2"><label className="label">Adres</label><textarea name="address" rows={2} className="input" /></div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-bold text-navy-800">Fatura bilgileri</h2>
+        <span className="text-xs text-muted">Kayıtlı adresin ön tanımlı geldi; değişiklikler hesabına kaydedilir.</span>
       </div>
+      <AddressFields prefix="billing_" value={defaults.billing} required />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
+        <h2 className="font-bold text-navy-800">Gönderim adresi</h2>
+        <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" name="shipping_same" checked={same} onChange={(e) => setSame(e.target.checked)} /> Fatura adresiyle aynı</label>
+      </div>
+      {!same && <AddressFields prefix="shipping_" value={defaults.shipping} />}
       {mode === "manual" && (
         <div className="rounded-lg bg-sky-50 p-4 text-sm text-navy-800">
           <p className="font-semibold">Havale / EFT ile ödeme</p>

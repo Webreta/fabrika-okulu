@@ -59,6 +59,8 @@ export type PanelSettings = {
   loginBg: string;
   loginLogo: string;
   defaultTheme: string;
+  /** İkincil menü stili: normal (ikon+metin) | icon (büyük ikon, üzerine gelince metin açılır) */
+  menuStyle: "normal" | "icon";
   registrationOpen: boolean;
   surveyRequired: boolean;
 };
@@ -127,6 +129,7 @@ const DEFAULTS = {
     loginBg: "",
     loginLogo: "",
     defaultTheme: "aydinlik",
+    menuStyle: "icon",
     registrationOpen: true,
     surveyRequired: false,
   } as PanelSettings,

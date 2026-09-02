@@ -21,11 +21,15 @@ export function ThemeGrid({ current }: { current: string }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {PANEL_THEMES.map((t) => (
-        <button key={t.key} onClick={() => choose(t.key)} disabled={pending} className={`overflow-hidden rounded-xl border-2 text-left transition ${sel === t.key ? "border-sky-400" : "border-line hover:border-navy-300"}`}>
-          {t.img ? <Image src={t.img} alt={t.label} width={300} height={90} className="h-16 w-full object-cover" style={{ objectPosition: t.focus }} /> : <div className="h-16 w-full bg-gradient-to-r from-[#142b56] to-[#5baecf]" />}
-          <div className="p-2">
-            <p className="text-sm font-semibold text-navy-800">{t.label}</p>
-            <p className="text-xs text-muted">{t.desc}</p>
+        <button key={t.key} onClick={() => choose(t.key)} disabled={pending} aria-pressed={sel === t.key} className={`relative overflow-hidden rounded-xl border-2 text-left transition ${sel === t.key ? "border-navy-800 shadow-lg ring-4 ring-navy-800/20" : "border-line opacity-80 hover:border-navy-300 hover:opacity-100"}`}>
+          {t.img ? <Image src={t.img} alt={t.label} width={400} height={160} className="aspect-[5/2] h-auto w-full object-cover" style={{ objectPosition: t.focus }} /> : <div className="aspect-[5/2] w-full bg-gradient-to-r from-[#142b56] to-[#5baecf]" />}
+          {/* Seçili tema: köşede onay rozeti + dolgulu alt şerit */}
+          {sel === t.key && (
+            <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-navy-800 px-2 py-0.5 text-[11px] font-semibold text-white shadow"><Icon name="check" className="size-3.5" /> Seçili</span>
+          )}
+          <div className={`p-2 ${sel === t.key ? "bg-navy-800 text-white" : ""}`}>
+            <p className={`text-sm font-semibold ${sel === t.key ? "text-white" : "text-navy-800"}`}>{t.label}</p>
+            <p className={`text-xs ${sel === t.key ? "text-white/80" : "text-muted"}`}>{t.desc}</p>
           </div>
         </button>
       ))}

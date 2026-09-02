@@ -4,7 +4,7 @@ import { documents, coupons } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
 import { fmtDate } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
-import { PageTitle, Chip } from "@/components/panel/ui";
+import { Chip } from "@/components/panel/ui";
 import { DocumentUploadForm } from "@/components/panel/DocumentUploadForm";
 
 export default async function DocumentsPage() {
@@ -12,11 +12,10 @@ export default async function DocumentsPage() {
   const list = await db.select({ d: documents, percent: coupons.percent, expiresAt: coupons.expiresAt, used: coupons.usedCount, limit: coupons.usageLimit }).from(documents).leftJoin(coupons, eq(documents.couponCode, coupons.code)).where(eq(documents.userId, user.id)).orderBy(desc(documents.createdAt));
   return (
     <>
-      <PageTitle title="Belge Yükle" />
+      <h2 className="mb-4 text-xl font-bold text-navy-800">Belge Yükle</h2>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
-          <h2 className="mb-1 font-bold text-navy-800">Yeni belge</h2>
-          <p className="mb-4 text-sm text-muted">Öğrenci / yeni mezun indirimi için belgeni yükle, sana özel kupon tanımlayalım.</p>
+          <h2 className="mb-4 font-bold text-navy-800">Yeni belge</h2>
           <DocumentUploadForm />
         </div>
         <div className="card">

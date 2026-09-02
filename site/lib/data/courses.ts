@@ -93,7 +93,7 @@ export async function getCoursePeriods(courseId: number) {
   const rows = await db
     .select({
       p: periods,
-      enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = ${periods.id})`.mapWith(Number),
+      enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
     })
     .from(periods)
     .where(eq(periods.courseId, courseId))
@@ -126,7 +126,7 @@ export const listCourses = cache(
         instructor: instructors,
         studentCount: sql<number>`(select count(*) from ${enrollments} e where e.course_id = ${courses.id} and e.status = 'active')`.mapWith(Number),
         lessonCount: sql<number>`(select count(*) from ${lessons} l where l.course_id = ${courses.id} and l.type <> 'file')`.mapWith(Number),
-        periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = ${courses.id})`.mapWith(Number),
+        periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = "courses"."id")`.mapWith(Number),
       })
       .from(courses)
       .leftJoin(instructors, eq(courses.instructorId, instructors.id))

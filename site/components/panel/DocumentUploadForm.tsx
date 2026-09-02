@@ -36,7 +36,7 @@ export function DocumentUploadForm() {
       </div>
       <div>
         <label className="label">Not <span className="text-muted">(isteğe bağlı)</span></label>
-        <textarea name="note" rows={2} className="input" placeholder="Hangi program için indirim istiyorsun?" />
+        <textarea name="note" rows={2} className="input" />
       </div>
       {state.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
       {state.ok && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{state.ok}</p>}

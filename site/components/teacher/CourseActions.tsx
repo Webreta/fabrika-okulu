@@ -20,7 +20,7 @@ export function CourseActions({ courseId, slug, closed, base = "/egitmen", showD
       <button onClick={() => start(async () => { await toggleCourseClosed(courseId, !closed); router.refresh(); })} disabled={pending} className="btn-secondary btn-sm" title={closed ? "Eğitimi aç" : "Eğitimi kapat"}><Icon name={closed ? "check" : "lock"} className="size-3.5" /></button>
       <button onClick={() => setConfirm("del")} className="btn-secondary btn-sm text-red-600" title="Sil"><Icon name="trash" className="size-3.5" /></button>
       {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setConfirm(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setConfirm(null)}>
           <div className="w-full max-w-sm rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold text-navy-800">{confirm === "dup" ? "Eğitimi çoğalt?" : "Eğitimi sil?"}</p>
             <p className="mt-1 text-sm text-muted">{confirm === "dup" ? "Taslak kopya oluşturulur (dönemler kopyalanmaz)." : "Kayıtlı öğrenci varsa silinmez, kapatılıp taslağa alınır."}</p>

@@ -1,0 +1,694 @@
+{
+  "key": "guncel_kariyer_hedefim",
+  "title": "Güncel Kariyer Hedefim",
+  "mode": "flow",
+  "intro": "Kariyerinin her adımında kendini iyi tanıyor, mevcut durumunu doğru ölçüyor, sıradaki hedefini belirliyorsun.\nHedefine ulaşacağın gelişim rotanı güvenle planlıyorsun.\nPlanına bağlı kalarak gelişiyor, hedefine ulaşıyorsun.\nTüm bu yolculuğunda güçlü adımlarla ilerliyorsun. Rehberin Fabrika Okulu yanında.",
+  "sections": {
+    "b1": "Bugünkü Kariyerim",
+    "b2": "Eğitimim",
+    "b3": "Hedefim"
+  },
+  "questions": [
+    {
+      "key": "1",
+      "section": "b1",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "label": "Bugünkü kariyerim:",
+      "options": [
+        {
+          "value": "a",
+          "label": "Çalışıyorum"
+        },
+        {
+          "value": "b",
+          "label": "İşsizim iş arıyorum"
+        },
+        {
+          "value": "c",
+          "label": "Öğrenciyim iş hayatına hazırlanıyorum"
+        }
+      ]
+    },
+    {
+      "key": "1a",
+      "section": "b1",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "label": "biraz açarsam..",
+      "options": [
+        {
+          "value": "a",
+          "label": "Özel sektörde çalışıyorum (beyaz yaka)"
+        },
+        {
+          "value": "b",
+          "label": "Özel sektörde çalışıyorum (mavi yaka)"
+        },
+        {
+          "value": "c",
+          "label": "Kamuda ücretli çalışıyorum"
+        },
+        {
+          "value": "d",
+          "label": "Akademisyenim"
+        },
+        {
+          "value": "e",
+          "label": "Kendi işimdeyim"
+        }
+      ]
+    },
+    {
+      "key": "2",
+      "section": "b2",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "label": "Öğrenim durumum: en son ...",
+      "options": [
+        {
+          "value": "a",
+          "label": "Yüksek lisans bitirdim"
+        },
+        {
+          "value": "b",
+          "label": "Lisans bitirdim"
+        },
+        {
+          "value": "c",
+          "label": "MYO Yüksekokul bitirdim"
+        },
+        {
+          "value": "d",
+          "label": "Anadolu/ Fen/ Sosyal/ İmam Hatip Lisesi bitirdim"
+        },
+        {
+          "value": "e",
+          "label": "Mesleki - Teknik Lise bitirdim (MTAL, AMP, ATP)"
+        },
+        {
+          "value": "f",
+          "label": "Çıraklık okulu bitirdim"
+        },
+        {
+          "value": "g",
+          "label": "Güzel sanatlar / spor lisesi bitirdim"
+        },
+        {
+          "value": "h",
+          "label": "Açık öğretim / Akşam lisersi bitirdim"
+        },
+        {
+          "value": "i",
+          "label": "Ortaokul bitirdim"
+        },
+        {
+          "value": "j",
+          "label": "İlkokul bitirdim"
+        }
+      ],
+      "showIf": [
+        {
+          "q": "1a",
+          "op": "in",
+          "val": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ]
+        },
+        {
+          "q": "1",
+          "op": "in",
+          "val": [
+            "b",
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "2a",
+      "section": "b2",
+      "step": 1,
+      "type": "text",
+      "required": false,
+      "label": "En son mezun olduğum okulun adı..",
+      "showIf": [
+        {
+          "q": "2",
+          "op": "filled"
+        }
+      ]
+    },
+    {
+      "key": "2b",
+      "section": "b2",
+      "step": 1,
+      "type": "text",
+      "required": false,
+      "label": "En son mezun olduğum bölümün / branşın adı..",
+      "showIf": [
+        {
+          "q": "2a",
+          "op": "filled"
+        }
+      ]
+    },
+    {
+      "key": "3",
+      "section": "b3",
+      "step": 1,
+      "type": "radio",
+      "required": false,
+      "label": "Hedefim:",
+      "options": [
+        {
+          "value": "a",
+          "label": "Bir üst yöneticilik seviyesine terfi etmek"
+        },
+        {
+          "value": "b",
+          "label": "Bir ileri uzmanlık seviyesine terfi etmek"
+        },
+        {
+          "value": "c",
+          "label": "İş değiştirmek"
+        },
+        {
+          "value": "d",
+          "label": "Teknik/Davranışsal/Yönetsel alanlarda kendimi geliştirmek"
+        },
+        {
+          "value": "e",
+          "label": "Gelirimi arttırmak"
+        }
+      ],
+      "showIf": [
+        {
+          "q": "1a",
+          "op": "in",
+          "val": [
+            "a",
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3a3b",
+      "section": "b3",
+      "step": 1,
+      "type": "checkbox",
+      "required": false,
+      "label": "Terfi edebilmek için..",
+      "options": [
+        {
+          "value": "a",
+          "label": "Geliştirmem gereken alanları biliyorum, planlayıp ilerlemek istiyorum."
+        },
+        {
+          "value": "b",
+          "label": "Nasıl ilerlemeliyim bilmiyorum, içerideki dengeleri ve geliştirmem gereken alanları anlamak istiyorum."
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3",
+          "op": "in",
+          "val": [
+            "a",
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3c",
+      "section": "b3",
+      "step": 1,
+      "type": "radio",
+      "required": false,
+      "label": "Hedeflediğim pozisyona hazır mıyım? (gerekli yetkinlik ve tecrübem...)",
+      "options": [
+        {
+          "value": "a",
+          "label": "Mevcut yetkinlik ve tecrübem yeterli. Özgeçmişimi gözden geçirip başvurularımı planlamak istiyorum."
+        },
+        {
+          "value": "b",
+          "label": "Mevcut seviyem yeterli değil, kendimi geliştirmek istiyorum."
+        },
+        {
+          "value": "c",
+          "label": "Bilmiyorum, birlikte bakmak istiyorum."
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3",
+          "op": "in",
+          "val": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3d",
+      "section": "b3",
+      "step": 1,
+      "type": "radio",
+      "required": false,
+      "label": "İş hayatına başlama düşüncem ...",
+      "options": [
+        {
+          "value": "a",
+          "label": "Özel / Kamu / Akademi / Kendi işim.. tümü olur, henüz bilmiyorum"
+        },
+        {
+          "value": "b",
+          "label": "Özel sektörde çalışmak istiyorum"
+        },
+        {
+          "value": "c",
+          "label": "Kamuda çalışmak istiyorum"
+        },
+        {
+          "value": "d",
+          "label": "Akademisyen olmak istiyorum"
+        },
+        {
+          "value": "e",
+          "label": "Kendi işimi kurmak istiyorum"
+        }
+      ],
+      "showIf": [
+        {
+          "q": "1",
+          "op": "in",
+          "val": [
+            "b",
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3db",
+      "section": "b3",
+      "step": 1,
+      "type": "checkbox",
+      "required": false,
+      "label": "Özel sektörde...",
+      "options": [
+        {
+          "value": "b1",
+          "label": "Holdingler ve Kurumsal Şirketler"
+        },
+        {
+          "value": "b2",
+          "label": "Önde Gelen Yerli Devler"
+        },
+        {
+          "value": "b3",
+          "label": "Çok Uluslu - Global Şirketler"
+        },
+        {
+          "value": "b4",
+          "label": "Finans ve Bankacılık Devleri"
+        },
+        {
+          "value": "c1",
+          "label": "Sanayi, Üretim, Ağır Sanayi Kuruluşları"
+        },
+        {
+          "value": "c2",
+          "label": "Otomotiv Ana ve Yan Sanayi"
+        },
+        {
+          "value": "c3",
+          "label": "Demir-Çelik ve Ağır Sanayi"
+        },
+        {
+          "value": "c4",
+          "label": "Beyaz Eşya ve Elektronik"
+        },
+        {
+          "value": "c5",
+          "label": "Tekstil ve Hazır Giyim Üretimi"
+        },
+        {
+          "value": "d1",
+          "label": "Hizmet, Perakende ve Lojistik Sektörü"
+        },
+        {
+          "value": "d2",
+          "label": "Hızlı Tüketim ve Perakende Zincirleri"
+        },
+        {
+          "value": "d3",
+          "label": "E-Ticaret ve Kurye-Lojistik Devleri"
+        },
+        {
+          "value": "d4",
+          "label": "Telekomünikasyon"
+        },
+        {
+          "value": "e1",
+          "label": "Teknoloji Şirketleri ve Start-Up'lar"
+        },
+        {
+          "value": "e2",
+          "label": "Büyük Teknoloji ve Yazılım Firmaları"
+        },
+        {
+          "value": "e3",
+          "label": "Savunma Sanayii Şirketleri"
+        },
+        {
+          "value": "f1",
+          "label": "Danışmanlık, Denetim ve Reklam Ajansları"
+        },
+        {
+          "value": "f2",
+          "label": "Big Four: PwC, E&Y, Deloitte, KPMG, vb."
+        },
+        {
+          "value": "f3",
+          "label": "Stratejik Yönetim Danışmanlığı: McKinsey, BCG Boston Consulting, Bain & Company, vb."
+        },
+        {
+          "value": "f4",
+          "label": "Reklam ve Medya Ajansları: Medina Turgul DDB, Punch BBDO, TBWA, Ogilvy, Havas, vb."
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3d",
+          "op": "in",
+          "val": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3dc",
+      "section": "b3",
+      "step": 1,
+      "type": "checkbox",
+      "required": false,
+      "label": "Kamuda...",
+      "options": [
+        {
+          "value": "a",
+          "label": "Kamuda tümü olur, henüz bilmiyorum"
+        },
+        {
+          "value": "b",
+          "label": "Bakanlıklar"
+        },
+        {
+          "value": "b1",
+          "label": "Milli Eğitim Bakanlığı"
+        },
+        {
+          "value": "b2",
+          "label": "Sağlık Bakanlığı"
+        },
+        {
+          "value": "b3",
+          "label": "Adalet Bakanlığı"
+        },
+        {
+          "value": "b4",
+          "label": "İçişleri Bakanlığı"
+        },
+        {
+          "value": "b5",
+          "label": "Aile Sosyal Hizmetler Bakanlığı"
+        },
+        {
+          "value": "b6",
+          "label": "Diğer"
+        },
+        {
+          "value": "c",
+          "label": "KİTler - Genel Müdürlükler"
+        },
+        {
+          "value": "c1",
+          "label": "DSİ Devlet Su İşleri"
+        },
+        {
+          "value": "c2",
+          "label": "OGM Orman Genel Müdürlüğü"
+        },
+        {
+          "value": "c3",
+          "label": "TCDD - TÜRASAŞ Devlet Demiryolları - Raylı Sistemler"
+        },
+        {
+          "value": "c4",
+          "label": "TEİAŞ, EÜAŞ, BOTAŞ, TPAO Enerji Sektörü"
+        },
+        {
+          "value": "c5",
+          "label": "ÇAYKUR, Et ve Süt Kurumu, TİGEM Tarım İşletmeleri Genel Müdürlüğü"
+        },
+        {
+          "value": "c6",
+          "label": "Diğer"
+        },
+        {
+          "value": "d",
+          "label": "Yerel Yönetimler (Belediyeler, İl Özel İdareleri)"
+        },
+        {
+          "value": "d1",
+          "label": "Büyükşehir ve İlçe Belediyeleri"
+        },
+        {
+          "value": "d2",
+          "label": "Belediye İştirak Şirketleri"
+        },
+        {
+          "value": "e",
+          "label": "Üniversiteler ve Savunma Sanayii"
+        },
+        {
+          "value": "e1",
+          "label": "Devlet Üniversiteleri (akademisyen harici memur)"
+        },
+        {
+          "value": "e2",
+          "label": "Askeri Fabrikalar ve Tersaneler (MSB)"
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3d",
+          "op": "in",
+          "val": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3dd",
+      "section": "b3",
+      "step": 1,
+      "type": "checkbox",
+      "required": false,
+      "label": "Akademide...",
+      "options": [
+        {
+          "value": "a",
+          "label": "Akademide tümü olur, henüz bilmiyorum"
+        },
+        {
+          "value": "b1",
+          "label": "Devlet Üniversiteleri"
+        },
+        {
+          "value": "b2",
+          "label": "Vakıf Üniversiteleri"
+        },
+        {
+          "value": "c1",
+          "label": "Meslek yüksek okullarında (MYO)"
+        },
+        {
+          "value": "c2",
+          "label": "Lisans bölümlerinde"
+        },
+        {
+          "value": "d1",
+          "label": "Araştırma Görevlisi (asistan) olmak istiyorum"
+        },
+        {
+          "value": "d2",
+          "label": "Öğretim Görevlisi olmak istiyorum"
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3d",
+          "op": "in",
+          "val": [
+            "d"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "3de",
+      "section": "b3",
+      "step": 1,
+      "type": "radio",
+      "required": false,
+      "label": "Kendi işim derken ...",
+      "options": [
+        {
+          "value": "a",
+          "label": "Kendi işimde tümü olur, henüz bilmiyorum"
+        },
+        {
+          "value": "b",
+          "label": "Düşük Sermayeli ve Dijital Odaklı (Beyaz Yaka Girişim)"
+        },
+        {
+          "value": "b1",
+          "label": "E-Ticaret, Dropshipping, Pazaryeri Mağazacılığı"
+        },
+        {
+          "value": "b2",
+          "label": "Dijital Hizmet Ajansı / Danışmanlık"
+        },
+        {
+          "value": "b3",
+          "label": "Mikro Yazılım, SaaS (Hizmet olarak Yazılım) Geliştirme"
+        },
+        {
+          "value": "b4",
+          "label": "Online Eğitim ve İçreik Üretimi"
+        },
+        {
+          "value": "c",
+          "label": "Hizmet ve Saha Odaklı (Gri & Mavi Yaka Girişim)"
+        },
+        {
+          "value": "c1",
+          "label": "Teknik Servis ve Bakım Hizmetleri"
+        },
+        {
+          "value": "c2",
+          "label": "Butik Lojistik ve Dağıtım Ağları"
+        },
+        {
+          "value": "c3",
+          "label": "Konutdışı Temizlik Hizmetleri"
+        },
+        {
+          "value": "c4",
+          "label": "Özel Organizasyon ve Mimari Uygulamalar"
+        },
+        {
+          "value": "d",
+          "label": "Yüksek Sermayeli ve Fiziksel Yatırım (Üretim - İmalat)"
+        },
+        {
+          "value": "d1",
+          "label": "Niş İmalat ve Atölyecilik"
+        },
+        {
+          "value": "d2",
+          "label": "Sürdürülebilir Tarım, Topraksız Tarım"
+        },
+        {
+          "value": "d3",
+          "label": "Gastronomi - Dark Kitchen"
+        },
+        {
+          "value": "d4",
+          "label": "Geri Dönüşüm ve Atık Yönetimi"
+        },
+        {
+          "value": "d5",
+          "label": "Diğer.."
+        }
+      ],
+      "showIf": [
+        {
+          "q": "3d",
+          "op": "in",
+          "val": [
+            "e"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "4",
+      "section": "b3",
+      "step": 1,
+      "type": "textarea",
+      "required": false,
+      "label": "Belirli bir süre içinde (1 ay/ 3 ay / 6 ay) şu noktaya ulaşmak istiyorum: (ayrıntılı şekilde anlatayım)",
+      "showIf": [
+        {
+          "q": "1",
+          "op": "in",
+          "val": [
+            "a",
+            "b",
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "4a",
+      "section": "b3",
+      "step": 1,
+      "type": "radio",
+      "required": false,
+      "label": "Rehberim Fabrika Okulu ekibinizden tecrübeli bir yöneticiyle bir araya gelmek istiyorum:",
+      "options": [
+        {
+          "value": "a",
+          "label": "15 dk.lık ücretsiz bir tanışma-danışma toplantısıyla buluşmak istiyorum (ÜCRETSİZ GÖRÜŞME)."
+        },
+        {
+          "value": "b",
+          "label": "3 hafta x 50 dk.lık 1-1 mentorluk almak istiyorum (1-1 MENTORLUK PROGRAMI)."
+        }
+      ],
+      "showIf": [
+        {
+          "q": "4",
+          "op": "filled"
+        }
+      ],
+      "links": [
+        {
+          "label": "Ücretsiz Tanışma Görüşmesi",
+          "url": "/program/tanisma-gorusmesi",
+          "style": "button"
+        },
+        {
+          "label": "Birebir Kariyer Danışmanlığı (3 Hafta)",
+          "url": "/program/birebir-kariyer-danismanligi-3-hafta",
+          "style": "button"
+        }
+      ]
+    }
+  ]
+}

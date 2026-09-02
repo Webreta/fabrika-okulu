@@ -133,7 +133,7 @@ export function CertificateDesigner({ initial, courses }: { initial: T; courses:
 
       {/* Tam boyut önizleme: örnek ad/eğitim + bugünün tarihi + temsili QR */}
       {previewOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/80 p-4" onClick={() => setPreviewOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setPreviewOpen(false)}>
           <div className="max-h-full w-full max-w-5xl overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between text-white">
               <p className="text-sm font-semibold">Önizleme — {t.title || "İsimsiz sertifika"}</p>

@@ -1,3 +1,4 @@
+import type { Addresses } from "@/lib/address";
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
@@ -20,6 +21,8 @@ export type SessionUser = {
   role: "admin" | "teacher" | "student";
   isSuperTeacher: boolean;
   panelTheme: string;
+  notifyPrefs: Record<string, boolean>;
+  addresses: Addresses;
   surveyVersion: number;
   surveySkipped: boolean;
 };
@@ -76,6 +79,8 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       role: users.role,
       isSuperTeacher: users.isSuperTeacher,
       panelTheme: users.panelTheme,
+      notifyPrefs: users.notifyPrefs,
+      addresses: users.addresses,
       surveyVersion: users.surveyVersion,
       surveySkipped: users.surveySkipped,
       active: users.active,
@@ -106,6 +111,8 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     role: row.role,
     isSuperTeacher: row.isSuperTeacher || row.role === "admin",
     panelTheme: row.panelTheme,
+    notifyPrefs: row.notifyPrefs ?? {},
+    addresses: row.addresses ?? {},
     surveyVersion: row.surveyVersion,
     surveySkipped: row.surveySkipped,
   };

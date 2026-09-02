@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CourseInput } from "@/lib/course-save";
+import { generateSlots } from "@/lib/meeting";
 import { saveCourseAction, uploadCourseImage, uploadProtectedFile, notifyPeriodStudents } from "@/app/actions/teacher";
 import { Icon } from "@/components/site/Icon";
 
@@ -160,6 +161,20 @@ export function CourseEditor({
         </Section>
       )}
 
+      <Section title="Eğitim Türü" hint="Online görüşme ürününde müfredat yoktur; öğrenci bir görüşme saati (koltuk) seçer, Zoom bağlantısıyla katılır.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            { v: "course", label: "Video / içerik eğitimi", desc: "Modüller, dersler, sınav ve görevler." },
+            { v: "meeting", label: "Online görüşme (Zoom)", desc: "Yalnızca birebir görüşme; koltuklar tarih-saat olarak açılır." },
+          ] as const).map((o) => (
+            <label key={o.v} className={`flex cursor-pointer gap-3 rounded-xl border-2 p-3 transition ${c.type === o.v ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"} ${locked ? "pointer-events-none opacity-60" : ""}`}>
+              <input type="radio" name="course-type" className="mt-1" checked={c.type === o.v} disabled={locked} onChange={() => set("type", o.v)} />
+              <span><span className="block font-semibold text-navy-800">{o.label}</span><span className="block text-xs text-muted">{o.desc}</span></span>
+            </label>
+          ))}
+        </div>
+      </Section>
+
       <Section title="Genel Bilgiler">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2"><label className="label">Eğitim başlığı *</label><input value={c.title} onChange={(e) => set("title", e.target.value)} className="input" /></div>
@@ -227,8 +242,19 @@ export function CourseEditor({
         </div>
       </Section>
 
+      {/* Online görüşme ayarları + koltuk üretici */}
+      {c.type === "meeting" && (
+        <Section title="Görüşme Ayarları" hint="Süre ve Zoom bağlantısı; koltukları aşağıdaki üreticiyle toplu aç, sonra listeden tek tek düzenleyebilirsin.">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div><label className="label">Görüşme süresi (dk)</label><input type="number" min={5} step={5} value={c.meetingMinutes} onChange={(e) => set("meetingMinutes", Number(e.target.value))} className="input" /></div>
+            <div className="sm:col-span-2"><label className="label">Zoom / Meet bağlantısı</label><input value={c.meetingLink} onChange={(e) => set("meetingLink", e.target.value)} placeholder="https://zoom.us/j/…" className="input" /><p className="text-[11px] text-muted">Tüm koltuklar için varsayılan; koltuk oturumunda ayrıca değiştirilebilir.</p></div>
+          </div>
+          {!locked && <SlotGenerator minutes={c.meetingMinutes} link={c.meetingLink} onGenerate={(slots) => set("periods", [...c.periods, ...slots])} />}
+        </Section>
+      )}
+
       {/* Müfredat */}
-      <Section title="Müfredat" hint={locked ? "Yayındaki müfredat kilitli." : `${counts.modules} modül · ${counts.videos} video · ${counts.quizzes} sınav · ${counts.assigns} görev · ${counts.files} dosya`}>
+      {c.type !== "meeting" && <Section title="Müfredat" hint={locked ? "Yayındaki müfredat kilitli." : `${counts.modules} modül · ${counts.videos} video · ${counts.quizzes} sınav · ${counts.assigns} görev · ${counts.files} dosya`}>
         <div className={`space-y-4 ${locked ? "pointer-events-none opacity-70" : ""}`}>
           {c.modules.map((m, mi) => (
             <div key={mi} className="rounded-xl border border-line bg-surface p-4">
@@ -305,10 +331,10 @@ export function CourseEditor({
           ))}
           <button onClick={() => set("modules", [...c.modules, { title: `Modül ${c.modules.length + 1}`, lessons: [] }])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Modül ekle</button>
         </div>
-      </Section>
+      </Section>}
 
-      {/* Dönemler */}
-      <Section title="Dönemler" hint={locked ? "Yayında: yalnızca gelecek oturumların bağlantıları düzenlenebilir." : "Dönem eklersen eğitim 'Takvimli Program' olur. Görev/sınav son teslim tarihleri müfredatta ders üzerinde tarih olarak girilir."}>
+      {/* Dönemler / koltuklar */}
+      <Section title={c.type === "meeting" ? `Görüşme Koltukları (${c.periods.length})` : "Dönemler"} hint={locked ? "Yayında: yalnızca gelecek oturumların bağlantıları düzenlenebilir." : c.type === "meeting" ? "Her koltuk bir görüşme saatidir; kontenjan genelde 1'dir. Haftalık danışmanlıkta koltuğun birden fazla oturum tarihi olur." : "Dönem eklersen eğitim 'Takvimli Program' olur. Görev/sınav son teslim tarihleri müfredatta ders üzerinde tarih olarak girilir."}>
         <div className="space-y-4">
           {c.periods.map((p, pi) => {
             const passed = !!p.endDate && p.endDate < today;
@@ -349,7 +375,8 @@ export function CourseEditor({
               </div>
             );
           })}
-          {!locked && <button onClick={() => set("periods", [...c.periods, newPeriod()])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Dönem ekle</button>}
+          {!locked && <button onClick={() => set("periods", [...c.periods, newPeriod()])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> {c.type === "meeting" ? "Koltuk ekle" : "Dönem ekle"}</button>}
+          {!locked && c.type === "meeting" && c.periods.length > 0 && <button onClick={() => { if (confirm("Tüm koltuklar listeden kaldırılsın mı? (Kayıtlı öğrencisi olan koltuklar kaydedilirken korunur.)")) set("periods", []); }} className="btn-secondary btn-sm text-red-600">Tümünü temizle</button>}
         </div>
       </Section>
 
@@ -380,7 +407,7 @@ export function CourseEditor({
 
       {/* Yayınlama sihirbazı */}
       {publishStep > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/70 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6">
             {publishStep === 1 && (
               <>
@@ -497,6 +524,45 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
           <button onClick={() => onChange({ ...lesson, questions: [...lesson.questions, newQuestion()] })} className="btn-secondary btn-sm"><Icon name="plus" className="size-3.5" /> Soru ekle</button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Koltuk üretici: günler + saat aralığı + süre → periyot listesi (her koltuk kapasiteli bir dönem) */
+function SlotGenerator({ minutes, link, onGenerate }: { minutes: number; link: string; onGenerate: (slots: ReturnType<typeof generateSlots>) => void }) {
+  const [dates, setDates] = useState<string[]>([""]);
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("20:30");
+  const [gap, setGap] = useState(0);
+  const [weeks, setWeeks] = useState(1);
+  const [capacity, setCapacity] = useState(1);
+  const preview = generateSlots({ dates, startTime, endTime, minutes, gap, weeks, capacity, link });
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-line bg-surface p-4">
+      <p className="mb-3 text-sm font-semibold text-navy-800">Koltuk üretici</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="sm:col-span-2 lg:col-span-4">
+          <label className="label">Günler</label>
+          <div className="flex flex-wrap gap-2">
+            {dates.map((d, i) => (
+              <span key={i} className="flex items-center gap-1">
+                <input type="date" value={d} onChange={(e) => setDates(dates.map((x, j) => (j === i ? e.target.value : x)))} className="input w-auto" />
+                {dates.length > 1 && <button type="button" onClick={() => setDates(dates.filter((_, j) => j !== i))} className="rounded p-1 text-red-600 hover:bg-white"><Icon name="x" className="size-4" /></button>}
+              </span>
+            ))}
+            <button type="button" onClick={() => setDates([...dates, ""])} className="btn-secondary btn-sm"><Icon name="plus" className="size-3.5" /> Gün ekle</button>
+          </div>
+        </div>
+        <div><label className="label">İlk görüşme</label><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="input" /></div>
+        <div><label className="label">Son bitiş</label><input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="input" /></div>
+        <div><label className="label">Görüşmeler arası ara (dk)</label><input type="number" min={0} step={5} value={gap} onChange={(e) => setGap(Number(e.target.value))} className="input" /></div>
+        <div><label className="label">Haftalık tekrar (hafta)</label><input type="number" min={1} max={12} value={weeks} onChange={(e) => setWeeks(Number(e.target.value))} className="input" /><p className="text-[11px] text-muted">1 = tek görüşme; 3 = aynı gün/saatte 3 hafta</p></div>
+        <div><label className="label">Koltuk başına kontenjan</label><input type="number" min={1} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="input" /></div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" disabled={!preview.length || minutes < 5} onClick={() => onGenerate(preview)} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> {preview.length} koltuk üret</button>
+        <span className="text-xs text-muted">{minutes < 5 ? "Önce görüşme süresini gir." : preview.length ? `${preview.length} koltuk · ${dates.filter(Boolean).length} gün · ${weeks > 1 ? `${weeks} haftalık, ` : ""}${minutes} dk` : "Gün ve saat aralığı gir."}</span>
+      </div>
     </div>
   );
 }

@@ -42,7 +42,7 @@ export async function teacherOverview(user: SessionUser) {
       c: courses,
       students: sql<number>`(select count(*) from ${enrollments} e where e.course_id = ${courses.id} and e.status='active')`.mapWith(Number),
       lessonCount: sql<number>`(select count(*) from ${lessons} l where l.course_id = ${courses.id} and l.type <> 'file')`.mapWith(Number),
-      periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = ${courses.id})`.mapWith(Number),
+      periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = "courses"."id")`.mapWith(Number),
     })
     .from(courses)
     .where(inArray(courses.id, ids))

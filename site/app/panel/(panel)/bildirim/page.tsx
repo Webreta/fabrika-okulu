@@ -20,7 +20,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return (
     <>
-      <PageTitle title="Bildirimler" />
+      <PageTitle title="Gelen Kutusu" />
       <NotificationList
         items={rows.map((n) => ({ id: n.id, title: n.title, body: n.body, url: n.url, read: n.read, createdAt: n.createdAt.toISOString() }))}
         unread={unread}

@@ -1,17 +1,66 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { documents, notifications, pushSubscriptions, users } from "@/db/schema";
+import { courses, documents, meetingAttendance, notifications, periodEnrollments, periods, pushSubscriptions, resumeFiles, users } from "@/db/schema";
+import { meetingSessions, canMarkAttended } from "@/lib/meeting";
 import { requireUser, getCurrentUser } from "@/lib/auth/session";
-import { saveUploadedFile } from "@/lib/uploads";
+import { saveUploadedFile, removeUploadedFile } from "@/lib/uploads";
+import { RESUME_EXTENSIONS, RESUME_QUOTA_BYTES, fmtBytes, isResumeKind } from "@/lib/resume-kinds";
 import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
-import { saveSurvey, getSurveyById } from "@/lib/survey";
+import { saveSurvey, getSurveyById, completedSurveyKeys } from "@/lib/survey";
 import type { FormState } from "@/app/actions/auth";
 
 const DOC_EXT = new Set(["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"]);
+
+// ---------- Online görüşme: katıldım ----------
+
+export async function markMeetingAttended(courseId: number, periodId: number, sessionIndex: number): Promise<FormState> {
+  const user = await requireUser();
+  const [c] = await db.select({ type: courses.type, minutes: courses.meetingMinutes }).from(courses).where(eq(courses.id, courseId)).limit(1);
+  if (!c || c.type !== "meeting") return { error: "Görüşme bulunamadı." };
+  const [pe] = await db.select({ p: periods }).from(periodEnrollments).innerJoin(periods, eq(periodEnrollments.periodId, periods.id))
+    .where(and(eq(periodEnrollments.userId, user.id), eq(periods.id, periodId), eq(periods.courseId, courseId))).limit(1);
+  if (!pe) return { error: "Bu görüşmeye kayıtlı değilsin." };
+  const s = meetingSessions(pe.p.schedule ?? [], c.minutes, []).find((x) => x.index === sessionIndex);
+  if (!s) return { error: "Oturum bulunamadı." };
+  if (!canMarkAttended(s)) return { error: "Görüşme saati henüz geçmedi." };
+  await db.insert(meetingAttendance).values({ userId: user.id, courseId, periodId, sessionIndex }).onConflictDoNothing();
+  revalidatePath("/panel/egitim"); revalidatePath("/panel/aksiyon"); revalidatePath("/panel/takvim"); revalidatePath(`/kurs-izle/${courseId}`);
+  return { ok: "Katılımın kaydedildi." };
+}
+
+// ---------- Özgeçmişim (CV + belgeler) ----------
+
+export async function uploadResumeFile(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const kind = formData.get("kind");
+  if (!isResumeKind(kind)) return { error: "Geçersiz dosya türü." };
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Bir dosya seçin." };
+  const [{ used }] = await db.select({ used: sql<number>`coalesce(sum(${resumeFiles.size}), 0)`.mapWith(Number) }).from(resumeFiles).where(and(eq(resumeFiles.userId, user.id), eq(resumeFiles.kind, kind)));
+  if (used + file.size > RESUME_QUOTA_BYTES) {
+    return { error: `Bu bölüm için ${fmtBytes(RESUME_QUOTA_BYTES)} alanın var; kalan ${fmtBytes(Math.max(0, RESUME_QUOTA_BYTES - used))}. Önce bir dosya sil.` };
+  }
+  const up = await saveUploadedFile(file, `ozgecmis/${user.id}`, RESUME_EXTENSIONS, RESUME_QUOTA_BYTES);
+  if (!up.ok) return { error: up.error };
+  if (!up.publicPath) return { error: "Bir dosya seçin." };
+  await db.insert(resumeFiles).values({ userId: user.id, kind, fileUrl: up.publicPath, fileName: up.name ?? "dosya", size: up.size ?? file.size });
+  revalidatePath("/panel/ozgecmis");
+  return { ok: "Dosya yüklendi." };
+}
+
+export async function deleteResumeFile(id: number) {
+  const user = await requireUser();
+  const [f] = await db.select().from(resumeFiles).where(and(eq(resumeFiles.id, id), eq(resumeFiles.userId, user.id))).limit(1);
+  if (!f) return { ok: false as const };
+  await removeUploadedFile(f.fileUrl);
+  await db.delete(resumeFiles).where(eq(resumeFiles.id, f.id));
+  revalidatePath("/panel/ozgecmis");
+  return { ok: true as const };
+}
 
 export async function uploadDocument(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
@@ -103,7 +152,8 @@ export async function removePushSubscription(endpoint: string) {
 export async function submitSurvey(surveyId: number, _prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const survey = await getSurveyById(surveyId);
-  if (!survey || survey.status !== "published") return { error: "Anket bulunamadı." };
+  if (!survey || survey.status !== "published") return { error: "Hedef testi bulunamadı." };
+  if (!survey.editable && (await completedSurveyKeys(user.id)).has(survey.key)) return { error: "Bu test tek seferlik; cevaplar sonradan değiştirilemez." };
   const raw: Record<string, string | string[]> = {};
   for (const [k, v] of formData.entries()) {
     if (k.startsWith("q_")) {
@@ -122,5 +172,5 @@ export async function submitSurvey(surveyId: number, _prev: FormState, formData:
   if ("error" in res && res.error) return { error: res.error };
   revalidatePath("/panel");
   revalidatePath("/panel/anket");
-  return { ok: "Anket kaydedildi, teşekkürler!" };
+  return { ok: "Cevapların kaydedildi, teşekkürler!" };
 }

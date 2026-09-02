@@ -44,7 +44,7 @@ export function PushToggle({ vapidKey }: { vapidKey: string }) {
     setState("off");
   };
 
-  if (state === "unsupported") return <p className="text-sm text-muted">Bu tarayıcı bildirimleri desteklemiyor ya da push anahtarı tanımlı değil.</p>;
+  if (state === "unsupported") return null; // uyarı gösterme; push yoksa alan sessizce boş kalır
   if (state === "denied") return <p className="text-sm text-red-600">Bildirim izni engellenmiş. Tarayıcı ayarlarından izin ver.</p>;
   return state === "on" ? (
     <button onClick={disable} className="btn-secondary">Bildirimleri kapat</button>

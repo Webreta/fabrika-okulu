@@ -5,7 +5,10 @@ import { surveys, surveyAnswers, surveyCompletions, users, type Survey, type Sur
 import { getRawSetting } from "@/lib/settings";
 import type { SessionUser } from "@/lib/auth/session";
 
+import { missingRequired, visibleQuestions } from "@/lib/survey-logic";
+
 export type { SurveyCondition, SurveyQuestion, Survey } from "@/db/schema";
+export { isVisible } from "@/lib/survey-logic";
 
 // Eski tek-anket modeli (site ayarındaki survey_schema) ilk erişimde surveys tablosuna taşınır.
 type LegacySchema = {
@@ -108,20 +111,6 @@ export async function pendingSurveyFor(user: SessionUser) {
   return pending[0] ?? null;
 }
 
-export function isVisible(q: SurveyQuestion, answers: Record<string, string | string[]>) {
-  if (!q.showIf || q.showIf.length === 0) return true;
-  return q.showIf.every((c) => {
-    const v = answers[c.q];
-    const arr = Array.isArray(v) ? v : v ? [v] : [];
-    switch (c.op) {
-      case "filled": return arr.length > 0 && arr.some((x) => x !== "");
-      case "empty": return arr.length === 0 || arr.every((x) => x === "");
-      case "in": return arr.some((x) => (c.val ?? []).includes(x));
-      case "not_in": return !arr.some((x) => (c.val ?? []).includes(x));
-    }
-  });
-}
-
 export async function getSurveyAnswers(userId: number, surveyKey: string) {
   const rows = await db
     .select()
@@ -133,12 +122,9 @@ export async function getSurveyAnswers(userId: number, surveyKey: string) {
 }
 
 export async function saveSurvey(userId: number, survey: Survey, raw: Record<string, string | string[]>) {
-  const visible = survey.questions.filter((q) => isVisible(q, raw));
-  for (const q of visible) {
-    const v = raw[q.key];
-    const empty = v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
-    if (q.required && empty) return { error: `"${q.label}" sorusu zorunlu.` };
-  }
+  const missing = missingRequired(survey, raw);
+  if (missing.length) return { error: `"${missing[0].label}" sorusu zorunlu.` };
+  const visible = visibleQuestions(survey, raw);
   // Görünmeyen soruların cevapları silinir
   await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key)));
   const values = visible

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSurveyById } from "@/lib/survey";
 import { PageTitle, Chip } from "@/components/panel/ui";
-import { SurveySchemaEditor } from "@/components/admin/SurveySchemaEditor";
+import { SurveyBuilder } from "@/components/admin/SurveyBuilder";
 import { PublishSurveyButton } from "@/components/admin/SurveyAdminButtons";
 
 export default async function AdminSurveyEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,7 @@ export default async function AdminSurveyEditPage({ params }: { params: Promise<
     return (
       <>
         <PageTitle title="Yeni anket" action={<Link href="/admin/anketler" className="btn-secondary btn-sm">← Anketler</Link>} />
-        <SurveySchemaEditor survey={{ title: "", intro: "", sections: { genel: "Genel" }, questions: [] }} />
+        <SurveyBuilder survey={{ title: "", intro: "", mode: "steps", sections: { genel: "Genel" }, questions: [] }} />
       </>
     );
   }
@@ -30,7 +30,7 @@ export default async function AdminSurveyEditPage({ params }: { params: Promise<
           </div>
         }
       />
-      <SurveySchemaEditor survey={{ id: s.id, title: s.title, intro: s.intro, sections: s.sections, questions: s.questions }} />
+      <SurveyBuilder survey={{ id: s.id, title: s.title, intro: s.intro, mode: s.mode, editable: s.editable, sections: s.sections, questions: s.questions }} />
     </>
   );
 }

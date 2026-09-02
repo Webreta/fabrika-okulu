@@ -1,5 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { NOTIFY_CATEGORIES } from "@/lib/notify-prefs";
+import { addressFromForm } from "@/lib/address";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { randomBytes } from "crypto";
@@ -240,4 +243,28 @@ export async function setPanelTheme(theme: string) {
   const user = await getCurrentUser();
   if (!user) return;
   await db.update(users).set({ panelTheme: theme.slice(0, 30) }).where(eq(users.id, user.id));
+}
+
+/** Adreslerim: fatura + gönderim (form alanları billing_* ve shipping_*) */
+export async function saveAddresses(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Oturum bulunamadı." };
+  const billing = addressFromForm(formData, "billing_");
+  const shipping = formData.get("shipping_same") ? billing : addressFromForm(formData, "shipping_");
+  await db.update(users).set({ addresses: { billing, shipping } }).where(eq(users.id, user.id));
+  revalidatePath("/panel/adres");
+  return { ok: "Adresler kaydedildi." };
+}
+
+/** Bildirim tercihleri: yalnızca bilinen kategoriler, boolean */
+export async function setNotifyPrefs(input: Record<string, boolean>) {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false as const };
+  const prefs: Record<string, boolean> = {};
+  for (const c of NOTIFY_CATEGORIES) {
+    if (input[c.key] === false) prefs[c.key] = false;
+    if (input[`mail:${c.key}`] === false) prefs[`mail:${c.key}`] = false;
+  }
+  await db.update(users).set({ notifyPrefs: prefs }).where(eq(users.id, user.id));
+  return { ok: true as const };
 }

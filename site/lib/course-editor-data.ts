@@ -51,6 +51,9 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
     hasCertificate: c.hasCertificate,
     lifetime: c.lifetime,
     buttonType: c.buttonType,
+    type: c.type,
+    meetingMinutes: c.meetingMinutes,
+    meetingLink: c.meetingLink,
     instructorId: c.instructorId,
     featured: c.featured,
     closed: c.closed,
@@ -134,6 +137,9 @@ export async function listCoursesBrief() {
 
 export const EMPTY_COURSE: CourseInput = {
   title: "",
+  type: "course",
+  meetingMinutes: 0,
+  meetingLink: "",
   shortDescription: "",
   description: "",
   imageUrl: "",

@@ -1,6 +1,10 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { users } from "@/db/schema";
 import { getSetting } from "@/lib/settings";
+import { categoryOfMailType, wantsEmail } from "@/lib/notify-prefs";
 
 export const MAIL_TYPES = {
   welcome: { title: "Kayıt hoş geldin maili", to: "öğrenci" },
@@ -81,10 +85,18 @@ export async function sendMail(opts: {
   html: string;
   replyTo?: string;
 }): Promise<boolean> {
-  const recipients = (Array.isArray(opts.to) ? opts.to : [opts.to])
+  let recipients = (Array.isArray(opts.to) ? opts.to : [opts.to])
     .map((s) => s.trim())
     .filter(Boolean);
   if (recipients.length === 0) return false;
+  // Konu bazlı e-posta tercihi: kullanıcı bu konuyu kapattıysa ona gönderme (işlemsel türler kapsam dışı)
+  if (categoryOfMailType(opts.type) && !TRANSACTIONAL.includes(opts.type)) {
+    const lower = recipients.map((r) => r.toLowerCase());
+    const rows = await db.select({ email: users.email, prefs: users.notifyPrefs }).from(users).where(inArray(users.email, lower));
+    const muted = new Set(rows.filter((r) => !wantsEmail(r.prefs, opts.type)).map((r) => r.email.toLowerCase()));
+    recipients = recipients.filter((r) => !muted.has(r.toLowerCase()));
+    if (recipients.length === 0) return false;
+  }
 
   const tp = await transporter();
   if (!tp) {

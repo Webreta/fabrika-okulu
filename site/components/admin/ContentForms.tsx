@@ -37,7 +37,7 @@ export function PagesManager({ pages }: { pages: P[] }) {
         </table>
       </div>
       {edit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setEdit(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(null)}>
           <div className="max-h-[92vh] w-full max-w-3xl space-y-3 overflow-y-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="grid gap-3 sm:grid-cols-2">
               <div><label className="label">Başlık</label><input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} className="input" /></div>

@@ -100,6 +100,10 @@ const courseObjectSchema = z.object({
   hasCertificate: z.boolean().default(false),
   lifetime: z.boolean().default(true),
   buttonType: z.string().default("cart"),
+  // Online görüşme ürünü: müfredat yok, koltuklar dönem olarak tutulur
+  type: z.enum(["course", "meeting"]).default("course"),
+  meetingMinutes: z.coerce.number().int().min(0).catch(0),
+  meetingLink: z.string().trim().default(""),
   instructorId: z.number().nullable().optional(),
   modules: z.array(moduleSchema).default([]),
   periods: z.array(periodSchema).default([]),
@@ -171,6 +175,9 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
     hasCertificate: input.hasCertificate,
     lifetime: input.lifetime,
     buttonType: input.buttonType,
+    type: input.type,
+    meetingMinutes: input.type === "meeting" ? input.meetingMinutes : 0,
+    meetingLink: input.type === "meeting" ? input.meetingLink : "",
     updatedAt: new Date(),
     ...(opts.isAdmin && input.instructorId !== undefined ? { instructorId: input.instructorId } : {}),
     ...(opts.isAdmin && input.featured !== undefined ? { featured: input.featured } : {}),
@@ -190,7 +197,7 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
 
   let created: Created = { quizzes: [], assignments: [] };
   if (!opts.locked) {
-    created = await syncCurriculum(courseId, input.modules, opts.authorId, input.periods.length > 0);
+    created = await syncCurriculum(courseId, input.type === "meeting" ? [] : input.modules, opts.authorId, input.periods.length > 0);
     await syncPeriods(courseId, input.periods, false, opts.isAdmin);
   } else {
     await syncPeriods(courseId, input.periods, true);

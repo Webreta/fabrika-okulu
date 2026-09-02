@@ -15,8 +15,16 @@ export const PANEL_THEMES: PanelTheme[] = [
     vars: { card: "#ffffff", surface: "#f5f7fa", line: "#e3e8ef", ink: "#12233a", navy: "#194977", sky: "#5baecf" },
   },
   {
-    key: "mermer", label: "Mermer", desc: "Zarif, minimal", img: "/img/banners/mermer.jpg", focus: "center 50%",
-    vars: { card: "#ffffff", surface: "#f4f4f6", line: "#e2e2e8", ink: "#1a1a24", navy: "#3a3a52", sky: "#8b8bb0" },
+    key: "lavanta", label: "Lavanta", desc: "Mor tonları, sakin", img: "/img/banners/lavanta.jpg", focus: "center 50%",
+    vars: { card: "#fdfbff", surface: "#f4effc", line: "#e4dcf3", ink: "#241a3a", navy: "#5b3d99", sky: "#a274d9" },
+  },
+  {
+    key: "gunbatimi", label: "Gün Batımı", desc: "Sarı-turuncu, sıcak", img: "/img/banners/gunbatimi.jpg", focus: "center 50%",
+    vars: { card: "#fffcf5", surface: "#fdf3e1", line: "#f0dfc0", ink: "#3a2410", navy: "#b8541a", sky: "#e9a23b" },
+  },
+  {
+    key: "okyanus", label: "Okyanus", desc: "Derin mavi-turkuaz", img: "/img/banners/okyanus.jpg", focus: "center 50%",
+    vars: { card: "#f7fcfd", surface: "#e9f5f8", line: "#cfe6ec", ink: "#0e2a3a", navy: "#0f4c6e", sky: "#1fa7a7" },
   },
   {
     key: "kutuphane", label: "Kütüphane", desc: "Koyu orman yeşili, odaklı", img: "/img/banners/kutuphane.jpg", focus: "center 45%",

@@ -3,7 +3,8 @@ import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions } from "@/lib/player";
-import { getEnrollment } from "@/lib/data/student";
+import { getEnrollment, studentMeeting } from "@/lib/data/student";
+import { MeetingView } from "./MeetingView";
 import { db } from "@/db";
 import { quizzes, assignments, progress, courseSuggestions } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
@@ -39,6 +40,11 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const state = await playerState(user!.id, courseId, acc.preview);
   if (!state) notFound();
   const { course, done, prog, frontier } = state;
+  // Online görüşme ürünü: video oynatıcı yok, görüşme sayfası
+  if (course.type === "meeting") {
+    const meeting = acc.preview ? null : await studentMeeting(user!.id, courseId, course.meetingMinutes, course.meetingLink);
+    return <MeetingView course={{ id: course.id, title: course.title, imageUrl: course.imageUrl, shortDescription: course.shortDescription, meetingMinutes: course.meetingMinutes, meetingLink: course.meetingLink }} meeting={meeting} preview={acc.preview} />;
+  }
   const flat = course.flatLessons;
 
   if (!acc.preview) {
@@ -172,8 +178,8 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       <header className="sticky top-0 z-40 border-b border-line bg-white">
         <div className="mx-auto grid max-w-[1310px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 lg:grid-cols-[1fr_auto_1fr]">
           <nav className="hidden items-center gap-1 md:flex">
-            {([["/panel", "Panelim", "home"], ["/panel/egitim", "Eğitimlerim", "book"], ["/panel/takvim", "Takvim", "calendar"], ["/panel/aksiyon", "Aksiyonlarım", "task"]] as const).map(([h, l, i]) => (
-              <Link key={h} href={h} className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-[13px] font-semibold transition ${h === "/panel/egitim" ? "border-navy-800 text-navy-800" : "border-transparent text-muted hover:bg-surface"}`}>
+            {([["/panel", "Çalışma Odam", "home"], ["/panel/takvim", "Gündemim", "calendar"], ["/kesfet", "Keşfet", "compass"]] as const).map(([h, l, i]) => (
+              <Link key={h} href={h} target={h === "/kesfet" ? "_blank" : undefined} rel={h === "/kesfet" ? "noopener" : undefined} className="flex items-center gap-2 rounded-full border-2 border-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted transition hover:bg-surface">
                 <Icon name={i} className="size-4" />{l}
               </Link>
             ))}
@@ -200,7 +206,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       {/* Kurs çubuğu */}
       <div className="border-b border-line bg-sky-100">
         <div className="mx-auto flex max-w-[1310px] flex-wrap items-center gap-4 px-4 py-2.5">
-          <Link href="/panel/egitim" className="flex items-center gap-1 text-sm font-semibold text-navy-800 hover:underline"><Icon name="arrowLeft" className="size-4" /> Eğitimlerim</Link>
+          <Link href="/panel/egitim" className="flex items-center gap-1 text-sm font-semibold text-navy-800 hover:underline"><Icon name="arrowLeft" className="size-4" /> Kitaplığım</Link>
           <span className="truncate font-bold text-navy-800">{course.title}</span>
           <div className="ml-auto flex items-center gap-3">
             <div className="h-2 w-32 overflow-hidden rounded-full bg-white"><div className="h-full bg-navy-800" style={{ width: `${prog.percent}%` }} /></div>

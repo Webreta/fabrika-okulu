@@ -14,7 +14,7 @@ export function EventForm() {
     <>
       <button onClick={() => setOpen(true)} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Kişisel etkinlik</button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="font-bold text-navy-800">Yeni etkinlik</p>
             <input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Başlık" className="input" />

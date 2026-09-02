@@ -3,11 +3,12 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   users, enrollments, courses, assignments, assignmentSubmissions, quizzes, quizAttempts,
-  questions, notes, issuedCertificates, certificateTemplates, orders,
+  questions, notes, issuedCertificates, certificateTemplates, orders, resumeFiles,
 } from "@/db/schema";
 import { courseProgress } from "@/lib/data/student";
 import { certSerial } from "@/lib/certificates";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/format";
+import { RESUME_KINDS, fmtBytes } from "@/lib/resume-kinds";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { StudentDetail, StudentDangerZone } from "@/components/admin/StudentDetail";
 
@@ -28,7 +29,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
     const uid = Number(detail);
     const [u] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
     if (!u) return <p className="card">Kullanıcı bulunamadı.</p>;
-    const [list, subs, atts, qs, nts, certs, ords] = await Promise.all([
+    const [list, subs, atts, qs, nts, certs, ords, cvs] = await Promise.all([
       db.select({ e: enrollments, c: courses }).from(enrollments).innerJoin(courses, eq(enrollments.courseId, courses.id)).where(eq(enrollments.userId, uid)).orderBy(desc(enrollments.enrolledAt)),
       db.select({ s: assignmentSubmissions, title: assignments.title, courseTitle: courses.title }).from(assignmentSubmissions).innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id)).innerJoin(courses, eq(assignments.courseId, courses.id)).where(eq(assignmentSubmissions.userId, uid)).orderBy(desc(assignmentSubmissions.submittedAt)),
       db.select({ a: quizAttempts, title: quizzes.title, courseTitle: courses.title }).from(quizAttempts).innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id)).innerJoin(courses, eq(quizzes.courseId, courses.id)).where(eq(quizAttempts.userId, uid)).orderBy(desc(quizAttempts.startedAt)),
@@ -36,6 +37,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
       db.select({ n: notes, courseTitle: courses.title }).from(notes).leftJoin(courses, eq(notes.courseId, courses.id)).where(eq(notes.userId, uid)).orderBy(desc(notes.createdAt)),
       db.select({ ic: issuedCertificates, tplTitle: certificateTemplates.title }).from(issuedCertificates).innerJoin(certificateTemplates, eq(issuedCertificates.templateId, certificateTemplates.id)).where(eq(issuedCertificates.userId, uid)).orderBy(desc(issuedCertificates.issuedAt)),
       db.select().from(orders).where(eq(orders.userId, uid)).orderBy(desc(orders.createdAt)),
+      db.select().from(resumeFiles).where(eq(resumeFiles.userId, uid)).orderBy(desc(resumeFiles.createdAt)),
     ]);
     const all = await db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
     const prog = await Promise.all(list.map(({ c }) => courseProgress(uid, c.id)));
@@ -193,6 +195,29 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
                   ))}
                 </tbody>
               </table>
+            </div>
+          </Section>
+
+          <Section title={`Özgeçmişim (${cvs.length})`}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {RESUME_KINDS.map((k) => {
+                const files = cvs.filter((f) => f.kind === k.key);
+                return (
+                  <div key={k.key} className="card">
+                    <h4 className="mb-2 font-semibold text-navy-800">{k.title} <span className="text-xs font-normal text-muted">· {fmtBytes(files.reduce((s, f) => s + f.size, 0))}</span></h4>
+                    {files.length === 0 ? <p className="text-sm text-muted">Dosya yok.</p> : (
+                      <ul className="divide-y divide-line">
+                        {files.map((f) => (
+                          <li key={f.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                            <a href={f.fileUrl} target="_blank" rel="noopener" className="truncate font-semibold text-sky-600 hover:underline">{f.fileName}</a>
+                            <span className="shrink-0 text-xs text-muted">{fmtBytes(f.size)} · <span className="date-chip">{fmtDate(f.createdAt)}</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Section>
 

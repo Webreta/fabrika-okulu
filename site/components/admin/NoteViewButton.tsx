@@ -9,7 +9,7 @@ export function NoteViewButton({ text, student, meta }: { text: string; student:
     <>
       <button onClick={() => setOpen(true)} className="btn-secondary btn-sm"><Icon name="eye" className="size-3.5" /> Notu gör</button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div><p className="font-bold text-navy-800">{student}</p><p className="text-xs text-muted">{meta}</p></div>

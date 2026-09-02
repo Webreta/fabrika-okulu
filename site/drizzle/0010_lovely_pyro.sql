@@ -1,0 +1,1 @@
+ALTER TABLE "surveys" ADD COLUMN "editable" boolean DEFAULT true NOT NULL;

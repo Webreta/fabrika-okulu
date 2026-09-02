@@ -2,7 +2,8 @@ import "server-only";
 import webpush from "web-push";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { notifications, pushSubscriptions, notificationLog } from "@/db/schema";
+import { notifications, pushSubscriptions, notificationLog, users } from "@/db/schema";
+import { categoryOfTag, wantsNotification } from "@/lib/notify-prefs";
 import { siteUrl } from "@/lib/mailer";
 
 // Uygulama içi bildirim her zaman yazılır; web push varsa ayrıca gönderilir.
@@ -30,8 +31,14 @@ export async function notifyUsers(
   userIds: number[],
   n: { title: string; body?: string; url?: string; tag?: string }
 ): Promise<number> {
-  const ids = [...new Set(userIds)].filter((x) => x > 0);
+  let ids = [...new Set(userIds)].filter((x) => x > 0);
   if (ids.length === 0) return 0;
+  // Kategorili bildirimde kullanıcı tercihine bak: kapattıysa hiç gönderme (uygulama içi + push)
+  if (categoryOfTag(n.tag)) {
+    const rows = await db.select({ id: users.id, prefs: users.notifyPrefs }).from(users).where(inArray(users.id, ids));
+    ids = rows.filter((r) => wantsNotification(r.prefs, n.tag)).map((r) => r.id);
+    if (ids.length === 0) return 0;
+  }
   await db.insert(notifications).values(
     ids.map((userId) => ({
       userId,

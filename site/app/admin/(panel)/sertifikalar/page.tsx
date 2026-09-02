@@ -12,7 +12,7 @@ import { RevokeCertButton } from "@/components/teacher/IssueCertButton";
 
 export default async function CertificatesAdminPage({ searchParams }: { searchParams: Promise<{ sekme?: string; cert?: string; s?: string }> }) {
   const { sekme, cert, s } = await searchParams;
-  const templates = await db.select({ t: certificateTemplates, issued: sql<number>`(select count(*) from ${issuedCertificates} i where i.template_id = ${certificateTemplates.id})`.mapWith(Number), courseTitle: courses.title }).from(certificateTemplates).leftJoin(courses, sql`${courses.id} = (${certificateTemplates.rule}->>'courseId')::int`).orderBy(desc(certificateTemplates.id));
+  const templates = await db.select({ t: certificateTemplates, issued: sql<number>`(select count(*) from ${issuedCertificates} i where i.template_id = "certificate_templates"."id")`.mapWith(Number), courseTitle: courses.title }).from(certificateTemplates).leftJoin(courses, sql`${courses.id} = (${certificateTemplates.rule}->>'courseId')::int`).orderBy(desc(certificateTemplates.id));
 
   if (sekme === "verilenler") {
     const q = s?.trim() ?? "";

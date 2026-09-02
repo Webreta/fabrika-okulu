@@ -10,9 +10,9 @@ export default async function SurveyListPage() {
   const [list, done] = await Promise.all([listSurveys(true), completedSurveyKeys(user.id)]);
   return (
     <>
-      <PageTitle title="Anketler" />
+      <PageTitle title="Kariyer Hedefim" />
       {list.length === 0 ? (
-        <Empty text="Şu anda yayında anket yok." />
+        <Empty text="Şu anda yayında hedef testi yok." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((s) => {
@@ -27,7 +27,7 @@ export default async function SurveyListPage() {
                 {s.intro && <p className="mt-1 line-clamp-3 text-sm text-muted">{s.intro}</p>}
                 {s.publishedAt && <p className="mt-1 text-xs text-muted">Yayın: <span className="date-chip">{fmtDate(s.publishedAt)}</span></p>}
                 <Link href={`/panel/anket/${s.id}`} className={`mt-4 w-full ${completed ? "btn-secondary" : "btn-primary"}`}>
-                  {completed ? "Sonuçları gör" : "Anketi doldur"}
+                  {completed ? "Cevaplarımı gör" : "Teste başla"}
                 </Link>
               </div>
             );

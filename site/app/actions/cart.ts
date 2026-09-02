@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, coupons, orders, periods, periodEnrollments } from "@/db/schema";
+import { courses, coupons, orders, periods, periodEnrollments, users, type BillingInfo } from "@/db/schema";
+import { addressFromForm } from "@/lib/address";
 import { getCart, setCart, clearCart } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth/session";
 import { effectivePrice } from "@/lib/course-logic";
@@ -30,7 +31,7 @@ export async function addToCart(formData: FormData) {
       .select({
         id: periods.id,
         capacity: periods.capacity,
-        enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = ${periods.id})`.mapWith(Number),
+        enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
       })
       .from(periods)
       .where(and(eq(periods.id, periodId), eq(periods.courseId, c.id)))
@@ -58,7 +59,8 @@ export async function addToCart(formData: FormData) {
       })
       .returning({ id: orders.id });
     await enrollUser({ userId: user.id, courseId: c.id, orderId: o.id, periodId });
-    redirect(`/kurs-izle/${c.id}`);
+    // Ücretsiz eğitim kitaplığa eklenir; oynatıcı yerine "Yeni Program" listesine gider
+    redirect(`/panel/egitim?sekme=yeni`);
   }
 
   const cart = await getCart();
@@ -163,15 +165,18 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   if (t.lines.length === 0) redirect("/sepet");
   if (t.couponError) return { error: t.couponError };
 
-  const billing = {
-    name: String(formData.get("name") ?? user.name),
-    email: user.email,
-    phone: String(formData.get("phone") ?? ""),
-    address: String(formData.get("address") ?? ""),
-    city: String(formData.get("city") ?? ""),
-    identityNumber: String(formData.get("identityNumber") ?? ""),
+  const billingAddr = addressFromForm(formData, "billing_");
+  if (!billingAddr.name) billingAddr.name = user.name;
+  const shippingSame = !!formData.get("shipping_same");
+  const shippingAddr = shippingSame ? billingAddr : addressFromForm(formData, "shipping_");
+  const billing: BillingInfo = {
+    name: billingAddr.name, email: user.email, phone: billingAddr.phone, address: billingAddr.address, city: billingAddr.city,
+    district: billingAddr.district, postalCode: billingAddr.postalCode, identityNumber: billingAddr.identityNumber,
+    ...(shippingSame ? {} : { shipping: shippingAddr }),
   };
   if (!formData.get("sozlesme")) return { error: "Mesafeli satış sözleşmesini onaylamalısın." };
+  // Adresler kullanıcıya kaydedilir: bir sonraki siparişte ön tanımlı gelir (Tercihler → Adreslerim'den de düzenlenir)
+  await db.update(users).set({ addresses: { billing: billingAddr, shipping: shippingAddr } }).where(eq(users.id, user.id));
 
   const payment = await getSetting("payment");
   const provider = t.total === 0 ? "free" : payment.provider === "manual" || !iyzicoEnabled() ? "manual" : "iyzico";

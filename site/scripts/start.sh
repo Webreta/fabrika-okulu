@@ -3,6 +3,8 @@
 # Ayrıca 15 dakikada bir /api/cron çağıran basit zamanlayıcı (hatırlatmalar, günlük rapor).
 set -e
 node scripts/migrate.mjs
+# Örnek online görüşme ürünleri (slug varsa atlar); hata deploy'u durdurmaz
+node node_modules/tsx/dist/cli.mjs scripts/seed-gorusme.mts || echo "seed-gorusme atlandı"
 (
   sleep 90
   while true; do

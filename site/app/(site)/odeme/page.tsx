@@ -6,6 +6,7 @@ import { getSetting } from "@/lib/settings";
 import { iyzicoEnabled } from "@/lib/iyzico";
 import { fmtMoney } from "@/lib/format";
 import { CheckoutForm } from "./CheckoutForm";
+import { normalizeAddress, isAddressFilled } from "@/lib/address";
 
 export const metadata: Metadata = { title: "Ödeme" };
 
@@ -21,7 +22,7 @@ export default async function CheckoutPage() {
     <section className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="text-3xl font-bold text-navy-800">Ödeme</h1>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
-        <CheckoutForm defaults={{ name: user.name, phone: "" }} mode={mode} bankInfo={payment.bankInfo} />
+        <CheckoutForm defaults={{ billing: normalizeAddress({ name: user.name, ...user.addresses.billing }), shipping: normalizeAddress(user.addresses.shipping), shippingSame: !isAddressFilled(user.addresses.shipping) || JSON.stringify(normalizeAddress(user.addresses.shipping)) === JSON.stringify(normalizeAddress(user.addresses.billing)) }} mode={mode} bankInfo={payment.bankInfo} />
         <aside className="card h-fit">
           <h2 className="font-bold text-navy-800">Sipariş özeti</h2>
           <ul className="mt-3 space-y-2 text-sm">

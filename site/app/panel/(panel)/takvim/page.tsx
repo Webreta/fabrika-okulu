@@ -22,19 +22,19 @@ export default async function CalendarPage() {
         <span className="text-[11px] uppercase">{MONTHS[e.date.getMonth()]}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <Chip color={e.type === "session" ? "purple" : e.type === "quiz" ? "sky" : "amber"}>
-          {e.type === "session" ? "Canlı ders" : e.type === "quiz" ? "Sınav" : "Görev"}{e.done && e.type !== "session" ? " ✓" : ""}
+        <Chip color={e.type === "session" || e.type === "meeting" ? "purple" : e.type === "quiz" ? "sky" : "amber"}>
+          {e.type === "session" ? "Canlı ders" : e.type === "meeting" ? "Birebir görüşme" : e.type === "quiz" ? "Sınav" : "Görev"}{e.done && e.type !== "session" ? " ✓" : ""}
         </Chip>
         <p className="mt-1 truncate font-semibold text-navy-800">{e.title}</p>
         <p className="mt-1 text-xs text-muted"><span className="date-chip">{fmtTime(e.date)}</span> · {e.courseTitle}</p>
       </div>
-      <Link href={e.link} target={e.external ? "_blank" : undefined} className="btn-secondary btn-sm self-center">{e.type === "session" ? "Katıl" : "Git"}</Link>
+      <Link href={e.link} target={e.external ? "_blank" : undefined} className="btn-secondary btn-sm self-center">{e.type === "session" ? "Katıl" : e.type === "meeting" ? "Görüşme" : "Git"}</Link>
     </div>
   );
 
   return (
     <>
-      <PageTitle title="Eğitim Takvimim" />
+      <PageTitle title="Gündemim" />
       {calendar.length === 0 ? (
         <Empty text="Takviminde henüz bir etkinlik yok." />
       ) : (

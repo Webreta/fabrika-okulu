@@ -43,6 +43,48 @@
       "when": 1787912483583,
       "tag": "0005_eminent_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788365963245,
+      "tag": "0006_modern_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788372951419,
+      "tag": "0007_wide_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788373906040,
+      "tag": "0008_special_doctor_faustus",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788374070563,
+      "tag": "0009_optimal_typhoid_mary",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788375165820,
+      "tag": "0010_lovely_pyro",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788376884917,
+      "tag": "0011_fair_invaders",
+      "breakpoints": true
     }
   ]
 }

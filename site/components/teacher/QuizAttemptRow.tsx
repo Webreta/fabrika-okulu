@@ -24,7 +24,7 @@ export function QuizAttemptRow({ row }: { row: AttemptRow }) {
         <button onClick={open} disabled={pending} className="btn-secondary btn-sm">{pending ? "…" : "İncele"}</button>
       </div>
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-4" onClick={() => setDetail(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setDetail(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div><h3 className="text-lg font-bold text-navy-800">{detail.title}</h3><p className="text-sm text-muted">{detail.student}{detail.score !== null && ` · %${detail.score}`}</p></div>
