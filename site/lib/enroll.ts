@@ -3,7 +3,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { enrollments, periodEnrollments, periods, courses, users, orders, coupons } from "@/db/schema";
 import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
-import { notifyUser } from "@/lib/notify";
+import { notifyUser, notifyUsers } from "@/lib/notify";
+import { notifyWaitlistIfOpen } from "@/lib/waitlist";
 import { fmtMoney } from "@/lib/format";
 import { openPeriods, getCoursePeriods } from "@/lib/data/courses";
 
@@ -59,6 +60,16 @@ export async function enrollUser(opts: {
         .limit(1);
       if (!already[0]) {
         await db.insert(periodEnrollments).values({ periodId: p.id, userId: opts.userId, orderId: opts.orderId ?? null });
+        // Ödeme sepet-ödeme arasında dolan döneme denk geldiyse öğrenci yine kaydedilir (parası alındı); yöneticiye haber ver
+        if (p.enrolled >= p.capacity) {
+          const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+          const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, opts.courseId)).limit(1);
+          await notifyUsers(admins.map((a) => a.id), {
+            title: "Kontenjan aşıldı",
+            body: `${c?.title ?? "Kurs"} · dönem #${p.id}: ${p.enrolled + 1}/${p.capacity} kayıt. Kontenjanı artırmak ya da öğrenciyi başka döneme almak gerekebilir.`,
+            url: `/egitmen/detay/${opts.courseId}`,
+          });
+        }
       }
     }
   }
@@ -106,6 +117,8 @@ export async function unenrollUser(userId: number, courseId: number) {
   if (e.orderId && e.orderId > 0) {
     await db.update(orders).set({ status: "cancelled" }).where(and(eq(orders.id, e.orderId), eq(orders.status, "paid")));
   }
+  // Koltuk boşaldı: bekleme listesine haber ver
+  await notifyWaitlistIfOpen(courseId);
 }
 
 /** Sipariş ödendi → tüm kalemleri kaydet, kuponu kullanılmış işaretle, mail at */

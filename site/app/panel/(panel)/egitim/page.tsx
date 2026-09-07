@@ -7,11 +7,14 @@ import { SideNav } from "@/components/panel/SideNav";
 import { MeetingCardActions } from "@/components/panel/MeetingCard";
 import { MeetingDetailPopup } from "@/components/panel/MeetingDetailPopup";
 import { Icon } from "@/components/site/Icon";
+import { studentFavorites } from "@/lib/favorites";
+import { FavoriteButton } from "@/components/site/FavoriteButton";
+import { Price } from "@/components/site/CourseCard";
 
 export default async function MyCoursesPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
   const user = (await getCurrentUser())!;
   const { sekme } = await searchParams;
-  const all = await studentCourses(user.id);
+  const [all, favs] = await Promise.all([studentCourses(user.id), studentFavorites(user.id)]);
   // Yeni: satın alınmış ama hiç başlanmamış · Devam eden: başlanmış, bitmemiş · Bitmiş: %100
   // Görüşme ürününde ilerleme = katılınan oturum sayısı (lib/data/student.ts)
   const fresh = all.filter((c) => c.completed === 0 && c.percent < 100);
@@ -21,16 +24,49 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title={sekme === "devam" ? "Devam Eden Programlar" : sekme === "yeni" ? "Yeni Programlar" : "Kitaplığım"} />
+      <PageTitle title={sekme === "devam" ? "Devam Eden Programlar" : sekme === "yeni" ? "Yeni Programlar" : sekme === "favori" ? "Favorilerim" : "Kitaplığım"} sub={sekme === "favori" ? "İlgilendiğin eğitimler. İndirime girdiklerinde sana bildirim ve e-posta gönderilir." : undefined} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <SideNav label="Kitaplığım" items={[
-          { href: "/panel/egitim", label: "Tüm Eğitimler", icon: "library", count: all.length, active: sekme !== "devam" && sekme !== "bitmis" },
+          { href: "/panel/egitim", label: "Tüm Eğitimler", icon: "library", count: all.length, active: sekme !== "devam" && sekme !== "bitmis" && sekme !== "yeni" && sekme !== "favori" },
           { href: "/panel/egitim?sekme=devam", label: "Devam Eden", icon: "play", count: ongoing.length, active: sekme === "devam" },
           { href: "/panel/egitim?sekme=bitmis", label: "Bitmiş", icon: "check", count: done.length, active: sekme === "bitmis" },
           { href: "/panel/egitim?sekme=yeni", label: "Yeni Program", icon: "star", count: fresh.length, active: sekme === "yeni" },
+          { href: "/panel/egitim?sekme=favori", label: "Favoriler", icon: "heart", count: favs.length, active: sekme === "favori" },
         ]} />
         <div className="min-w-0 flex-1">
-      {list.length === 0 ? (
+      {sekme === "favori" ? (
+        favs.length === 0 ? (
+          <Empty text="Henüz favori eğitimin yok. Programlardaki kalp simgesiyle ekleyebilirsin." action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {favs.map((c) => (
+              <div key={c.id} className="card relative flex flex-col p-0 overflow-hidden">
+                <FavoriteButton courseId={c.id} initial />
+                <Link href={`/program/${c.slug}`} className="relative block aspect-[5/2] bg-navy-50">
+                  {c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
+                  <span className="absolute left-3 top-3 flex gap-1.5">
+                    {c.onSale && <Chip color="red">İndirimde</Chip>}
+                    {c.enrolled && <Chip color="green">Kayıtlısın</Chip>}
+                    {c.closed && <Chip color="gray">Yayında değil</Chip>}
+                  </span>
+                </Link>
+                <div className="flex flex-1 flex-col p-4">
+                  <h3 className="font-bold text-navy-800"><Link href={`/program/${c.slug}`} className="hover:text-sky-600">{c.title}</Link></h3>
+                  {c.instructor && <p className="mt-1 text-xs text-muted">{c.instructor.name}</p>}
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                    <Price course={c} />
+                    {c.enrolled ? (
+                      <Link href={`/kurs-izle/${c.id}`} className="btn-primary btn-sm"><Icon name="play" className="size-4" /> İzle</Link>
+                    ) : (
+                      <Link href={`/program/${c.slug}`} className="btn-sky btn-sm">{c.closed ? "İncele" : c.isFree ? "Kayıt Ol" : "Sepete Ekle"}</Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : list.length === 0 ? (
         <Empty text={sekme === "bitmis" ? "Henüz tamamlanmış eğitimin yok." : sekme === "devam" ? "Devam eden eğitimin yok." : sekme === "yeni" ? "Başlanmamış yeni programın yok." : "Henüz bir eğitime kayıtlı değilsin."} action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

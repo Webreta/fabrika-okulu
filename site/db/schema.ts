@@ -270,6 +270,50 @@ export const meetingAttendance = pgTable(
   (t) => [uniqueIndex("meeting_attendance_uq").on(t.userId, t.periodId, t.sessionIndex)]
 );
 
+/**
+ * Bekleme listesi: dönem kontenjanı doluyken ya da kayıt açık dönem yokken "tekrar açılınca haber ver" diyenler.
+ * Kurs başına e-posta tekildir; boş koltuk açılınca (yeni dönem, kontenjan artışı, kayıt iptali) e-posta + bildirim gider ve notifiedAt dolar.
+ * Aynı kişi tekrar listeye girerse notifiedAt sıfırlanır.
+ */
+export const periodWaitlist = pgTable(
+  "period_waitlist",
+  {
+    id: serial("id").primaryKey(),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    /** İstenen dönem (bilgi amaçlı); dönem silinirse boşalır, kayıt kalır */
+    periodId: integer("period_id").references(() => periods.id, { onDelete: "set null" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    name: text("name").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("period_waitlist_uq").on(t.courseId, t.email), index("period_waitlist_course_idx").on(t.courseId)]
+);
+
+/**
+ * Favoriler: öğrenci ilgilendiği eğitimi işaretler (Kitaplığım → Favoriler).
+ * Eğitimde indirim başlayınca (salePrice/saleTo değişip aktif olunca) favorileyenlere bildirim + e-posta gider;
+ * aynı indirim için tekrar gönderilmesin diye gönderilen indirimin anahtarı (salePrice|saleTo) notifiedSaleKey'de tutulur.
+ */
+export const favorites = pgTable(
+  "favorites",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    notifiedSaleKey: text("notified_sale_key").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("favorites_uq").on(t.userId, t.courseId), index("favorites_course_idx").on(t.courseId)]
+);
+
 // İlişkili kurslar: kaynak kurs tamamlanınca/satın alınınca hedef kurs önerilir (kişiye özel indirimle)
 export const courseRelations = pgTable(
   "course_relations",

@@ -5,17 +5,21 @@ import { addToCart } from "@/app/actions/cart";
 import { Icon } from "@/components/site/Icon";
 import { addMinutes, fmtDayShort } from "@/lib/meeting";
 import { Modal } from "@/components/site/Modal";
+import { WaitlistButton } from "@/components/site/WaitlistButton";
 
 type P = { id: number; name: string; range: string; left: number; full: boolean; schedule: number; date?: string; time?: string; sessions?: string[] };
 
 export function BuyBox({
-  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0,
-}: { courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number }) {
+  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0, loggedIn = false, waitlisted = false, userEmail = "",
+}: { courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number; loggedIn?: boolean; waitlisted?: boolean; userEmail?: string }) {
   // Görüşmede koltuk elle seçilir (ön seçim yok); dönemde ilk boş dönem ön seçilidir
   const [periodId, setPeriodId] = useState<number | null>(meeting ? null : periods.find((p) => !p.full)?.id ?? null);
   const [open, setOpen] = useState(false);
   const sel = periods.find((p) => p.id === periodId);
-  const showCart = buttonType !== "whatsapp";
+  // Kayıt açık dönem yok ya da hepsi dolu: satın alma yerine "tekrar açılınca haber ver"
+  const noSeat = periodBased && (periods.length === 0 || periods.every((p) => p.full));
+  const allFull = periodBased && periods.length > 0 && periods.every((p) => p.full);
+  const showCart = buttonType !== "whatsapp" && !noSeat;
   const showWa = (buttonType === "whatsapp" || buttonType === "both") && !!whatsappUrl;
 
   return (
@@ -25,6 +29,8 @@ export function BuyBox({
           <p className="label">Görüşme saati</p>
           {periods.length === 0 ? (
             <p className="rounded-lg bg-surface p-3 text-sm text-muted">Açık görüşme saati yok.</p>
+          ) : allFull ? (
+            <p className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">Tüm görüşme saatleri dolu.</p>
           ) : (
             <button type="button" onClick={() => setOpen(true)} className="input flex items-center justify-between text-left">
               <span className={sel ? "" : "text-muted"}>{sel && sel.date && sel.time ? `${fmtDayShort(sel.date)} · ${sel.time}${minutes ? `-${addMinutes(sel.time, minutes)}` : ""}` : "Gün ve koltuk seç"}</span>
@@ -55,7 +61,7 @@ export function BuyBox({
             <p className="rounded-lg bg-surface p-3 text-sm text-muted">Kayıt açık dönem yok.</p>
           ) : (
             <button type="button" onClick={() => setOpen(true)} className="input flex items-center justify-between text-left">
-              <span>{sel ? `${sel.name} · ${sel.range}` : "Seçiniz"}</span>
+              <span className={sel ? "" : allFull ? "font-semibold text-red-700" : "text-muted"}>{sel ? `${sel.name} · ${sel.range}` : allFull ? "Tüm dönemlerin kontenjanı dolu" : "Seçiniz"}</span>
               <Icon name="chevronDown" className="size-4 text-muted" />
             </button>
           )}
@@ -83,6 +89,9 @@ export function BuyBox({
                 </div>
           </Modal>
         </div>
+      )}
+      {noSeat && (
+        <WaitlistButton courseId={courseId} periodId={periods[0]?.id ?? null} loggedIn={loggedIn} waitlisted={waitlisted} userEmail={userEmail} meeting={meeting} />
       )}
       {showCart && (
         <form action={addToCart}>

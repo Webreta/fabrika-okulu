@@ -14,6 +14,7 @@ export const NOTIFY_CATEGORIES: { key: string; label: string; desc: string; pref
   { key: "kupon", label: "Belge & kupon", desc: "Yüklediğin belge onaylanıp kupon tanımlandığında", prefixes: ["coupon-"], mailTypes: ["coupon"] },
   { key: "duyuru", label: "Duyurular", desc: "Fabrika Okulu ekibinden genel duyurular", prefixes: ["ann-"], mailTypes: ["announcement"] },
   { key: "anket", label: "Anketler", desc: "Yeni anket yayınlandığında", prefixes: ["survey-"], mailTypes: ["survey"] },
+  { key: "favori", label: "Favoriler", desc: "Favorilediğin bir eğitimde indirim başladığında", prefixes: ["fav-"], mailTypes: ["favorite_sale"] },
 ];
 
 export function categoryOfTag(tag: string | undefined) {

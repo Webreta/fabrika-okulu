@@ -33,6 +33,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                 <div className="flex-1">
                   <Link href={`/program/${l.slug}`} className="font-semibold text-navy-800 hover:text-sky-600">{l.title}</Link>
                   {l.periodName && <p className="text-sm text-muted">Dönem: {l.periodName}</p>}
+                  {l.periodFull && <p className="mt-1 text-xs font-semibold text-red-600">Bu dönemin kontenjanı doldu. Program sayfasından başka dönem seç ya da tekrar açılınca haber ver.</p>}
                   {l.personalPercent > 0 && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Sana özel %{l.personalPercent} indirim</span>}
                 </div>
                 <span className="text-right">
@@ -58,7 +59,11 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
               {t.discount > 0 && <div className="flex justify-between text-emerald-600"><dt>İndirim</dt><dd>-{fmtMoney(t.discount)}</dd></div>}
               <div className="flex justify-between border-t border-line pt-2 text-base font-bold text-navy-800"><dt>Toplam</dt><dd>{fmtMoney(t.total)}</dd></div>
             </dl>
-            <Link href={user ? "/odeme" : "/panel/giris?r=/odeme"} className="btn-primary w-full py-3">Ödemeye geç</Link>
+            {t.lines.some((l) => l.periodFull) ? (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">Kontenjanı dolan dönem var; ödemeye geçmeden önce sepetten çıkar.</p>
+            ) : (
+              <Link href={user ? "/odeme" : "/panel/giris?r=/odeme"} className="btn-primary w-full py-3">Ödemeye geç</Link>
+            )}
             <Image src="/img/site/odeme.png" alt="Visa, Mastercard, iyzico" width={513} height={73} className="mx-auto h-6 w-auto opacity-80" />
           </aside>
         </div>

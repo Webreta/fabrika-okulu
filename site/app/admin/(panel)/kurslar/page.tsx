@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { listCourses } from "@/lib/data/courses";
 import { fmtMoney } from "@/lib/format";
+import { hasActiveSale, effectivePrice } from "@/lib/course-logic";
 import { GROUP_LABELS } from "@/lib/course-logic";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
@@ -24,7 +25,7 @@ export default async function AdminCoursesPage() {
                 <td className="text-xs">{GROUP_LABELS[c.group]}</td>
                 <td className="text-sm">{c.studentCount}</td>
                 <td className="text-sm">{c.lessonCount}</td>
-                <td className="text-sm">{c.isFree ? <Chip color="green">Ücretsiz</Chip> : fmtMoney(c.salePrice ?? c.price)}</td>
+                <td className="text-sm">{c.isFree ? <Chip color="green">Ücretsiz</Chip> : hasActiveSale(c) ? <span className="flex flex-col"><span className="text-xs text-muted line-through">{fmtMoney(c.price)}</span><span className="font-semibold text-emerald-700">{fmtMoney(effectivePrice(c))}</span></span> : fmtMoney(c.price)}</td>
                 <td><Chip color={c.closed ? "gray" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.status === "published" ? "Yayında" : "Taslak"}</Chip></td>
                 <td className="w-72"><CourseActions courseId={c.id} slug={c.slug} closed={c.closed} base="/admin/kurslar" showDetail={false} /></td>
               </tr>

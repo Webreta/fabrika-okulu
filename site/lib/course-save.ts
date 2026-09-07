@@ -3,6 +3,8 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations } from "@/db/schema";
+import { notifyWaitlistIfOpen } from "@/lib/waitlist";
+import { notifyFavoritesOnSale } from "@/lib/favorites";
 import { slugify } from "@/lib/uploads";
 import { normalizeDuration } from "@/lib/course-logic";
 import { todayISO } from "@/lib/format";
@@ -187,11 +189,14 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
   };
 
   let courseId: number;
+  let before: { isFree: boolean; price: string; salePrice: string | null; saleTo: string | null } | null = null;
   if (isNew) {
     const [c] = await db.insert(courses).values({ ...base, authorId: opts.authorId, instructorId: opts.instructorId }).returning({ id: courses.id });
     courseId = c.id;
   } else {
     courseId = input.id!;
+    const [old] = await db.select({ isFree: courses.isFree, price: courses.price, salePrice: courses.salePrice, saleTo: courses.saleTo }).from(courses).where(eq(courses.id, courseId)).limit(1);
+    before = old ?? null;
     await db.update(courses).set(base).where(eq(courses.id, courseId));
   }
 
@@ -218,6 +223,10 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
   const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(periods).where(eq(periods.courseId, courseId));
   const group = n > 0 ? "takvimli" : input.isFree ? "ucretsiz" : "esnek";
   await db.update(courses).set({ group }).where(eq(courses.id, courseId));
+  // Yeni dönem / kontenjan artışı ile boş yer açıldıysa bekleme listesine haber ver
+  await notifyWaitlistIfOpen(courseId);
+  // İndirim başladı/değiştiyse favorileyenlere haber ver (yalnızca yayındaki kurs)
+  if (before && input.status === "published") await notifyFavoritesOnSale(courseId, before);
   return { courseId, slug, created };
 }
 

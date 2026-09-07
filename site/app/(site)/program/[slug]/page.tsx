@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getEnrollment } from "@/lib/data/student";
 import { ownsCourse } from "@/lib/data/teacher";
 import { getSetting } from "@/lib/settings";
-import { GROUP_LABELS, GROUP_SLUGS, LEVEL_LABELS, parseVideo, effectivePrice } from "@/lib/course-logic";
+import { GROUP_LABELS, GROUP_SLUGS, LEVEL_LABELS, parseVideo, effectivePrice, hasActiveSale } from "@/lib/course-logic";
 import { fmtRange, fmtMoney, initials } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Price } from "@/components/site/CourseCard";
@@ -17,6 +17,9 @@ import { Curriculum } from "./Curriculum";
 import { BuyBox } from "./BuyBox";
 import { MeetingDetailPopup } from "@/components/panel/MeetingDetailPopup";
 import { studentMeeting } from "@/lib/data/student";
+import { isOnWaitlist } from "@/lib/waitlist";
+import { isFavorite } from "@/lib/favorites";
+import { FavoriteButton } from "@/components/site/FavoriteButton";
 import { db } from "@/db";
 import { periodEnrollments, periods } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -60,6 +63,8 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
   const reqs = course.requirements.split("\n").map((s) => s.trim()).filter(Boolean);
   const targets = course.target.split("\n").map((s) => s.trim()).filter(Boolean);
   const open = openPeriods(course.periods);
+  const waitlisted = user && !enrolled ? await isOnWaitlist(course.id, user.email) : false;
+  const fav = user ? await isFavorite(user.id, course.id) : false;
   const wa = course.whatsappNumber || contact.whatsappNumber;
   const waMsg = (course.whatsappMessage || contact.whatsappMessage)
     .replace("{course_name}", course.title)
@@ -79,7 +84,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
       )}
       {course.status !== "published" && <div className="bg-amber-100 text-amber-800 text-center text-sm py-2">Taslak önizleme — yalnızca siz görüyorsunuz.</div>}
       {hata === "donem" && <div className="bg-red-50 text-red-700 text-center text-sm py-2">Lütfen bir dönem seçin.</div>}
-      {hata === "dolu" && <div className="bg-red-50 text-red-700 text-center text-sm py-2">Seçilen dönemin kontenjanı dolu.</div>}
+      {hata === "dolu" && <div className="bg-red-50 text-red-700 text-center text-sm py-2">Üzgünüz, seçilen dönemin kontenjanı doldu. Başka bir dönem seçebilir ya da tekrar açılınca haber verilmesini isteyebilirsin.</div>}
 
       {/* Hero */}
       {/* Hero + içerik: sağdaki kart hero ile beyaz alanın sınırında durur ve kaydırınca takip eder */}
@@ -249,7 +254,16 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
                     periods={open.map((p) => ({ id: p.id, name: p.name, range: course.type === "meeting" ? (p.schedule.length > 1 ? `${p.schedule.length} görüşme · her görüşme ${course.meetingMinutes} dk` : `${course.meetingMinutes} dk`) : fmtRange(p.startDate, p.endDate), left: p.capacity - p.enrolled, full: p.enrolled >= p.capacity, schedule: p.schedule.length, date: p.startDate, time: p.startTime?.slice(0, 5) ?? "", sessions: p.schedule.map((s) => s.date) }))}
                     buttonType={course.buttonType}
                     whatsappUrl={waUrl}
+                    loggedIn={!!user}
+                    waitlisted={waitlisted}
+                    userEmail={user?.email ?? ""}
                   />
+                )}
+                {!enrolled && (
+                  <div className="mt-3">
+                    <FavoriteButton courseId={course.id} initial={fav} variant="inline" />
+                    {!course.isFree && !hasActiveSale(course) && <p className="mt-1 text-center text-[11px] text-muted">İndirime girerse sana haber veririz.</p>}
+                  </div>
                 )}
                 <p className="mt-5 border-t border-line pt-4 text-sm font-semibold text-navy-800">Bu Program Dahilinde</p>
                 {course.type === "meeting" ? (

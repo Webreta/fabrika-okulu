@@ -5,6 +5,8 @@ set -e
 node scripts/migrate.mjs
 # Örnek online görüşme ürünleri (slug varsa atlar); hata deploy'u durdurmaz
 node node_modules/tsx/dist/cli.mjs scripts/seed-gorusme.mts || echo "seed-gorusme atlandı"
+# Örnek kontenjanı dolu takvimli eğitim (başlık varsa atlar)
+node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-dolu.mts || echo "seed-dolu atlandı"
 (
   sleep 90
   while true; do

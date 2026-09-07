@@ -15,6 +15,7 @@ import { enrollUser, fulfillOrder } from "@/lib/enroll";
 import { initCheckoutForm, iyzicoEnabled } from "@/lib/iyzico";
 import { siteUrl } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
+import { periodCapacity } from "@/lib/waitlist";
 import { cookies } from "next/headers";
 
 export async function addToCart(formData: FormData) {
@@ -88,7 +89,7 @@ export async function applyCoupon(formData: FormData) {
 }
 
 export type CartTotals = {
-  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; group: string }[];
+  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string }[];
   subtotal: number;
   discount: number;
   total: number;
@@ -105,7 +106,12 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
   const ids = cart.map((i) => i.courseId);
   const cs = await db.select().from(courses).where(inArray(courses.id, ids));
   const pids = cart.map((i) => i.periodId).filter((x): x is number => !!x);
-  const ps = pids.length ? await db.select().from(periods).where(inArray(periods.id, pids)) : [];
+  const ps = pids.length
+    ? await db
+        .select({ id: periods.id, name: periods.name, capacity: periods.capacity, enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number) })
+        .from(periods)
+        .where(inArray(periods.id, pids))
+    : [];
 
   const lines = (
     await Promise.all(
@@ -127,6 +133,7 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
           personalPercent,
           periodId: p?.id ?? null,
           periodName: p?.name ?? null,
+          periodFull: !!p && p.enrolled >= p.capacity,
           group: c.group,
         };
       })
@@ -164,6 +171,15 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   const t = await cartTotals(user.id);
   if (t.lines.length === 0) redirect("/sepet");
   if (t.couponError) return { error: t.couponError };
+  // Ödeme öncesi son kontenjan kontrolü: sepete eklendikten sonra dolan dönem varsa ödeme başlatılmaz
+  for (const l of t.lines) {
+    if (!l.periodId) continue;
+    const cap = await periodCapacity(l.periodId, l.courseId);
+    if (!cap || cap.full) {
+      await setCart((await getCart()).filter((i) => i.courseId !== l.courseId));
+      return { error: `${l.title} — ${l.periodName ?? "seçilen dönem"} kontenjanı doldu; sepetten çıkarıldı. Program sayfasından başka bir dönem seçebilir ya da "tekrar açılınca haber ver" diyebilirsin.` };
+    }
+  }
 
   const billingAddr = addressFromForm(formData, "billing_");
   if (!billingAddr.name) billingAddr.name = user.name;

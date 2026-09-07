@@ -4,6 +4,9 @@ import type { CourseWithMeta } from "@/lib/data/courses";
 import { GROUP_LABELS, effectivePrice, hasActiveSale } from "@/lib/course-logic";
 import { fmtMoney, excerpt } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
+import { FavoriteButton } from "@/components/site/FavoriteButton";
+import { getCurrentUser } from "@/lib/auth/session";
+import { myFavoriteIds } from "@/lib/favorites";
 
 export function Price({ course }: { course: Pick<CourseWithMeta, "isFree" | "price" | "salePrice" | "saleTo"> }) {
   if (course.isFree) return <span className="font-bold text-emerald-600">ÜCRETSİZ</span>;
@@ -19,17 +22,22 @@ export function Price({ course }: { course: Pick<CourseWithMeta, "isFree" | "pri
   return <span className="font-bold text-navy-800">{fmtMoney(eff)}</span>;
 }
 
-export function CourseCard({ course }: { course: CourseWithMeta }) {
+export async function CourseCard({ course }: { course: CourseWithMeta }) {
+  // Kalp: giriş yapan kullanıcının favorileri istek başına bir kez okunur (cache)
+  const user = await getCurrentUser();
+  const fav = user ? (await myFavoriteIds(user.id)).has(course.id) : false;
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <FavoriteButton courseId={course.id} initial={fav} />
       <Link href={`/program/${course.slug}`} className="relative block overflow-hidden bg-navy-50">
         {course.imageUrl ? (
           <Image src={course.imageUrl} alt={course.title} width={640} height={440} className="cover transition group-hover:scale-[1.02]" />
         ) : (
           <div className="cover flex items-center justify-center text-navy-300"><Icon name="book" className="size-12" /></div>
         )}
-        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-navy-800 shadow">
-          {GROUP_LABELS[course.group]}
+        <span className="absolute left-3 top-3 flex gap-1.5">
+          <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-navy-800 shadow">{GROUP_LABELS[course.group]}</span>
+          {hasActiveSale(course) && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-semibold text-white shadow">İndirim</span>}
         </span>
       </Link>
       <div className="flex flex-1 flex-col p-4">

@@ -13,6 +13,7 @@ import {
 import { requireTeacher } from "@/lib/auth/session";
 import { ownsCourse, ensureInstructorProfile, teacherCourseIds } from "@/lib/data/teacher";
 import { courseInputSchema, saveCourse, duplicateCourse as dup } from "@/lib/course-save";
+import { notifyWaitlistIfOpen } from "@/lib/waitlist";
 import { saveUploadedFile, IMAGE_EXTENSIONS, slugify } from "@/lib/uploads";
 import { notifyUser, notifyUsers, logNotification } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
@@ -95,6 +96,7 @@ export async function toggleCourseClosed(courseId: number, closed: boolean): Pro
   const user = await requireTeacher();
   if (!(await ownsCourse(user, courseId))) return { ok: false, error: "Yetki yok." };
   await db.update(courses).set({ closed }).where(eq(courses.id, courseId));
+  if (!closed) await notifyWaitlistIfOpen(courseId);
   revalidatePath("/egitmen"); revalidatePath("/kesfet");
   return { ok: true };
 }

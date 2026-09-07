@@ -23,13 +23,15 @@ export const MAIL_TYPES = {
   order_paid: { title: "Ödeme alındığında", to: "öğrenci + yönetici" },
   document_uploaded: { title: "Belge yüklendiğinde", to: "belge e-postası" },
   daily_report: { title: "Günlük rapor", to: "yönetici + eğitmenler" },
+  waitlist: { title: "Kontenjan/yeni dönem açıldığında (bekleme listesi)", to: "haber ver diyenler" },
+  favorite_sale: { title: "Favori eğitimde indirim başladığında", to: "favorileyen öğrenciler" },
   password_reset: { title: "Şifre sıfırlama", to: "kullanıcı" },
   contact: { title: "İletişim formu", to: "yönetici" },
 } as const;
 
 export type MailType = keyof typeof MAIL_TYPES;
 
-const TRANSACTIONAL: MailType[] = ["password_reset", "order_paid", "welcome", "contact"];
+const TRANSACTIONAL: MailType[] = ["password_reset", "order_paid", "welcome", "contact", "waitlist"];
 
 async function transporter() {
   const smtp = await getSetting("smtp");

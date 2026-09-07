@@ -9,6 +9,8 @@ import { Kpi, Chip, Progress, Tabs } from "@/components/panel/ui";
 import { CourseActions } from "@/components/teacher/CourseActions";
 import { SubmissionCard } from "@/components/teacher/SubmissionCard";
 import { QuizAttemptRow } from "@/components/teacher/QuizAttemptRow";
+import { courseWaitlist } from "@/lib/waitlist";
+import { Icon } from "@/components/site/Icon";
 
 export default async function CourseDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sekme?: string }> }) {
   const { id } = await params;
@@ -16,8 +18,9 @@ export default async function CourseDetailPage({ params, searchParams }: { param
   const user = await requireTeacher();
   const courseId = Number(id);
   if (!courseId || !(await ownsCourse(user, courseId))) notFound();
-  const [course, students] = await Promise.all([getCourseFull(courseId), teacherStudents(user, courseId)]);
+  const [course, students, waitlist] = await Promise.all([getCourseFull(courseId), teacherStudents(user, courseId), courseWaitlist(courseId)]);
   if (!course) notFound();
+  const waiting = waitlist.filter((w) => !w.notifiedAt);
   const finished = students.filter((s) => s.total > 0 && s.completed >= s.total).length;
   const avg = students.length ? Math.round(students.reduce((a, s) => a + s.percent, 0) / students.length) : 0;
   const subs = sekme === "gonderimler" ? await teacherSubmissions(user, courseId) : [];
@@ -45,9 +48,30 @@ export default async function CourseDetailPage({ params, searchParams }: { param
         <Kpi label="Ort. ilerleme" value={`%${avg}`} icon="chart" color="sky" />
         <Kpi label="Hiç başlamayan" value={students.filter((s) => !s.startedAt).length} icon="clock" color="amber" />
       </div>
+      {course.periods.length > 0 && (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {course.periods.map((p) => {
+            const full = p.enrolled >= p.capacity;
+            const past = p.endDate < new Date().toISOString().slice(0, 10);
+            return (
+              <div key={p.id} className="card flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="font-semibold text-navy-800">{p.name}</p>
+                  <p className="text-xs text-muted">{fmtDate(p.startDate)} – {fmtDate(p.endDate)}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-bold ${full ? "text-red-600" : "text-emerald-600"}`}>{p.enrolled}/{p.capacity}</p>
+                  <Chip color={past ? "gray" : full ? "red" : "green"}>{past ? "Bitti" : full ? "Kontenjan dolu" : `${p.capacity - p.enrolled} boş`}</Chip>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <Tabs items={[
         { href: `${base}?sekme=ogrenciler`, label: "Öğrenciler", count: students.length, active: sekme === "ogrenciler" },
         { href: `${base}?sekme=gonderimler`, label: "Görevler & Sınavlar", active: sekme === "gonderimler" },
+        ...(course.periods.length > 0 || waitlist.length > 0 ? [{ href: `${base}?sekme=bekleme`, label: "Bekleme Listesi", count: waiting.length, active: sekme === "bekleme" }] : []),
         { href: `/egitmen/sorular`, label: "Sorular →", active: false },
       ]} />
       {sekme === "ogrenciler" && (
@@ -78,6 +102,28 @@ export default async function CourseDetailPage({ params, searchParams }: { param
             <h2 className="mb-3 font-bold text-navy-800">Sınav sonuçları ({attempts.length})</h2>
             <div className="space-y-3">{attempts.length === 0 ? <p className="text-sm text-muted">Sonuç yok.</p> : attempts.map((r) => <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString() }} />)}</div>
           </div>
+        </div>
+      )}
+      {sekme === "bekleme" && (
+        <div className="card overflow-x-auto p-0">
+          <div className="border-b border-line px-4 py-3 text-sm text-muted">
+            <Icon name="bell" className="mr-1 inline size-4 text-amber-500" />
+            Kontenjan doluyken ya da kayıt açık dönem yokken "tekrar açılınca haber ver" diyenler. Yeni dönem ekleyip ya da kontenjanı artırıp kaydettiğinde bekleyenlere otomatik e-posta gider.
+          </div>
+          <table className="table">
+            <thead><tr><th>Kişi</th><th>İstediği dönem</th><th>Eklendi</th><th>Durum</th></tr></thead>
+            <tbody>
+              {waitlist.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-muted">Bekleyen yok.</td></tr>}
+              {waitlist.map((w) => (
+                <tr key={w.id}>
+                  <td><p className="font-semibold text-navy-800">{w.name || "—"}</p><p className="text-xs text-muted">{w.email}{w.userId ? "" : " · misafir"}</p></td>
+                  <td className="text-sm">{w.periodName ?? <span className="text-muted">Herhangi bir dönem</span>}</td>
+                  <td className="text-xs"><span className="date-chip">{fmtDateTime(w.createdAt)}</span></td>
+                  <td className="text-xs">{w.notifiedAt ? <Chip color="green">Haber verildi · {fmtDateTime(w.notifiedAt)}</Chip> : <Chip color="amber">Bekliyor</Chip>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       <p className="mt-6 text-xs text-muted"><Link href="/egitmen/kurslarim" className="hover:underline">← Eğitimlerim</Link></p>
