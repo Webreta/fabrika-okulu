@@ -171,3 +171,16 @@ body {
 .survey-card-next { animation: survey-in-next 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .survey-card-prev { animation: survey-in-prev 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @media (prefers-reduced-motion: reduce) { .survey-card-next, .survey-card-prev { animation: none; } }
+
+/* Rotam: dağ yolu çizimi ve adımların sırayla belirmesi */
+@keyframes route-draw { to { stroke-dashoffset: 0; } }
+@keyframes route-pop { 0% { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.15); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes route-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes route-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(91, 174, 207, .55); } 50% { box-shadow: 0 0 0 14px rgba(91, 174, 207, 0); } }
+@keyframes route-cloud { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+.route-path { stroke-dasharray: 2600; stroke-dashoffset: 2600; animation: route-draw 2.4s ease-out forwards; }
+.route-node { animation: route-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
+.route-flag { animation: route-float 3s ease-in-out infinite; }
+.route-current { animation: route-pulse 2s ease-out infinite; }
+.route-cloud { animation: route-cloud 12s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .route-path, .route-node, .route-flag, .route-current, .route-cloud { animation: none; stroke-dashoffset: 0; opacity: 1; } }

@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations } from "@/db/schema";
+import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations, courseCategories } from "@/db/schema";
 import { notifyWaitlistIfOpen } from "@/lib/waitlist";
 import { notifyFavoritesOnSale } from "@/lib/favorites";
 import { slugify } from "@/lib/uploads";
@@ -110,6 +110,8 @@ const courseObjectSchema = z.object({
   modules: z.array(moduleSchema).default([]),
   periods: z.array(periodSchema).default([]),
   relations: z.array(relationSchema).optional(),
+  /** Kategori id'leri (yalnızca admin düzenler; undefined = dokunma) */
+  categoryIds: z.array(z.number().int()).optional(),
   featured: z.boolean().optional(),
   closed: z.boolean().optional(),
   whatsappNumber: z.string().optional(),
@@ -217,6 +219,13 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
       .filter((r) => { const k = `${r.relatedCourseId}-${r.trigger}`; if (seenRel.has(k)) return false; seenRel.add(k); return true; })
       .map((r, i) => ({ courseId, relatedCourseId: r.relatedCourseId, trigger: r.trigger, discountPercent: r.discountPercent, note: r.note.slice(0, 300), sortOrder: i }));
     if (rels.length) await db.insert(courseRelations).values(rels);
+  }
+
+  // Kategoriler (yalnızca admin)
+  if (opts.isAdmin && input.categoryIds !== undefined) {
+    await db.delete(courseCategories).where(eq(courseCategories.courseId, courseId));
+    const ids = [...new Set(input.categoryIds.filter((x) => x > 0))];
+    if (ids.length) await db.insert(courseCategories).values(ids.map((categoryId) => ({ courseId, categoryId })));
   }
 
   // Grup: dönem varsa takvimli, ücretsizse ucretsiz, değilse esnek

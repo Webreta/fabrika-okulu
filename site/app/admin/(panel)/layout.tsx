@@ -25,6 +25,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   const items: AdminNavItem[] = [
     { href: "/admin", label: "Gösterge Paneli", icon: "home", group: "Genel" },
     { href: "/admin/kurslar", label: "Kurslar", icon: "book", group: "Eğitim" },
+    { href: "/admin/kategoriler", label: "Kategoriler", icon: "layers" },
+    { href: "/admin/rotalar", label: "Rotalar", icon: "mountain" },
     { href: "/admin/egitmenler", label: "Eğitmenler", icon: "users" },
     { href: "/admin/ogrenciler", label: "Kayıtlı Öğrenciler", icon: "user", badge: fresh.ogrenciler || undefined },
     { href: "/admin/gonderimler", label: "Görevler & Sınavlar", icon: "task", badge: ps || undefined },

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
-export function Footer({ text }: { text: string }) {
+export function Footer({ text, categories = [] }: { text: string; categories?: { name: string; slug: string }[] }) {
   return (
     <footer className="mt-16 border-t border-line bg-surface">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4">
@@ -20,11 +20,10 @@ export function Footer({ text }: { text: string }) {
           </ul>
         </div>
         <div>
-          <h3 className="mb-3 font-bold text-navy-800">Programlar</h3>
+          <h3 className="mb-3 font-bold text-navy-800">Eğitimler</h3>
           <ul className="space-y-2 text-sm text-muted">
-            <li><Link href="/takvimli-programlar" className="hover:text-sky-600">Takvimli Programlar</Link></li>
-            <li><Link href="/esnek-programlar" className="hover:text-sky-600">Esnek Programlar</Link></li>
-            <li><Link href="/ucretsiz-kaynaklar" className="hover:text-sky-600">Ücretsiz Kaynaklar</Link></li>
+            {categories.map((k) => <li key={k.slug}><Link href={`/kategori/${k.slug}`} className="hover:text-sky-600">{k.name}</Link></li>)}
+            <li><Link href="/kesfet" className="hover:text-sky-600">Tüm Eğitimler</Link></li>
           </ul>
         </div>
         <div>

@@ -314,6 +314,67 @@ export const favorites = pgTable(
   (t) => [uniqueIndex("favorites_uq").on(t.userId, t.courseId), index("favorites_course_idx").on(t.courseId)]
 );
 
+/**
+ * Eğitim kategorileri: admin tanımlar (/admin/kategoriler), header "Eğitimler" açılır menüsünde listelenir,
+ * /kategori/[slug] sayfası kategorideki eğitimleri gösterir. Bir eğitim birden fazla kategoride olabilir (course_categories).
+ */
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const courseCategories = pgTable(
+  "course_categories",
+  {
+    id: serial("id").primaryKey(),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("course_categories_uq").on(t.courseId, t.categoryId), index("course_categories_cat_idx").on(t.categoryId)]
+);
+
+/**
+ * Rotalar ("Rotam"): admin sıralı eğitim yolu kurar (önce bu, sonra şu…). Sitede /rotam sayfasında
+ * zirveye tırmanan dağ yolu olarak çizilir; her adımın üzerine gelince not (tooltip) görünür.
+ * Giriş yapan öğrencide adımlar kayıt/ilerleme durumuna göre boyanır.
+ */
+export const routes = pgTable("routes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description").notNull().default(""),
+  /** Zirvedeki hedef (ör. "Üretim Müdürü") — boşsa "Zirve" */
+  goal: text("goal").notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const routeSteps = pgTable(
+  "route_steps",
+  {
+    id: serial("id").primaryKey(),
+    routeId: integer("route_id")
+      .notNull()
+      .references(() => routes.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    /** Adımın üzerine gelince gösterilen açıklama */
+    note: text("note").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("route_steps_route_idx").on(t.routeId)]
+);
+
 // İlişkili kurslar: kaynak kurs tamamlanınca/satın alınınca hedef kurs önerilir (kişiye özel indirimle)
 export const courseRelations = pgTable(
   "course_relations",

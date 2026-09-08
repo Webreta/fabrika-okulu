@@ -54,9 +54,9 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 }
 
 export function CourseEditor({
-  initial, locked, isAdmin, instructors, periodEnrolled = {}, backHref, allCourses = [],
+  initial, locked, isAdmin, instructors, periodEnrolled = {}, backHref, allCourses = [], categories = [],
 }: {
-  initial: CourseInput; locked: boolean; isAdmin: boolean;
+  initial: CourseInput; locked: boolean; isAdmin: boolean; categories?: { id: number; name: string }[];
   instructors: { id: number; name: string }[]; periodEnrolled?: Record<number, number>; backHref: string;
   allCourses?: { id: number; title: string }[];
 }) {
@@ -379,6 +379,27 @@ export function CourseEditor({
           {!locked && c.type === "meeting" && c.periods.length > 0 && <button onClick={() => { if (confirm("Tüm koltuklar listeden kaldırılsın mı? (Kayıtlı öğrencisi olan koltuklar kaydedilirken korunur.)")) set("periods", []); }} className="btn-secondary btn-sm text-red-600">Tümünü temizle</button>}
         </div>
       </Section>
+
+      {/* Kategoriler (yalnızca admin): header "Eğitimler" menüsü ve /kategori sayfaları */}
+      {isAdmin && (
+        <Section title="Kategoriler" hint="Eğitim, seçilen kategorilerin sayfasında ve sitenin Eğitimler menüsünde listelenir. Birden fazla kategori seçebilirsin. Kategoriler Yönetici → Kategoriler'den tanımlanır.">
+          {categories.length === 0 ? (
+            <p className="text-sm text-muted">Henüz kategori yok. Önce <a href="/admin/kategoriler" className="text-sky-600 underline">Kategoriler</a> sayfasından ekle.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {categories.map((k) => {
+                const on = (c.categoryIds ?? []).includes(k.id);
+                return (
+                  <label key={k.id} className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${on ? "border-navy-800 bg-navy-800 text-white" : "border-line bg-white text-navy-800 hover:border-navy-300"}`}>
+                    <input type="checkbox" className="sr-only" checked={on} onChange={(e) => set("categoryIds", e.target.checked ? [...(c.categoryIds ?? []), k.id] : (c.categoryIds ?? []).filter((x) => x !== k.id))} />
+                    {k.name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Kurs önerileri (yalnızca admin): tamamlayan/satın alan öğrenciye panelde önerilir */}
       {isAdmin && (

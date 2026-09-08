@@ -1,7 +1,7 @@
 import "server-only";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { quizzes, quizQuestions, instructors, assignments, courseRelations } from "@/db/schema";
+import { quizzes, quizQuestions, instructors, assignments, courseRelations, courseCategories } from "@/db/schema";
 import { getCourseFull } from "@/lib/data/courses";
 import type { CourseInput } from "@/lib/course-save";
 
@@ -30,6 +30,7 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
   // Takvimli kursta tarih önerisi için en erken dönem (eski göreli günlü kayıtlar tarihe çevrilerek gösterilir)
   const firstPeriod = [...c.periods].sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   const rels = await db.select().from(courseRelations).where(eq(courseRelations.courseId, courseId)).orderBy(courseRelations.sortOrder, courseRelations.id);
+  const cats = await db.select({ categoryId: courseCategories.categoryId }).from(courseCategories).where(eq(courseCategories.courseId, courseId));
 
   return {
     id: c.id,
@@ -121,6 +122,7 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
       schedule: (p.schedule ?? []).map((s) => ({ date: s.date, time: s.time ?? "", title: s.title ?? "", link: s.link ?? "", notes: s.notes ?? "" })),
     })),
     relations: rels.map((r) => ({ relatedCourseId: r.relatedCourseId, trigger: r.trigger as "completed" | "purchased", discountPercent: r.discountPercent, note: r.note })),
+    categoryIds: cats.map((x) => x.categoryId),
     periodEnrolled: Object.fromEntries(c.periods.map((p) => [p.id, p.enrolled])),
   };
 }

@@ -7,6 +7,10 @@ node scripts/migrate.mjs
 node node_modules/tsx/dist/cli.mjs scripts/seed-gorusme.mts || echo "seed-gorusme atlandı"
 # Örnek kontenjanı dolu takvimli eğitim (başlık varsa atlar)
 node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-dolu.mts || echo "seed-dolu atlandı"
+# Başlangıç kategorileri (tablo boşsa: eski üç grup kategori olur)
+node node_modules/tsx/dist/cli.mjs scripts/seed-kategoriler.mts || echo "seed-kategoriler atlandı"
+# İki örnek rota (slug varsa atlar)
+node node_modules/tsx/dist/cli.mjs scripts/seed-rotalar.mts || echo "seed-rotalar atlandı"
 (
   sleep 90
   while true; do
