@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   courses, instructors, enrollments, lessons, assignmentSubmissions, assignments, quizAttempts, quizzes, questions, questionAnswers, users, periods, issuedCertificates, certificateTemplates,
@@ -95,32 +95,51 @@ export async function teacherStudents(user: SessionUser, courseId?: number): Pro
   return out;
 }
 
-export async function teacherSubmissions(user: SessionUser, courseId?: number, limit = 60) {
+/** Görev/sınav listeleri için serbest arama ve durum filtresi */
+export type SubmissionFilter = { q?: string; status?: string };
+
+/** Öğrenci adı-soyadı, e-posta ya da başlıkta geçen metin (ILIKE) */
+function searchCond(q: string | undefined, title: typeof assignments.title | typeof quizzes.title) {
+  const t = q?.trim();
+  if (!t) return undefined;
+  const like = `%${t}%`;
+  return or(ilike(sql`${users.firstName} || ' ' || ${users.lastName}`, like), ilike(users.email, like), ilike(title, like));
+}
+
+export async function teacherSubmissions(user: SessionUser, courseId?: number, limit = 60, filter: SubmissionFilter = {}) {
   const ids = await teacherCourseIds(user);
   const scope = courseId && ids.includes(courseId) ? [courseId] : ids;
   if (scope.length === 0) return [];
+  const status = filter.status === "pending" || filter.status === "graded" ? filter.status : undefined;
   return db
     .select({ s: assignmentSubmissions, a: assignments, u: users, courseTitle: courses.title })
     .from(assignmentSubmissions)
     .innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id))
     .innerJoin(users, eq(assignmentSubmissions.userId, users.id))
     .innerJoin(courses, eq(assignments.courseId, courses.id))
-    .where(inArray(assignments.courseId, scope))
+    .where(and(inArray(assignments.courseId, scope), status ? eq(assignmentSubmissions.status, status) : undefined, searchCond(filter.q, assignments.title)))
     .orderBy(desc(assignmentSubmissions.submittedAt))
     .limit(limit);
 }
 
-export async function teacherQuizAttempts(user: SessionUser, courseId?: number, limit = 40) {
+export async function teacherQuizAttempts(user: SessionUser, courseId?: number, limit = 40, filter: SubmissionFilter = {}) {
   const ids = await teacherCourseIds(user);
   const scope = courseId && ids.includes(courseId) ? [courseId] : ids;
   if (scope.length === 0) return [];
+  // Durum: pending_review (değerlendirme bekliyor) · completed · passed / failed (tamamlananlar içinde geçti/kaldı)
+  const st = filter.status;
+  const statusCond =
+    st === "pending_review" || st === "completed" ? eq(quizAttempts.status, st)
+    : st === "passed" ? and(eq(quizAttempts.status, "completed"), eq(quizAttempts.passed, true))
+    : st === "failed" ? and(eq(quizAttempts.status, "completed"), eq(quizAttempts.passed, false))
+    : undefined;
   return db
     .select({ at: quizAttempts, q: quizzes, u: users, courseTitle: courses.title })
     .from(quizAttempts)
     .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
     .innerJoin(users, eq(quizAttempts.userId, users.id))
     .innerJoin(courses, eq(quizzes.courseId, courses.id))
-    .where(and(inArray(quizzes.courseId, scope), inArray(quizAttempts.status, ["completed", "pending_review"])))
+    .where(and(inArray(quizzes.courseId, scope), inArray(quizAttempts.status, ["completed", "pending_review"]), statusCond, searchCond(filter.q, quizzes.title)))
     .orderBy(desc(quizAttempts.id))
     .limit(limit);
 }

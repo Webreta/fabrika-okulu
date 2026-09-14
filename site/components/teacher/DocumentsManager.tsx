@@ -9,25 +9,33 @@ import { Chip } from "@/components/panel/ui";
 type Doc = { id: number; user: string; email: string; fileUrl: string; fileName: string; note: string; status: string; couponCode: string | null; createdAt: string };
 type CourseOpt = { id: number; title: string };
 
-function CouponForm({ courses, docId, onDone }: { courses: CourseOpt[]; docId?: number; onDone: (msg: string) => void }) {
+/** Kişiye özel kupon formu: belgeye bağlı (docId) ya da e-posta ile doğrudan (emails = otomatik tamamlama listesi) */
+export function CouponForm({ courses, docId, emails, onDone }: { courses: CourseOpt[]; docId?: number; emails?: string[]; onDone: (msg: string) => void }) {
   const [courseId, setCourseId] = useState(0);
-  const [type, setType] = useState<"student" | "graduate" | "custom">("student");
+  const [type, setType] = useState<"student" | "graduate" | "custom" | "fixed">("student");
+  const [fixed, setFixed] = useState(100);
   const [amount, setAmount] = useState(10);
   const [days, setDays] = useState<number | "">("");
   const [email, setEmail] = useState("");
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-wrap items-end gap-2 text-sm">
-      {!docId && <div><label className="label">E-posta</label><input value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="ogrenci@mail.com" /></div>}
+      {!docId && (
+        <div><label className="label">E-posta</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="ogrenci@mail.com" list={emails ? "coupon-user-emails" : undefined} />
+          {emails && <datalist id="coupon-user-emails">{emails.map((m) => <option key={m} value={m} />)}</datalist>}
+        </div>
+      )}
       <div><label className="label">Kurs</label>
         <select value={courseId} onChange={(e) => setCourseId(Number(e.target.value))} className="input"><option value={0}>Tüm eğitimler</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
       </div>
       <div><label className="label">İndirim</label>
-        <select value={type} onChange={(e) => setType(e.target.value as typeof type)} className="input"><option value="student">Öğrenci (%90)</option><option value="graduate">Yeni mezun (%50)</option><option value="custom">Özel</option></select>
+        <select value={type} onChange={(e) => setType(e.target.value as typeof type)} className="input"><option value="student">Öğrenci (%90)</option><option value="graduate">Yeni mezun (%50)</option><option value="custom">Özel yüzde</option><option value="fixed">Sabit tutar (₺)</option></select>
       </div>
       {type === "custom" && <div><label className="label">%</label><input type="number" min={1} max={100} value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="input w-20" /></div>}
+      {type === "fixed" && <div><label className="label">Tutar (₺)</label><input type="number" min={1} step={0.01} value={fixed} onChange={(e) => setFixed(Number(e.target.value))} className="input w-28" /></div>}
       <div><label className="label">Geçerlilik (gün)</label><input type="number" min={1} value={days} onChange={(e) => setDays(e.target.value ? Number(e.target.value) : "")} className="input w-24" placeholder="∞" /></div>
-      <button disabled={pending} onClick={() => start(async () => { const r = await issueCoupon({ docId, email: email || undefined, courseId, type, amount, expiryDays: days || undefined }); onDone(r.ok ? r.message ?? "Kupon oluşturuldu." : r.error); })} className="btn-primary btn-sm">{pending ? "…" : "Kupon ver"}</button>
+      <button disabled={pending} onClick={() => start(async () => { const r = await issueCoupon({ docId, email: email || undefined, courseId, type, amount: type === "fixed" ? fixed : amount, expiryDays: days || undefined }); if (r.ok) setEmail(""); onDone(r.ok ? r.message ?? "Kupon oluşturuldu." : r.error); })} className="btn-primary btn-sm">{pending ? "…" : "Kupon ver"}</button>
     </div>
   );
 }

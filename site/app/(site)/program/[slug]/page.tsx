@@ -19,6 +19,8 @@ import { MeetingDetailPopup } from "@/components/panel/MeetingDetailPopup";
 import { studentMeeting } from "@/lib/data/student";
 import { isOnWaitlist } from "@/lib/waitlist";
 import { isFavorite } from "@/lib/favorites";
+import { checkPrerequisite } from "@/lib/prerequisites";
+import { getCart } from "@/lib/cart";
 import { FavoriteButton } from "@/components/site/FavoriteButton";
 import { db } from "@/db";
 import { periodEnrollments, periods } from "@/db/schema";
@@ -65,6 +67,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
   const open = openPeriods(course.periods);
   const waitlisted = user && !enrolled ? await isOnWaitlist(course.id, user.email) : false;
   const fav = user ? await isFavorite(user.id, course.id) : false;
+  const prereq = enrolled ? { ok: true as const } : await checkPrerequisite({ userId: user?.id ?? null, courseId: course.id, cartCourseIds: (await getCart()).map((i) => i.courseId) });
   const wa = course.whatsappNumber || contact.whatsappNumber;
   const waMsg = (course.whatsappMessage || contact.whatsappMessage)
     .replace("{course_name}", course.title)
@@ -84,6 +87,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
       )}
       {course.status !== "published" && <div className="bg-amber-100 text-amber-800 text-center text-sm py-2">Taslak önizleme — yalnızca siz görüyorsunuz.</div>}
       {hata === "donem" && <div className="bg-red-50 text-red-700 text-center text-sm py-2">Lütfen bir dönem seçin.</div>}
+      {hata === "kosul" && !prereq.ok && <div className="bg-red-50 text-red-700 text-center text-sm py-2">{prereq.message}</div>}
       {hata === "dolu" && <div className="bg-red-50 text-red-700 text-center text-sm py-2">Üzgünüz, seçilen dönemin kontenjanı doldu. Başka bir dönem seçebilir ya da tekrar açılınca haber verilmesini isteyebilirsin.</div>}
 
       {/* Hero */}
@@ -257,6 +261,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
                     loggedIn={!!user}
                     waitlisted={waitlisted}
                     userEmail={user?.email ?? ""}
+                    locked={prereq.ok ? null : { message: prereq.message, title: prereq.required.title, slug: prereq.required.slug }}
                   />
                 )}
                 {!enrolled && (

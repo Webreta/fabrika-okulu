@@ -1,0 +1,1 @@
+ALTER TABLE "coupons" ADD COLUMN "amount" numeric(10, 2);

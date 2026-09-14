@@ -81,8 +81,7 @@ const DEFAULTS = {
     siteName: "Fabrika Okulu",
     tagline: "Kariyer gelişiminde yol arkadaşın.",
     heroTitle: "Kariyer gelişiminde yol arkadaşın.",
-    heroText:
-      "İş hayatına doğru başlamak, bireysel rekabet gücünü geliştirmek, kariyerinde başarıyla ilerlemek için ihtiyaç duyduğun yetkinlikleri Fabrika Okulu ile kazan.",
+    heroText: "Kariyerinde öne çıkaracak yetkinlikleri Fabrika Okulu ile kazan.",
     heroImage: "/img/site/hero.jpg",
     introTitle: "Çağa ayak uyduran yetkinlikler esnek erişimle ekranında.",
     introText:

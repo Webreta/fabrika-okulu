@@ -16,6 +16,7 @@ import { initCheckoutForm, iyzicoEnabled } from "@/lib/iyzico";
 import { siteUrl } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
 import { periodCapacity } from "@/lib/waitlist";
+import { checkPrerequisite } from "@/lib/prerequisites";
 import { cookies } from "next/headers";
 
 export async function addToCart(formData: FormData) {
@@ -42,6 +43,11 @@ export async function addToCart(formData: FormData) {
 
   const user = await getCurrentUser();
   if (user && (await hasAccess(user.id, c.id))) redirect(`/kurs-izle/${c.id}`);
+
+  // Satın alım koşulu: üst basamak alınmamışsa (ya da tamamlanmamışsa) sepete giremez
+  const cartNow = await getCart();
+  const pre = await checkPrerequisite({ userId: user?.id ?? null, courseId: c.id, cartCourseIds: cartNow.map((i) => i.courseId) });
+  if (!pre.ok) redirect(`/program/${c.slug}?hata=kosul`);
 
   // Ücretsiz kurs: giriş yapmışsa direkt kaydet, değilse girişe yönlendir
   if (c.isFree) {
@@ -89,11 +95,11 @@ export async function applyCoupon(formData: FormData) {
 }
 
 export type CartTotals = {
-  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string }[];
+  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string; prereqError: string | null }[];
   subtotal: number;
   discount: number;
   total: number;
-  coupon: { code: string; percent: number } | null;
+  coupon: { code: string; percent: number; amount: number } | null;
   couponError: string | null;
 };
 
@@ -133,12 +139,19 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
           personalPercent,
           periodId: p?.id ?? null,
           periodName: p?.name ?? null,
-          periodFull: !!p && p.enrolled >= p.capacity,
+          periodFull: !!p && p.enrolled >= p.capacity, prereqError: null as string | null,
           group: c.group,
         };
       })
     )
   ).filter((x): x is NonNullable<typeof x> => x !== null);
+
+  // Satın alım koşulu: aynı sepetteki üst basamak koşulu sağlar (enrolled), tamamlanma koşulu sağlamaz
+  const cartIds = lines.map((l) => l.courseId);
+  for (const l of lines) {
+    const pre = await checkPrerequisite({ userId: userId ?? null, courseId: l.courseId, cartCourseIds: cartIds });
+    l.prereqError = pre.ok ? null : pre.message;
+  }
 
   const subtotal = lines.reduce((s, l) => s + l.price, 0);
   let discount = 0;
@@ -154,8 +167,11 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
       const applicable = lines.filter((l) => !cp.courseId || cp.courseId === l.courseId);
       if (applicable.length === 0) couponError = "Kupon sepetteki programlar için geçerli değil.";
       else {
-        discount = Math.round(applicable.reduce((s, l) => s + (l.price * cp.percent) / 100, 0) * 100) / 100;
-        coupon = { code: cp.code, percent: cp.percent };
+        const applicableTotal = applicable.reduce((s, l) => s + l.price, 0);
+        const amount = Number(cp.amount ?? 0);
+        // Sabit tutar: uygulanabilir satırların toplamını aşamaz; yüzde: satır bazında
+        discount = amount > 0 ? Math.min(amount, applicableTotal) : Math.round(applicable.reduce((s, l) => s + (l.price * cp.percent) / 100, 0) * 100) / 100;
+        coupon = { code: cp.code, percent: cp.percent, amount };
       }
     }
   }
@@ -171,6 +187,8 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   const t = await cartTotals(user.id);
   if (t.lines.length === 0) redirect("/sepet");
   if (t.couponError) return { error: t.couponError };
+  const blocked = t.lines.find((l) => l.prereqError);
+  if (blocked) return { error: `${blocked.title}: ${blocked.prereqError}` };
   // Ödeme öncesi son kontenjan kontrolü: sepete eklendikten sonra dolan dönem varsa ödeme başlatılmaz
   for (const l of t.lines) {
     if (!l.periodId) continue;

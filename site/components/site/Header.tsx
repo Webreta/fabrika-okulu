@@ -11,6 +11,7 @@ type Cat = { name: string; slug: string };
 const NAV_BEFORE = [{ href: "/kesfet", label: "Keşfet" }];
 const NAV_AFTER = [
   { href: "/hakkimizda", label: "Hakkımızda" },
+  { href: "/sss", label: "S.S.S." },
   { href: "/iletisim", label: "İletişim" },
 ];
 
@@ -73,18 +74,18 @@ export function Header({ user, cartCount, categories = [], routes = [] }: { user
                 </button>
                 {isOpen && (
                   <div className="absolute left-0 top-full pt-2" role="menu">
-                    <div className="min-w-64 max-w-sm rounded-2xl border border-line bg-white p-2 shadow-xl">
+                    <div className="w-max min-w-56 max-w-[90vw] rounded-2xl border border-line bg-white p-2 shadow-xl">
                       {m.items.length === 0 && <p className="px-3 py-2 text-sm text-muted">{m.empty}</p>}
                       {m.items.map((it) => {
                         const active = itemActive(it.href);
                         return (
-                          <Link key={it.href} href={it.href} role="menuitem" onClick={() => setOpenMenu(null)} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-sky-50 text-sky-700" : "text-navy-800 hover:bg-surface hover:text-sky-600"}`}>
+                          <Link key={it.href} href={it.href} role="menuitem" onClick={() => setOpenMenu(null)} className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition ${active ? "bg-sky-50 text-sky-700" : "text-navy-800 hover:bg-surface hover:text-sky-600"}`}>
                             <Icon name={m.icon} className="size-4 shrink-0 text-sky-400" /> {it.label}
                           </Link>
                         );
                       })}
                       <div className="mt-1 border-t border-line pt-1">
-                        <Link href={m.all.href} role="menuitem" onClick={() => setOpenMenu(null)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-navy-800 hover:bg-surface hover:text-sky-600">
+                        <Link href={m.all.href} role="menuitem" onClick={() => setOpenMenu(null)} className="flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold text-navy-800 hover:bg-surface hover:text-sky-600">
                           <Icon name="arrowRight" className="size-4" /> {m.all.label}
                         </Link>
                       </div>

@@ -668,7 +668,10 @@ export const orders = pgTable(
 export const coupons = pgTable("coupons", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
+  // Yüzde indirim (sabit tutarlı kuponda 0)
   percent: integer("percent").notNull(),
+  // Sabit tutar indirim (TL); dolu ise yüzde yerine bu uygulanır, sepet toplamını aşamaz
+  amount: numeric("amount", { precision: 10, scale: 2 }),
   // Sahibi (belge ile verilen kuponlar tek kullanıcıya kilitlidir); null = herkes
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
   // null = tüm kurslar
@@ -966,6 +969,24 @@ export const courseSuggestions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("course_suggestions_user_idx").on(t.userId, t.courseId)]
+);
+
+/** Satın alım koşulları: `courseId` alınmadan önce `requiredCourseId` alınmış (enrolled) ya da tamamlanmış (completed) olmalı. Kurs başına tek üst basamak → ağaç. */
+export const coursePrerequisites = pgTable(
+  "course_prerequisites",
+  {
+    id: serial("id").primaryKey(),
+    courseId: integer("course_id")
+      .notNull()
+      .unique()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    requiredCourseId: integer("required_course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    condition: text("condition").notNull().default("enrolled"), // enrolled|completed
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("course_prerequisites_required_idx").on(t.requiredCourseId)]
 );
 
 // ---------- Tipler ----------

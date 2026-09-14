@@ -292,13 +292,17 @@ export async function deleteMessage(id: number): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function createGeneralCoupon(input: { code: string; percent: number; courseId: number; usageLimit: number; expiryDays?: number }): Promise<ActionResult> {
+export async function createGeneralCoupon(input: { code: string; kind?: "percent" | "amount"; percent: number; amount?: number; courseId: number; usageLimit: number; expiryDays?: number }): Promise<ActionResult> {
   await requireAdmin();
   const code = input.code.trim().toUpperCase();
-  if (!code || input.percent < 1 || input.percent > 100) return { ok: false, error: "Kod ve 1-100 arası yüzde gerekli." };
+  const fixed = input.kind === "amount";
+  const amount = fixed ? Math.round(Number(input.amount ?? 0) * 100) / 100 : 0;
+  if (!code) return { ok: false, error: "Kupon kodu gerekli." };
+  if (fixed && amount <= 0) return { ok: false, error: "Sabit tutar 0'dan büyük olmalı." };
+  if (!fixed && (input.percent < 1 || input.percent > 100)) return { ok: false, error: "1-100 arası yüzde gerekli." };
   const [ex] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.code, code)).limit(1);
   if (ex) return { ok: false, error: "Bu kod zaten var." };
-  await db.insert(coupons).values({ code, percent: input.percent, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: input.usageLimit, expiresAt: input.expiryDays ? new Date(Date.now() + input.expiryDays * 86400000) : null });
+  await db.insert(coupons).values({ code, percent: fixed ? 0 : input.percent, amount: fixed ? String(amount) : null, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: input.usageLimit, expiresAt: input.expiryDays ? new Date(Date.now() + input.expiryDays * 86400000) : null });
   revalidatePath("/admin/kuponlar");
   return { ok: true, message: `Kupon oluşturuldu: ${code}` };
 }

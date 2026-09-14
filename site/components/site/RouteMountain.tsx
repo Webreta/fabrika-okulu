@@ -145,8 +145,8 @@ export function RouteMountain({ name, goal, description, steps, compact = false 
       </svg>
 
       {/* Başlık */}
-      <div className={`pointer-events-none absolute left-4 top-4 max-w-[46%] ${compact ? "" : "sm:left-8 sm:top-8"}`}>
-        <p className={`font-script text-navy-800 ${compact ? "text-xl" : "text-2xl sm:text-4xl"}`}>{name}</p>
+      <div className={`pointer-events-none absolute left-4 top-4 ${compact ? "max-w-[46%]" : "max-w-[72%] sm:left-8 sm:top-8"}`}>
+        <p className={`font-bold leading-tight tracking-tight text-navy-800 ${compact ? "text-lg" : "truncate text-xl sm:text-3xl"}`}>{name}</p>
         {description && !compact && <p className="mt-1 hidden text-sm leading-snug text-navy-700/80 sm:block">{description}</p>}
       </div>
       {/* Zirve etiketi */}

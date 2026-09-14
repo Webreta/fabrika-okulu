@@ -183,4 +183,11 @@ body {
 .route-flag { animation: route-float 3s ease-in-out infinite; }
 .route-current { animation: route-pulse 2s ease-out infinite; }
 .route-cloud { animation: route-cloud 12s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { .route-path, .route-node, .route-flag, .route-current, .route-cloud { animation: none; stroke-dashoffset: 0; opacity: 1; } }
+@keyframes sky-drift { from { transform: translateX(110vw); } to { transform: translateX(-40vw); } }
+@keyframes sky-sun { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.06); opacity: 1; } }
+.sky-cloud { animation: sky-drift linear infinite; will-change: transform; }
+.sky-sun { animation: sky-sun 6s ease-in-out infinite; transform-origin: center; }
+@keyframes arrow-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+.arrow-nudge { animation: arrow-nudge 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .arrow-nudge { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .route-path, .route-node, .route-flag, .route-current, .route-cloud, .sky-cloud, .sky-sun { animation: none; stroke-dashoffset: 0; opacity: 1; } }

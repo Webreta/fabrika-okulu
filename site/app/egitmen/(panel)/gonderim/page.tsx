@@ -4,10 +4,15 @@ import { teacherOverview, teacherSubmissions, teacherQuizAttempts } from "@/lib/
 import { PageTitle, Kpi } from "@/components/panel/ui";
 import { SubmissionCard } from "@/components/teacher/SubmissionCard";
 import { QuizAttemptRow } from "@/components/teacher/QuizAttemptRow";
+import { SubmissionsFilter } from "@/components/teacher/SubmissionsFilter";
 
-export default async function SubmissionsPage() {
+export default async function SubmissionsPage({ searchParams }: { searchParams: Promise<{ course?: string; q?: string; durum?: string }> }) {
+  const { course, q: search = "", durum = "" } = await searchParams;
   const user = await requireTeacher();
-  const [ov, subs, attempts] = await Promise.all([teacherOverview(user), teacherSubmissions(user), teacherQuizAttempts(user)]);
+  const courseId = Number(course) || undefined;
+  const filter = { q: search, status: durum };
+  const [ov, subs, attempts] = await Promise.all([teacherOverview(user), teacherSubmissions(user, courseId, 200, filter), teacherQuizAttempts(user, courseId, 200, filter)]);
+  const filtered = !!(courseId || search || durum);
   return (
     <>
       <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları" />
@@ -16,11 +21,20 @@ export default async function SubmissionsPage() {
         <a href="#gorev"><Kpi label="Görev teslimi" value={subs.length} icon="task" color="amber" /></a>
         <a href="#sinav"><Kpi label="Sınav sonucu" value={attempts.length} icon="quiz" color="sky" /></a>
       </div>
+      <SubmissionsFilter
+        base="/egitmen/gonderim"
+        courses={ov.courses.map((c) => ({ id: c.id, title: c.title }))}
+        statuses={[
+          { value: "pending", label: "Görev: puanlanmadı" }, { value: "graded", label: "Görev: puanlandı" },
+          { value: "pending_review", label: "Sınav: değerlendirme bekliyor" }, { value: "passed", label: "Sınav: geçti" }, { value: "failed", label: "Sınav: kaldı" },
+        ]}
+        initial={{ course: courseId ? String(courseId) : "", q: search, durum }}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <div id="gorev">
           <h2 className="mb-3 font-bold text-navy-800">Görev teslimleri</h2>
           <div className="space-y-3">
-            {subs.length === 0 ? <p className="card text-sm text-muted">Henüz gönderim yok.</p> : subs.map((r) => (
+            {subs.length === 0 ? <p className="card text-sm text-muted">{filtered ? "Filtreye uyan gönderim yok." : "Henüz gönderim yok."}</p> : subs.map((r) => (
               <SubmissionCard key={r.s.id} row={{ id: r.s.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.a.title, course: r.courseTitle, text: r.s.text, files: r.s.files, voices: r.s.voices, status: r.s.status, score: r.s.score, feedback: r.s.feedback, at: r.s.submittedAt.toISOString(), isGraded: r.a.isGraded, maxScore: r.a.maxScore, transcript: r.s.voiceTranscript }} />
             ))}
           </div>
@@ -28,7 +42,7 @@ export default async function SubmissionsPage() {
         <div id="sinav">
           <h2 className="mb-3 font-bold text-navy-800">Sınav sonuçları</h2>
           <div className="space-y-3">
-            {attempts.length === 0 ? <p className="card text-sm text-muted">Henüz sonuç yok.</p> : attempts.map((r) => (
+            {attempts.length === 0 ? <p className="card text-sm text-muted">{filtered ? "Filtreye uyan sonuç yok." : "Henüz sonuç yok."}</p> : attempts.map((r) => (
               <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString() }} />
             ))}
           </div>

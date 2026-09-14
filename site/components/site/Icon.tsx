@@ -55,6 +55,7 @@ const paths = {
   survey: "M4 4h16v16H4zM8 9h8M8 13h5",
   library: "M4 4h4v16H4zM10 4h4v16h-4zM16 5l4-1 3 15-4 1z",
   gift: "M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7c-2-4-6-4-6-1s4 1 6 1zm0 0c2-4 6-4 6-1s-4 1-6 1z",
+  flag: "M5 21V4M5 4h12l-2.5 4L17 12H5",
   building: "M4 21V5l8-3v19M12 21V9l8 2v10M8 8h.01M8 12h.01M8 16h.01M16 14h.01M16 18h.01",
   layers: "m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5",
   qr: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z",

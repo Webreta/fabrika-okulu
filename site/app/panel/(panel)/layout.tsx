@@ -33,7 +33,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "bolt", badge: pending || undefined },
     { href: "/panel/sertifika", label: "Sertifikalarım", icon: "award" },
     { href: "/panel/anket", label: "Kariyer Hedefim", icon: "target", badge: pendingSurvey ? 1 : undefined },
-    { href: "/panel/hesap", label: "Tercihler & Ayarlar", icon: "settings", match: ["/panel/gorunum", "/panel/bildirim-ayar", "/panel/ozgecmis", "/panel/belge", "/panel/adres", "/panel/siparis"], end: true },
+    { href: "/panel/hesap", label: "Tercihler & Ayarlar", icon: "settings", match: ["/panel/gorunum", "/panel/bildirim-ayar", "/panel/ozgecmis", "/panel/belge", "/panel/kupon", "/panel/adres", "/panel/siparis"], end: true },
   ];
   if (user.role !== "student") secondary.unshift({ href: "/egitmen", label: "Eğitmen Paneli", icon: "users" });
   if (user.role === "admin") secondary.unshift({ href: "/admin", label: "Yönetim Paneli", icon: "settings" });

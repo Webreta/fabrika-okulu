@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/panel/bildirim-ayar", label: "Bildirimler", icon: "bell" },
   { href: "/panel/ozgecmis", label: "Özgeçmişim", icon: "doc" },
   { href: "/panel/belge", label: "Belge Yükle", icon: "upload" },
+  { href: "/panel/kupon", label: "Kuponlarım", icon: "gift" },
   { href: "/panel/adres", label: "Adreslerim", icon: "mapPin" },
   { href: "/panel/siparis", label: "Satınalma Geçmişim", icon: "cart" },
 ] as const;

@@ -24,7 +24,7 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title={sekme === "devam" ? "Devam Eden Programlar" : sekme === "yeni" ? "Yeni Programlar" : sekme === "favori" ? "Favorilerim" : "Kitaplığım"} sub={sekme === "favori" ? "İlgilendiğin eğitimler. İndirime girdiklerinde sana bildirim ve e-posta gönderilir." : undefined} />
+      <PageTitle title={sekme === "devam" ? "Devam Eden Programlar" : sekme === "yeni" ? "Yeni Programlar" : sekme === "favori" ? "Favorilerim" : "Kitaplığım"} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <SideNav label="Kitaplığım" items={[
           { href: "/panel/egitim", label: "Tüm Eğitimler", icon: "library", count: all.length, active: sekme !== "devam" && sekme !== "bitmis" && sekme !== "yeni" && sekme !== "favori" },

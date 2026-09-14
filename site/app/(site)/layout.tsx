@@ -7,12 +7,13 @@ import { listCategories } from "@/lib/data/categories";
 import { publicRoutes } from "@/lib/data/routes";
 
 export default async function SiteLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [user, cart, general, seo, categories] = await Promise.all([
+  const [user, cart, general, seo, categories, contact] = await Promise.all([
     getCurrentUser(),
     getCart(),
     getSetting("general"),
     getSetting("seo"),
     listCategories(),
+    getSetting("contact"),
   ]);
   const routes = await publicRoutes();
   const cats = categories.map((k) => ({ name: k.name, slug: k.slug }));
@@ -21,7 +22,7 @@ export default async function SiteLayout({ children }: Readonly<{ children: Reac
     <>
       <Header user={user ? { name: user.name, role: user.role } : null} cartCount={cart.length} categories={cats} routes={rts} />
       <main className="min-h-[60vh]">{children}</main>
-      <Footer text={general.footerText} categories={cats} />
+      <Footer text={general.footerText} categories={cats} contact={{ phones: contact.phones, whatsapps: contact.whatsapps, email: contact.email, instagram: contact.instagram, linkedin: contact.linkedin, youtube: contact.youtube }} />
       {seo.headCode && <div dangerouslySetInnerHTML={{ __html: seo.headCode }} />}
     </>
   );

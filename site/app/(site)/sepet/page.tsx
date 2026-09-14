@@ -1,3 +1,4 @@
+import { couponLabel } from "@/lib/coupon-label";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -34,6 +35,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                   <Link href={`/program/${l.slug}`} className="font-semibold text-navy-800 hover:text-sky-600">{l.title}</Link>
                   {l.periodName && <p className="text-sm text-muted">Dönem: {l.periodName}</p>}
                   {l.periodFull && <p className="mt-1 text-xs font-semibold text-red-600">Bu dönemin kontenjanı doldu. Program sayfasından başka dönem seç ya da tekrar açılınca haber ver.</p>}
+                  {l.prereqError && <p className="mt-1 text-xs font-semibold text-red-600">{l.prereqError}</p>}
                   {l.personalPercent > 0 && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Sana özel %{l.personalPercent} indirim</span>}
                 </div>
                 <span className="text-right">
@@ -53,7 +55,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
               <button className="btn-secondary">Uygula</button>
             </form>
             {t.couponError && <p className="text-sm text-red-600">{t.couponError}</p>}
-            {t.coupon && <p className="text-sm text-emerald-600">%{t.coupon.percent} indirim uygulandı ({t.coupon.code})</p>}
+            {t.coupon && <p className="text-sm text-emerald-600">{couponLabel(t.coupon)} uygulandı ({t.coupon.code})</p>}
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between"><dt>Ara toplam</dt><dd>{fmtMoney(t.subtotal)}</dd></div>
               {t.discount > 0 && <div className="flex justify-between text-emerald-600"><dt>İndirim</dt><dd>-{fmtMoney(t.discount)}</dd></div>}

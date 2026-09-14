@@ -7,25 +7,29 @@ import { Icon } from "@/components/site/Icon";
 import { FavoriteButton } from "@/components/site/FavoriteButton";
 import { getCurrentUser } from "@/lib/auth/session";
 import { myFavoriteIds } from "@/lib/favorites";
+import { prerequisiteMap } from "@/lib/prerequisites";
 
-export function Price({ course }: { course: Pick<CourseWithMeta, "isFree" | "price" | "salePrice" | "saleTo"> }) {
-  if (course.isFree) return <span className="font-bold text-emerald-600">ÜCRETSİZ</span>;
+export function Price({ course, className = "" }: { course: Pick<CourseWithMeta, "isFree" | "price" | "salePrice" | "saleTo">; className?: string }) {
+  if (course.isFree) return <span className={`font-bold text-emerald-600 ${className}`}>ÜCRETSİZ</span>;
   const eff = effectivePrice(course);
   if (hasActiveSale(course)) {
     return (
       <span className="flex items-baseline gap-2">
         <span className="text-sm text-muted line-through">{fmtMoney(course.price)}</span>
-        <span className="font-bold text-navy-800">{fmtMoney(eff)}</span>
+        <span className={`font-bold text-navy-800 ${className}`}>{fmtMoney(eff)}</span>
       </span>
     );
   }
-  return <span className="font-bold text-navy-800">{fmtMoney(eff)}</span>;
+  return <span className={`font-bold text-navy-800 ${className}`}>{fmtMoney(eff)}</span>;
 }
 
-export async function CourseCard({ course }: { course: CourseWithMeta }) {
+/** size="lg": geniş kartlar (2'li vitrin) için masaüstünde büyük yazı ve düğme */
+export async function CourseCard({ course, size = "md" }: { course: CourseWithMeta; size?: "md" | "lg" }) {
+  const lg = size === "lg";
   // Kalp: giriş yapan kullanıcının favorileri istek başına bir kez okunur (cache)
   const user = await getCurrentUser();
   const fav = user ? (await myFavoriteIds(user.id)).has(course.id) : false;
+  const prereq = (await prerequisiteMap()).get(course.id) ?? null;
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <FavoriteButton courseId={course.id} initial={fav} />
@@ -40,15 +44,16 @@ export async function CourseCard({ course }: { course: CourseWithMeta }) {
           {hasActiveSale(course) && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-semibold text-white shadow">İndirim</span>}
         </span>
       </Link>
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-bold leading-snug text-navy-800">
+      <div className={`flex flex-1 flex-col p-4 ${lg ? "lg:p-6" : ""}`}>
+        <h3 className={`font-bold leading-snug text-navy-800 ${lg ? "lg:text-2xl" : ""}`}>
           <Link href={`/program/${course.slug}`} className="hover:text-sky-600">{course.title}</Link>
         </h3>
-        {course.instructor && <p className="mt-1 text-sm text-sky-600">{course.instructor.name}</p>}
-        <p className="mt-2 flex-1 text-sm text-muted">{excerpt(course.shortDescription || course.description, 100)}</p>
+        {course.instructor && <p className={`mt-1 text-sm text-sky-600 ${lg ? "lg:text-base" : ""}`}>{course.instructor.name}</p>}
+        {prereq && <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-700" title={`Bu eğitim için önce "${prereq.requiredTitle}" ${prereq.condition === "completed" ? "tamamlanmalı" : "alınmalı"}`}><Icon name="lock" className="size-3" /> Ön koşul: {prereq.requiredTitle}</p>}
+        <p className={`mt-2 flex-1 text-sm text-muted ${lg ? "lg:text-base lg:leading-relaxed" : ""}`}>{excerpt(course.shortDescription || course.description, lg ? 180 : 100)}</p>
         <div className="mt-4 flex items-center justify-between gap-2">
-          <Price course={course} />
-          <Link href={`/program/${course.slug}`} className="btn-sky btn-sm">
+          <Price course={course} className={lg ? "lg:text-xl" : ""} />
+          <Link href={`/program/${course.slug}`} className={lg ? "btn-sky lg:px-6 lg:py-3 lg:text-base" : "btn-sky btn-sm"}>
             {course.closed ? "İncele" : course.isFree ? "Kayıt Ol" : "Sepete Ekle"}
           </Link>
         </div>

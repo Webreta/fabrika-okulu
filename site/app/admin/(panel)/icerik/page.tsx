@@ -2,15 +2,15 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { pages } from "@/db/schema";
 import { getSetting, getRawSetting } from "@/lib/settings";
-import { DEFAULT_ABOUT } from "@/lib/content-defaults";
+import { DEFAULT_ABOUT, DEFAULT_FAQ, type FaqContent } from "@/lib/content-defaults";
 import { PageTitle, Tabs } from "@/components/panel/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
-import { AboutForm, PagesManager } from "@/components/admin/ContentForms";
+import { AboutForm, FaqForm, PagesManager } from "@/components/admin/ContentForms";
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
   const { sekme = "anasayfa" } = await searchParams;
-  const tabs = [["anasayfa", "Anasayfa"], ["hakkimizda", "Hakkımızda"], ["iletisim", "İletişim"], ["sayfalar", "Yasal Sayfalar"]];
-  const [general, contact, about, pageList] = await Promise.all([getSetting("general"), getSetting("contact"), getRawSetting("about", DEFAULT_ABOUT), db.select().from(pages).orderBy(asc(pages.title))]);
+  const tabs = [["anasayfa", "Anasayfa"], ["hakkimizda", "Hakkımızda"], ["merak", "S.S.S."], ["iletisim", "İletişim"], ["sayfalar", "Yasal Sayfalar"]];
+  const [general, contact, about, faq, pageList] = await Promise.all([getSetting("general"), getSetting("contact"), getRawSetting("about", DEFAULT_ABOUT), getRawSetting<FaqContent>("faq", DEFAULT_FAQ), db.select().from(pages).orderBy(asc(pages.title))]);
   return (
     <>
       <PageTitle title="Site İçeriği" />
@@ -27,6 +27,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         ]} />
       )}
       {sekme === "hakkimizda" && <AboutForm about={about} />}
+      {sekme === "merak" && <FaqForm faq={{ ...DEFAULT_FAQ, ...faq }} />}
       {sekme === "iletisim" && (
         <SettingsForm settingKey="contact" title="İletişim bilgileri" values={contact as unknown as Record<string, string | string[]>} fields={[
           { key: "phones", label: "Telefonlar (her satıra bir)", type: "list" }, { key: "whatsapps", label: "WhatsApp numaraları (her satıra bir)", type: "list" },

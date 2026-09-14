@@ -17,14 +17,15 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const courseId = Number(url.searchParams.get("course")) || undefined;
+  const filter = { q: url.searchParams.get("q") ?? "", status: url.searchParams.get("durum") ?? "" };
   // tur: "gorev" → yalnız görevler, "sinav" → yalnız sınavlar, boş → ikisi birden
   const tur = url.searchParams.get("tur");
   const wantGorev = tur !== "sinav";
   const wantSinav = tur !== "gorev";
 
   const [subs, attempts] = await Promise.all([
-    wantGorev ? teacherSubmissions(user, courseId, 5000) : Promise.resolve([]),
-    wantSinav ? teacherQuizAttempts(user, courseId, 5000) : Promise.resolve([]),
+    wantGorev ? teacherSubmissions(user, courseId, 5000, filter) : Promise.resolve([]),
+    wantSinav ? teacherQuizAttempts(user, courseId, 5000, filter) : Promise.resolve([]),
   ]);
 
   // Ses dökümlerini tek metne birleştir (ekli dosyalar dahil edilmez).

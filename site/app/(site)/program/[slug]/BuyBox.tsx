@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { addToCart } from "@/app/actions/cart";
 import { Icon } from "@/components/site/Icon";
 import { addMinutes, fmtDayShort } from "@/lib/meeting";
@@ -10,8 +11,8 @@ import { WaitlistButton } from "@/components/site/WaitlistButton";
 type P = { id: number; name: string; range: string; left: number; full: boolean; schedule: number; date?: string; time?: string; sessions?: string[] };
 
 export function BuyBox({
-  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0, loggedIn = false, waitlisted = false, userEmail = "",
-}: { courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number; loggedIn?: boolean; waitlisted?: boolean; userEmail?: string }) {
+  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0, loggedIn = false, waitlisted = false, userEmail = "", locked = null,
+}: { courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number; loggedIn?: boolean; waitlisted?: boolean; userEmail?: string; locked?: { message: string; title: string; slug: string } | null }) {
   // Görüşmede koltuk elle seçilir (ön seçim yok); dönemde ilk boş dönem ön seçilidir
   const [periodId, setPeriodId] = useState<number | null>(meeting ? null : periods.find((p) => !p.full)?.id ?? null);
   const [open, setOpen] = useState(false);
@@ -19,7 +20,7 @@ export function BuyBox({
   // Kayıt açık dönem yok ya da hepsi dolu: satın alma yerine "tekrar açılınca haber ver"
   const noSeat = periodBased && (periods.length === 0 || periods.every((p) => p.full));
   const allFull = periodBased && periods.length > 0 && periods.every((p) => p.full);
-  const showCart = buttonType !== "whatsapp" && !noSeat;
+  const showCart = buttonType !== "whatsapp" && !noSeat && !locked;
   const showWa = (buttonType === "whatsapp" || buttonType === "both") && !!whatsappUrl;
 
   return (
@@ -90,7 +91,13 @@ export function BuyBox({
           </Modal>
         </div>
       )}
-      {noSeat && (
+      {locked && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+          <p className="flex items-start gap-2 font-semibold text-amber-800"><Icon name="lock" className="mt-0.5 size-4 shrink-0" /> {locked.message}</p>
+          <Link href={`/program/${locked.slug}`} className="btn-primary mt-3 w-full py-2.5"><Icon name="arrowRight" className="size-4" /> {locked.title} eğitimine git</Link>
+        </div>
+      )}
+      {noSeat && !locked && (
         <WaitlistButton courseId={courseId} periodId={periods[0]?.id ?? null} loggedIn={loggedIn} waitlisted={waitlisted} userEmail={userEmail} meeting={meeting} />
       )}
       {showCart && (

@@ -3,16 +3,20 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createGeneralCoupon, deleteCoupon } from "@/app/actions/admin";
+import { CouponForm } from "@/components/teacher/DocumentsManager";
 
 export function CouponsManager({ courses }: { courses: { id: number; title: string }[] }) {
-  const [f, setF] = useState({ code: "", percent: 10, courseId: 0, usageLimit: 0, expiryDays: 0 });
+  const [f, setF] = useState({ code: "", kind: "percent" as "percent" | "amount", percent: 10, amount: 100, courseId: 0, usageLimit: 0, expiryDays: 0 });
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
     <div className="card flex flex-wrap items-end gap-3">
       <div><label className="label">Kod</label><input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} className="input w-36 uppercase" placeholder="YAZ2026" /></div>
-      <div><label className="label">%</label><input type="number" min={1} max={100} value={f.percent} onChange={(e) => setF({ ...f, percent: Number(e.target.value) })} className="input w-20" /></div>
+      <div><label className="label">İndirim türü</label><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as typeof f.kind })} className="input"><option value="percent">Yüzde (%)</option><option value="amount">Sabit tutar (₺)</option></select></div>
+      {f.kind === "percent"
+        ? <div><label className="label">%</label><input type="number" min={1} max={100} value={f.percent} onChange={(e) => setF({ ...f, percent: Number(e.target.value) })} className="input w-20" /></div>
+        : <div><label className="label">Tutar (₺)</label><input type="number" min={1} step={0.01} value={f.amount} onChange={(e) => setF({ ...f, amount: Number(e.target.value) })} className="input w-28" /></div>}
       <div><label className="label">Kurs</label><select value={f.courseId} onChange={(e) => setF({ ...f, courseId: Number(e.target.value) })} className="input"><option value={0}>Tüm eğitimler</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
       <div><label className="label">Kullanım limiti</label><input type="number" min={0} value={f.usageLimit} onChange={(e) => setF({ ...f, usageLimit: Number(e.target.value) })} className="input w-24" placeholder="0 = ∞" /></div>
       <div><label className="label">Geçerlilik (gün)</label><input type="number" min={0} value={f.expiryDays} onChange={(e) => setF({ ...f, expiryDays: Number(e.target.value) })} className="input w-24" /></div>
@@ -26,4 +30,18 @@ export function DeleteCouponButton({ id }: { id: number }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   return <button disabled={pending} onClick={() => { if (confirm("Kupon silinsin mi?")) start(async () => { await deleteCoupon(id); router.refresh(); }); }} className="text-sm text-red-600 hover:underline">Sil</button>;
+}
+
+/** Kişiye özel kupon: yönetici bir kullanıcıya belge olmadan doğrudan indirim tanımlar (öğrencide "Hesabıma tanımlanan kuponlar") */
+export function PersonalCouponCard({ courses, emails }: { courses: { id: number; title: string }[]; emails: string[] }) {
+  const [msg, setMsg] = useState("");
+  const router = useRouter();
+  return (
+    <div className="card">
+      <h2 className="font-bold text-navy-800">Kişiye özel kupon tanımla</h2>
+      <p className="mb-3 text-xs text-muted">Kupon yalnızca bu kullanıcının hesabında geçerli olur; öğrenciye bildirim ve e-posta gider.</p>
+      <CouponForm courses={courses} emails={emails} onDone={(m) => { setMsg(m); router.refresh(); }} />
+      {msg && <p className="mt-2 text-sm text-navy-800">{msg}</p>}
+    </div>
+  );
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { couponLabel } from "@/lib/coupon-label";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
@@ -240,7 +241,7 @@ export async function deleteEvent(id: number): Promise<ActionResult> {
 }
 
 /** Belge → kupon (süper eğitmen / admin) */
-export async function issueCoupon(input: { docId?: number; email?: string; courseId: number; type: "student" | "graduate" | "custom"; amount?: number; expiryDays?: number }): Promise<ActionResult> {
+export async function issueCoupon(input: { docId?: number; email?: string; courseId: number; type: "student" | "graduate" | "custom" | "fixed"; amount?: number; expiryDays?: number }): Promise<ActionResult> {
   const user = await requireTeacher();
   if (!user.isSuperTeacher) return { ok: false, error: "Yetki yok." };
   let userId: number | null = null;
@@ -254,15 +255,19 @@ export async function issueCoupon(input: { docId?: number; email?: string; cours
     userId = u.id;
   }
   if (!userId) return { ok: false, error: "Kullanıcı belirlenemedi." };
-  const percent = input.type === "student" ? 90 : input.type === "graduate" ? 50 : Math.max(1, Math.min(100, Number(input.amount ?? 10)));
+  // fixed: sabit tutar (TL); diğerleri yüzde
+  const fixedAmount = input.type === "fixed" ? Math.round(Number(input.amount ?? 0) * 100) / 100 : 0;
+  if (input.type === "fixed" && fixedAmount <= 0) return { ok: false, error: "Sabit tutar 0'dan büyük olmalı." };
+  const percent = input.type === "fixed" ? 0 : input.type === "student" ? 90 : input.type === "graduate" ? 50 : Math.max(1, Math.min(100, Number(input.amount ?? 10)));
+  const label = couponLabel({ percent, amount: fixedAmount });
   const code = `FO${randomBytes(4).toString("hex").toUpperCase()}`;
   const expiresAt = input.expiryDays && input.expiryDays > 0 ? new Date(Date.now() + input.expiryDays * 86400000) : null;
-  await db.insert(coupons).values({ code, percent, userId, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: 1, expiresAt });
+  await db.insert(coupons).values({ code, percent, amount: fixedAmount > 0 ? String(fixedAmount) : null, userId, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: 1, expiresAt });
   if (input.docId) await db.update(documents).set({ status: "coupon_issued", couponCode: code, courseId: input.courseId }).where(eq(documents.id, input.docId));
   const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  await notifyUser(userId, { title: "İndirim kuponun hazır", body: `%${percent} indirim · ${code}`, url: "/panel/belge", tag: `coupon-${code}` });
-  if (u) await sendMail({ type: "coupon", to: u.email, subject: "İndirim kuponun hazır", html: emailTemplate({ title: "İndirim kuponun hazır 🎁", html: `<p>%${percent} indirim kuponu: <b style="font-size:20px">${code}</b></p><p>Sepette kupon alanına yaz.${expiresAt ? ` Son kullanım: ${expiresAt.toLocaleDateString("tr-TR")}` : ""}</p>`, buttonText: "Programları gör", buttonUrl: siteUrl("/kesfet") }) });
-  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler");
+  await notifyUser(userId, { title: "İndirim kuponun hazır", body: `${label} · ${code}`, url: "/panel/kupon", tag: `coupon-${code}` });
+  if (u) await sendMail({ type: "coupon", to: u.email, subject: "İndirim kuponun hazır", html: emailTemplate({ title: "İndirim kuponun hazır 🎁", html: `<p>${label} kuponu: <b style="font-size:20px">${code}</b></p><p>Sepette kupon alanına yaz.${expiresAt ? ` Son kullanım: ${expiresAt.toLocaleDateString("tr-TR")}` : ""}</p>`, buttonText: "Programları gör", buttonUrl: siteUrl("/kesfet") }) });
+  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler"); revalidatePath("/admin/kuponlar"); revalidatePath("/panel/kupon");
   return { ok: true, message: `Kupon oluşturuldu: ${code}` };
 }
 

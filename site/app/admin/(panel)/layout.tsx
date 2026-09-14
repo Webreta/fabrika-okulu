@@ -27,6 +27,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     { href: "/admin/kurslar", label: "Kurslar", icon: "book", group: "Eğitim" },
     { href: "/admin/kategoriler", label: "Kategoriler", icon: "layers" },
     { href: "/admin/rotalar", label: "Rotalar", icon: "mountain" },
+    { href: "/admin/kosullar", label: "Satın Alım Koşulları", icon: "lock" },
     { href: "/admin/egitmenler", label: "Eğitmenler", icon: "users" },
     { href: "/admin/ogrenciler", label: "Kayıtlı Öğrenciler", icon: "user", badge: fresh.ogrenciler || undefined },
     { href: "/admin/gonderimler", label: "Görevler & Sınavlar", icon: "task", badge: ps || undefined },
@@ -41,6 +42,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     { href: "/admin/bildirimler", label: "Bildirimler", icon: "bell" },
     { href: "/admin/mesajlar", label: "İletişim Mesajları", icon: "mail", badge: pm || undefined },
     { href: "/admin/icerik", label: "Site İçeriği", icon: "edit", group: "Site" },
+    { href: "/admin/vitrin", label: "Vitrin", icon: "star" },
     { href: "/admin/ayarlar", label: "Ayarlar", icon: "settings" },
   ];
 
