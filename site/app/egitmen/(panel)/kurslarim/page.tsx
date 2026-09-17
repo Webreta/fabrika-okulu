@@ -18,9 +18,9 @@ export default async function MyCoursesPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ov.courses.map((c) => (
             <div key={c.id} className="card p-0 overflow-hidden">
-              <div className="relative aspect-[5/2] bg-navy-50">
-                {c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
-                <span className="absolute left-3 top-3"><Chip color={c.closed ? "gray" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : `${c.hasPeriods ? "Dönemli · " : ""}${c.status === "published" ? "Yayında" : "Taslak"}`}</Chip></span>
+              <div className="relative aspect-video bg-navy-50">
+                {c.imageUrl && <Image src={c.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}
+                <span className="absolute left-3 top-3"><Chip color={c.closed ? "gray" : c.comingSoon && c.status === "published" ? "amber" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.comingSoon && c.status === "published" ? "Yakında" : `${c.hasPeriods ? "Dönemli · " : ""}${c.status === "published" ? "Yayında" : "Taslak"}`}</Chip></span>
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-navy-800">{c.title}</h3>

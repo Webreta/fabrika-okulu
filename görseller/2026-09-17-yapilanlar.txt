@@ -1,0 +1,24 @@
+17 Eylül 2026 - Yapılanlar
+
+- "Hazırsan Başlayalım" CTA bandı tüm sayfalardan ve admin site içeriği ayarlarından kaldırıldı.
+- Anasayfa hero'nun sol tarafı açıldı, görsel alanı genişletildi, soldaki geçiş daha saydam yapıldı.
+- Rotalar bölümündeki güneş haresi kesiksiz, yumuşak ve nabız atan bir yapıya çevrildi.
+- Rota baloncukları sadeleştirildi: eğitim görseli + başlık + bağlantı; büyük görünümde alt başlık tek cümle ve daha büyük.
+- Tüm eğitim görselleri 16:9 (YouTube) oranına geçirildi; editördeki öneri metni güncellendi.
+- Öğrenci paneline üçüncü menü stili eklendi: sabit ikon, üzerine gelince ikonlu ve animasyonlu baloncuk.
+- Anketler eğitimlere bağlanabiliyor; bağlı anketi doldurmayan öğrenci eğitimi satın alamıyor (program, sepet ve ödeme kontrolü).
+- Anketlerde "ana soru / hedef bayrağı": seçeneklere renk verilir, cevap panel üst çubuğunda renkli bayrak ve anket kartı rengi olur; her zaman değiştirilebilir.
+- İki örnek bayraklı anket yayınlandı (İş Hayatında Hedefim, Bu Yıl Gelişim Hedefim).
+- "Yakında" eğitim modu: yayında görünür ama satış kapalı, "açılınca haber ver" ile talep toplanır; admin listesinde talep sayısı; açılınca otomatik bildirim.
+- Yakında eğitimlerde fiyat gösterme/gizleme seçeneği; kartta çapraz "Yakında!" kurdelesi; rotalarda yakında adımı.
+- Üç örnek yakında eğitimi eklendi (seed betiği start.sh'a bağlandı).
+- Eğitim kartlarındaki kategori etiketi kaldırıldı; vitrin başlığındaki "Öne çıkan eğitimler" rozeti kaldırıldı.
+- Rota dağ illüstrasyonu gerçekçi katmanlar, ışık/gölge yüzler, beyaz kar ve yeşil etek kuşağıyla yenilendi; son adım zirvede bitiyor; yol karda görünür.
+- Bulutlar hızlandırıldı, rota başlangıcı açık çayıra alındı.
+- Ortak dağ illüstrasyonu bileşeni tüm sayfa başlıklarında ve anasayfa rota bölümünde kullanıldı.
+- Tüm sayfa başlıkları tek tip oldu: ortalı ince başlık, tek satır alt metin, cam efektli breadcrumb.
+- Eğitim kartları yeniden tasarlandı: gradyanlı görsel, cam fiyat kapsülü, indirim yüzdesi, eğitmen avatarı, bilgi satırı, ok düğmesi.
+- Eğitim detay sayfası modernleştirildi: cam çipli hero, ikonlu bölüm başlıkları, kart tabanlı içerik, yeni müfredat akordeonu, yenilenmiş satın alma kutusu.
+- İletişim sayfası yenilendi: kanal kartları, WhatsApp sohbet düğmesi, sosyal medya satırı, yeni form kartı.
+- Kart ve detay sayfası metinleri koyulaştırıldı; footer bağlantı sütunları ortalandı.
+- Veritabanı: survey_courses tablosu, courses.coming_soon ve soon_show_price sütunları (migration 0018-0020).

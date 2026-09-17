@@ -20,6 +20,9 @@ export type RouteStepView = {
   onSale: boolean;
   published: boolean;
   closed: boolean;
+  /** Yakında: satış kapalı, rotada "Yakında" rozetiyle görünür */
+  comingSoon: boolean;
+  soonShowPrice: boolean;
   instructor: string;
   durationText: string;
 };
@@ -72,6 +75,8 @@ export const listRoutes = cache(async (opts: { includeInactive?: boolean } = {})
         onSale: hasActiveSale(x.c),
         published: x.c.status === "published",
         closed: x.c.closed,
+        comingSoon: x.c.comingSoon,
+        soonShowPrice: x.c.soonShowPrice,
         instructor: x.instructorName ?? "",
         durationText: x.c.durationText,
       })),

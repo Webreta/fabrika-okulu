@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useRef, useState } from "react";
 import type { SurveyMode, SurveyQuestion } from "@/db/schema";
 import { submitSurvey } from "@/app/actions/panel";
+import { goalColor } from "@/lib/survey-logic";
 import type { FormState } from "@/app/actions/auth";
 import { estimateMinutes, groupBySection, isEmptyAnswer, isVisible, missingRequired, toArr, visibleQuestions, type Answers } from "@/lib/survey-logic";
 import { Icon } from "@/components/site/Icon";
@@ -27,8 +28,10 @@ function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQu
       {q.type === "radio" && (
         <div className="space-y-1.5">
           {q.options?.map((o) => (
-            <label key={o.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${value === o.value ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"}`}>
-              <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} /> {o.label}
+            <label key={o.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${value === o.value ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"}`} style={q.goal && value === o.value ? { borderColor: goalColor(o.color).hex, background: goalColor(o.color).soft } : undefined}>
+              <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} />
+              {q.goal && <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ background: goalColor(o.color).hex }}><Icon name="flag" className="size-3" /></span>}
+              {o.label}
             </label>
           ))}
         </div>
@@ -70,7 +73,7 @@ function HiddenAnswers({ answers, except }: { answers: Answers; except?: string 
  *    mode="steps": tek soru kartı, cevap verilmeden "Devam" yok, sonraki soru kayarak gelir
  * preview=true: admin önizlemesi, kayıt yapılmaz.
  */
-export function SurveyForm({ schema, answers, onDone, preview = false, skipIntro = false }: { schema: SurveyLike; answers: Answers; onDone?: () => void; preview?: boolean; skipIntro?: boolean }) {
+export function SurveyForm({ schema, answers, onDone, preview = false, skipIntro = false, returnTo = null }: { schema: SurveyLike; answers: Answers; onDone?: () => void; preview?: boolean; skipIntro?: boolean; returnTo?: string | null }) {
   const [started, setStarted] = useState(skipIntro);
   const [a, setA] = useState<Answers>(answers);
   const [invalidKeys, setInvalidKeys] = useState<string[]>([]);
@@ -122,6 +125,7 @@ export function SurveyForm({ schema, answers, onDone, preview = false, skipIntro
     <>
       {(clientError || state.error) && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{clientError || state.error}</p>}
       {state.ok && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{state.ok}</p>}
+      {state.ok && returnTo && <a href={returnTo} className="btn-primary w-full py-2.5">Satın almaya dön <Icon name="arrowRight" className="size-4" /></a>}
     </>
   );
 

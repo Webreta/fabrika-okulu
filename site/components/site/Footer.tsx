@@ -84,7 +84,7 @@ export function Footer({ text, categories = [], contact = {} }: { text: string; 
         </div>
 
         {/* Bağlantı sütunları (ortalı) */}
-        <div className="mx-auto grid max-w-4xl gap-10 text-center sm:grid-cols-3 sm:text-left">
+        <div className="mx-auto grid max-w-4xl gap-10 text-center sm:grid-cols-3">
           {columns.map((col) => (
             <div key={col.title}>
               <h3 className={head}>{col.title}</h3>

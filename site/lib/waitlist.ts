@@ -94,7 +94,7 @@ export async function waitlistCount(courseId: number) {
  */
 export async function notifyWaitlistIfOpen(courseId: number): Promise<number> {
   const [c] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
-  if (!c || c.status !== "published" || c.closed) return 0;
+  if (!c || c.status !== "published" || c.closed || c.comingSoon) return 0;
   const free = await availablePeriods(courseId);
   if (free.length === 0) return 0;
   const waiting = await db
@@ -131,4 +131,43 @@ export async function notifyWaitlistIfOpen(courseId: number): Promise<number> {
     sent++;
   }
   return sent;
+}
+
+/**
+ * "Yakında" eğitimi açıldığında (comingSoon true → false, kurs yayında) talep bırakan herkese e-posta + uygulama içi bildirim.
+ * Dönem/kontenjan şartı aranmaz; haber verilenler notifiedAt ile işaretlenir. saveCourse'tan çağrılır.
+ */
+export async function notifyComingSoonOpened(courseId: number): Promise<number> {
+  const [c] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
+  if (!c || c.status !== "published" || c.closed || c.comingSoon) return 0;
+  const waiting = await db
+    .select()
+    .from(periodWaitlist)
+    .where(and(eq(periodWaitlist.courseId, courseId), isNull(periodWaitlist.notifiedAt)));
+  if (waiting.length === 0) return 0;
+  const url = siteUrl(`/program/${c.slug}`);
+  const html = emailTemplate({
+    title: "Beklediğin eğitim açıldı!",
+    html: `<p><b>${c.title}</b> artık kayıt alıyor. İlk sen haberdar olanlardansın; yerini hemen ayırtabilirsin.</p><p style="color:#64748b;font-size:13px">Bu e-postayı "açılınca haber ver" dediğin için aldın.</p>`,
+    buttonText: "Eğitime git",
+    buttonUrl: url,
+  });
+  let sent = 0;
+  for (const w of waiting) {
+    await sendMail({ type: "waitlist", to: w.email, subject: `${c.title} açıldı!`, html });
+    if (w.userId) await notifyUser(w.userId, { title: "Beklediğin eğitim açıldı", body: c.title, url: `/program/${c.slug}`, tag: `soon-${c.id}` });
+    await db.update(periodWaitlist).set({ notifiedAt: new Date() }).where(eq(periodWaitlist.id, w.id));
+    sent++;
+  }
+  return sent;
+}
+
+/** Kurs id → bekleyen (haber verilmemiş) talep sayısı; admin listesi için tek sorgu */
+export async function waitlistCounts(): Promise<Map<number, number>> {
+  const rows = await db
+    .select({ courseId: periodWaitlist.courseId, n: sql<number>`count(*)`.mapWith(Number) })
+    .from(periodWaitlist)
+    .where(isNull(periodWaitlist.notifiedAt))
+    .groupBy(periodWaitlist.courseId);
+  return new Map(rows.map((r) => [r.courseId, r.n]));
 }

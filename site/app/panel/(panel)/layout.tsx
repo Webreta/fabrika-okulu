@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { unreadCount } from "@/lib/notify";
 import { Shell, type NavItem } from "@/components/panel/Shell";
 import { studentActions } from "@/lib/data/student";
-import { pendingSurveyFor } from "@/lib/survey";
+import { pendingSurveyFor, studentGoalFlags } from "@/lib/survey";
 import { initials } from "@/lib/format";
 import { PushBanner } from "@/components/panel/PushBanner";
 import { SurveyPopup } from "@/components/panel/SurveyPopup";
@@ -16,7 +16,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   if (user.role === "teacher" || user.role === "admin") {
     // Eğitmen/admin de öğrenci panelini görebilir ama varsayılan yönlendirme kendi paneli
   }
-  const [unread, actions, pendingSurvey, panelSettings] = await Promise.all([unreadCount(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel")]);
+  const [unread, actions, pendingSurvey, panelSettings, goalFlags] = await Promise.all([unreadCount(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel"), studentGoalFlags(user.id)]);
   const theme = themeByKey(user.panelTheme, panelSettings.defaultTheme);
   const pending = actions.items.filter((i) => !i.done).length;
 
@@ -46,7 +46,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       unread={unread}
       homeHref="/panel"
       theme={theme.key}
-      menuStyle={panelSettings.menuStyle === "icon" ? "icon" : "normal"}
+      menuStyle={panelSettings.menuStyle === "icon" || panelSettings.menuStyle === "tooltip" ? panelSettings.menuStyle : "normal"}
+      flags={goalFlags}
     >
       {children}
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />

@@ -9,7 +9,7 @@ import { Icon } from "@/components/site/Icon";
  * Favori kalbi. `variant="overlay"` kart görselinin köşesinde yuvarlak düğme; `variant="inline"` metinli düğme (program sayfası).
  * Giriş yoksa sunucu aksiyonu girişe yönlendirir. İndirim başlayınca favorileyene bildirim gider (lib/favorites.ts).
  */
-export function FavoriteButton({ courseId, initial, variant = "overlay" }: { courseId: number; initial: boolean; variant?: "overlay" | "inline" }) {
+export function FavoriteButton({ courseId, initial, variant = "overlay", position = "right" }: { courseId: number; initial: boolean; variant?: "overlay" | "inline"; /** overlay: kalbin köşesi (yakında kurdelesi sağdayken sola alınır) */ position?: "right" | "left" }) {
   const [state, action, pending] = useActionState<FavoriteState, FormData>(toggleFavoriteAction, {});
   const fav = state.fav ?? initial;
   const path = usePathname();
@@ -31,7 +31,7 @@ export function FavoriteButton({ courseId, initial, variant = "overlay" }: { cou
   }
 
   return (
-    <form action={action} className="absolute right-3 top-3 z-10">
+    <form action={action} className={`absolute top-3 z-10 ${position === "left" ? "left-3" : "right-3"}`}>
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="back" value={path} />
       <button

@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryBySlug, coursesInCategory, listCategories } from "@/lib/data/categories";
-import { getSetting } from "@/lib/settings";
 import { CourseCard } from "@/components/site/CourseCard";
-import { PageHero, CtaBand } from "@/components/site/Sections";
+import { PageHero } from "@/components/site/Sections";
 
 // /kategori/[slug] → admin'in tanımladığı kategorideki eğitimler (header "Eğitimler" menüsü buraya gelir)
 
@@ -18,10 +17,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const k = await categoryBySlug(slug);
   if (!k) notFound();
-  const [list, all, general] = await Promise.all([coursesInCategory(k.id), listCategories(), getSetting("general")]);
+  const [list, all] = await Promise.all([coursesInCategory(k.id), listCategories()]);
   return (
     <>
-      <PageHero title={k.name} subtitle={k.description || undefined} />
+      <PageHero title={k.name} subtitle={k.description || "Bu kategorideki eğitimleri keşfet."} crumbs={[{ label: "Eğitimler", href: "/kesfet" }, { label: k.name }]} />
       <section className="mx-auto max-w-7xl px-4 py-14">
         {all.length > 1 && (
           <div className="mb-8 flex flex-wrap gap-2">
@@ -40,7 +39,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         )}
       </section>
-      <CtaBand title={general.ctaTitle} text={general.ctaText} />
     </>
   );
 }

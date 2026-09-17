@@ -16,8 +16,6 @@ export type GeneralSettings = {
   introText: string;
   esnekText: string;
   takvimliText: string;
-  ctaTitle: string;
-  ctaText: string;
   footerText: string;
   primaryColor: string;
 };
@@ -59,8 +57,8 @@ export type PanelSettings = {
   loginBg: string;
   loginLogo: string;
   defaultTheme: string;
-  /** İkincil menü stili: normal (ikon+metin) | icon (büyük ikon, üzerine gelince metin açılır) */
-  menuStyle: "normal" | "icon";
+  /** İkincil menü stili: normal (ikon+metin) | icon (büyük ikon, üzerine gelince metin yana açılır) | tooltip (sabit ikon, üzerine gelince adı altında baloncukta belirir) */
+  menuStyle: "normal" | "icon" | "tooltip";
   registrationOpen: boolean;
   surveyRequired: boolean;
 };
@@ -90,8 +88,6 @@ const DEFAULTS = {
       "Kendine uygun saatlerde online içeriğe ulaşarak çalışmaları tamamla, mentor eğitmenine sorularını sor, programı tamamla.",
     takvimliText:
       "Bir veya daha fazla haftaya yayılan programlar. Haftalık plana uyarak esnek saatlerde online içeriğe ulaş, çalışmaları tamamla, mentor eğitmenle planlı oturumlara katıl, programı tamamla.",
-    ctaTitle: "Hazırsan Başlayalım",
-    ctaText: "Kariyerin için bir adım at!",
     footerText:
       "Fabrika Okulu ile, ihtiyaç duyacağın yetkinliklerde kavramsal farkındalık kazan, örnek çalışmalarla pratiği gör, uygulama ve takip planı yaparak gelişimini sürdür.",
     primaryColor: "#142b56",

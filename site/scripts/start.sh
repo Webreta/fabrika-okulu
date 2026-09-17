@@ -11,6 +11,8 @@ node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-dolu.m
 node node_modules/tsx/dist/cli.mjs scripts/seed-kategoriler.mts || echo "seed-kategoriler atlandı"
 # İki örnek rota (slug varsa atlar)
 node node_modules/tsx/dist/cli.mjs scripts/seed-rotalar.mts || echo "seed-rotalar atlandı"
+# Üç örnek "Yakında" eğitimi (başlık varsa atlar)
+node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-yakinda.mts || echo "seed-yakinda atlandı"
 (
   sleep 90
   while true; do

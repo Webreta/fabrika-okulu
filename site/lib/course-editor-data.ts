@@ -58,6 +58,8 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
     instructorId: c.instructorId,
     featured: c.featured,
     closed: c.closed,
+    comingSoon: c.comingSoon,
+    soonShowPrice: c.soonShowPrice,
     whatsappNumber: c.whatsappNumber,
     whatsappMessage: c.whatsappMessage,
     modules: c.modules.map((m) => ({

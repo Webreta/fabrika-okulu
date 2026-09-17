@@ -5,7 +5,7 @@ import { surveys, surveyAnswers, surveyCompletions, users, type Survey, type Sur
 import { getRawSetting } from "@/lib/settings";
 import type { SessionUser } from "@/lib/auth/session";
 
-import { missingRequired, visibleQuestions } from "@/lib/survey-logic";
+import { missingRequired, visibleQuestions, goalOf, goalQuestion } from "@/lib/survey-logic";
 
 export type { SurveyCondition, SurveyQuestion, Survey } from "@/db/schema";
 export { isVisible } from "@/lib/survey-logic";
@@ -160,4 +160,31 @@ export async function getSurveyStats(survey: Survey): Promise<SurveyStats> {
     return { key: q.key, label: q.label, total, options };
   });
   return { participants, questions };
+}
+
+/** Öğrencinin üst çubuktaki hedef bayrakları: ana sorusu olan yayındaki anketler + verdiği cevap (cevapsızlar da listelenir, gri) */
+export type GoalFlag = { surveyId: number; title: string; question: string; answer: string | null; color: string | null };
+export async function studentGoalFlags(userId: number): Promise<GoalFlag[]> {
+  const list = (await listSurveys(true)).filter((s) => goalQuestion(s));
+  if (!list.length) return [];
+  const rows = await db
+    .select({ surveyKey: surveyAnswers.surveyKey, questionKey: surveyAnswers.questionKey, value: surveyAnswers.value })
+    .from(surveyAnswers)
+    .where(and(eq(surveyAnswers.userId, userId), inArray(surveyAnswers.surveyKey, list.map((s) => s.key))));
+  return list.map((s) => {
+    const a: Record<string, string | string[]> = {};
+    for (const r of rows) if (r.surveyKey === s.key) a[r.questionKey] = r.value;
+    const g = goalOf(s, a);
+    return { surveyId: s.id, title: s.title, question: goalQuestion(s)!.label, answer: g?.option.label ?? null, color: g?.option.color ?? null };
+  });
+}
+
+/** Yalnızca ana sorunun cevabını değiştirir (test tek seferlik olsa bile); diğer cevaplara dokunmaz */
+export async function setGoalAnswer(userId: number, survey: Survey, value: string) {
+  const q = goalQuestion(survey);
+  if (!q) return { error: "Bu testte hedef sorusu yok." };
+  if (!q.options?.some((o) => o.value === value)) return { error: "Geçersiz seçenek." };
+  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key), eq(surveyAnswers.questionKey, q.key)));
+  await db.insert(surveyAnswers).values({ userId, surveyKey: survey.key, questionKey: q.key, value });
+  return { ok: true };
 }

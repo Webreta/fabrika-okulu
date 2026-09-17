@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ADD COLUMN "soon_show_price" boolean DEFAULT false NOT NULL;

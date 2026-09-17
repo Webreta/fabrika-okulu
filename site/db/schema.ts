@@ -145,6 +145,10 @@ export const courses = pgTable("courses", {
   imageUrl: text("image_url").notNull().default(""),
   status: courseStatusEnum("status").notNull().default("draft"),
   closed: boolean("closed").notNull().default(false),
+  /** Yakında: yayında görünür (katalog, vitrin, kategori) ama satış kapalı; "açılınca haber ver" ile talep toplanır */
+  comingSoon: boolean("coming_soon").notNull().default(false),
+  /** Yakında modunda fiyat gösterilsin mi (false: fiyat yerine "Yakında") */
+  soonShowPrice: boolean("soon_show_price").notNull().default(false),
   isFree: boolean("is_free").notNull().default(false),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
   salePrice: numeric("sale_price", { precision: 10, scale: 2 }),
@@ -832,7 +836,10 @@ export type SurveyQuestion = {
   required: boolean;
   label: string;
   help?: string;
-  options?: { value: string; label: string }[];
+  /** Ana soru seçeneklerinde bayrak rengi (GOAL_COLORS anahtarı) */
+  options?: { value: string; label: string; color?: string }[];
+  /** Ana soru (hedef): anket başına en fazla bir tane, yalnızca tek seçimli (radio). Cevabı renkli bayrak olarak gösterilir. */
+  goal?: boolean;
   showIf?: SurveyCondition[];
   /** Birden çok koşul varsa: "any" = herhangi biri sağlanınca göster (varsayılan), "all" = hepsi sağlanınca */
   showIfMode?: "any" | "all";
@@ -870,6 +877,21 @@ export const surveyCompletions = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("survey_completions_uq").on(t.userId, t.surveyKey)]
+);
+
+/** Anket ↔ eğitim bağı: bağlı anket doldurulmadan eğitim satın alınamaz (giriş yapmış öğrenci için) */
+export const surveyCourses = pgTable(
+  "survey_courses",
+  {
+    id: serial("id").primaryKey(),
+    surveyId: integer("survey_id")
+      .notNull()
+      .references(() => surveys.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("survey_courses_uq").on(t.surveyId, t.courseId)]
 );
 
 export const surveyAnswers = pgTable(

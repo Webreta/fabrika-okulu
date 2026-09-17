@@ -6,7 +6,7 @@ import type { SurveyCondition, SurveyMode, SurveyQuestion } from "@/db/schema";
 import { saveSurveyAdmin } from "@/app/actions/admin";
 import { Icon } from "@/components/site/Icon";
 import { SurveyForm } from "@/components/panel/SurveyForm";
-import { QUESTION_TYPES, SURVEY_MODES, hasOptions, makeOptionValue, normalizeSurveyDef, slugKey, uniqueKey, validateSurveyDef, type SurveyDef } from "@/lib/survey-logic";
+import { GOAL_COLORS, QUESTION_TYPES, SURVEY_MODES, goalColor, hasOptions, makeOptionValue, normalizeSurveyDef, slugKey, uniqueKey, validateSurveyDef, type SurveyDef } from "@/lib/survey-logic";
 
 /*
  * Anket oluşturucu (admin).
@@ -254,6 +254,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
                   onMove={(d) => moveQuestion(q.key, d)}
                   onDelete={() => removeQuestion(q.key)}
                   onDuplicate={() => duplicateQuestion(q.key)}
+                  onGoal={(on) => update((p) => ({ ...p, questions: p.questions.map((x) => (x.key === q.key ? { ...x, goal: on } : on ? { ...x, goal: undefined } : x)) }))}
                 />
               ))}
               <button type="button" onClick={() => addQuestion(sec.key)} className="btn-secondary btn-sm"><Icon name="plus" className="size-4" /> Bu bölüme soru ekle</button>
@@ -297,9 +298,9 @@ function PreviewForm({ def }: { def: SurveyDef }) {
 
 // ---------------- Soru kartı ----------------
 
-function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, onDelete, onDuplicate }: {
+function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, onDelete, onDuplicate, onGoal }: {
   q: SurveyQuestion; number: number; all: SurveyQuestion[]; numberOf: Map<string, number>; sections: Section[];
-  onChange: (patch: Partial<SurveyQuestion>) => void; onMove: (d: -1 | 1) => void; onDelete: () => void; onDuplicate: () => void;
+  onChange: (patch: Partial<SurveyQuestion>) => void; onMove: (d: -1 | 1) => void; onDelete: () => void; onDuplicate: () => void; onGoal: (on: boolean) => void;
 }) {
   const [advanced, setAdvanced] = useState(false);
   const [bulk, setBulk] = useState<string | null>(null);
@@ -316,6 +317,7 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
   // Seçenekler
   const opts = q.options ?? [];
   const setOpt = (i: number, label: string) => onChange({ options: opts.map((o, j) => (j === i ? { ...o, label } : o)) });
+  const setOptColor = (i: number, color: string) => onChange({ options: opts.map((o, j) => (j === i ? { ...o, color: color || undefined } : o)) });
   const addOpt = (labels: string[] = [""]) => {
     const taken = new Set(opts.map((o) => o.value));
     const added = labels.map((raw, i) => {
@@ -357,6 +359,11 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
           </select>
         )}
         <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-line px-2 py-1.5 text-sm"><input type="checkbox" checked={q.required} onChange={(e) => onChange({ required: e.target.checked })} /> Zorunlu</label>
+        {q.type === "radio" && (
+          <label className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1.5 text-sm ${q.goal ? "border-amber-400 bg-amber-50 text-amber-800" : "border-line"}`} title="Ana soru: cevabı renkli bayrak olarak öğrencinin üst çubuğunda ve anket kartında görünür">
+            <input type="checkbox" checked={!!q.goal} onChange={(e) => onGoal(e.target.checked)} /> <Icon name="flag" className="size-3.5" /> Ana soru (hedef bayrağı)
+          </label>
+        )}
         <div className="ml-auto flex gap-1">
           <button type="button" title="Yukarı taşı" onClick={() => onMove(-1)} className="rounded p-1 hover:bg-surface"><Icon name="chevronUp" className="size-4" /></button>
           <button type="button" title="Aşağı taşı" onClick={() => onMove(1)} className="rounded p-1 hover:bg-surface"><Icon name="chevronDown" className="size-4" /></button>
@@ -369,6 +376,9 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
       <input value={q.help ?? ""} onChange={(e) => onChange({ help: e.target.value })} placeholder="Açıklama / ipucu (isteğe bağlı, sorunun altında küçük yazıyla görünür)" className="input text-xs" />
 
       {/* Seçenekler */}
+      {q.goal && q.type === "radio" && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"><b>Ana soru:</b> her seçeneğe bir bayrak rengi ver. Öğrenci seçince anket kartı o renge döner ve üst çubukta o renkte bayrak görünür; hedefini sonradan istediği zaman değiştirebilir.</p>
+      )}
       {hasOptions(q.type) && (
         <div className="rounded-xl bg-surface p-3">
           <div className="mb-2 flex items-center justify-between">
@@ -380,6 +390,15 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
               <div key={o.value} className="flex items-center gap-1.5">
                 <span className="w-5 text-center text-xs text-muted">{q.type === "radio" ? "○" : "☐"}</span>
                 <input value={o.label} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} className="input py-1.5 text-sm" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOpt(); } }} />
+                {q.goal && q.type === "radio" && (
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="size-4 rounded-full border border-white shadow" style={{ background: o.color ? goalColor(o.color).hex : "#e5e7eb" }} />
+                    <select value={o.color ?? ""} onChange={(e) => setOptColor(i, e.target.value)} className={`input w-auto py-1 text-xs ${!o.color ? "border-amber-400" : ""}`} title="Bayrak rengi">
+                      <option value="">Renk seç…</option>
+                      {GOAL_COLORS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                  </span>
+                )}
                 {advanced && <code className="rounded bg-white px-1.5 py-0.5 text-[10px] text-muted" title="Teknik değer (cevaplarda bu saklanır)">{o.value}</code>}
                 <button type="button" onClick={() => moveOpt(i, -1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronUp" className="size-3.5" /></button>
                 <button type="button" onClick={() => moveOpt(i, 1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronDown" className="size-3.5" /></button>

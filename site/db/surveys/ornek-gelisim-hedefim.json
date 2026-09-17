@@ -1,0 +1,71 @@
+{
+  "key": "ornek_gelisim_hedefim",
+  "title": "Bu Yıl Gelişim Hedefim",
+  "mode": "flow",
+  "editable": false,
+  "intro": "Bu yıl kendini hangi alanda geliştirmek istiyorsun? Test tek seferlik; ama seçtiğin gelişim hedefinin bayrağını istediğin zaman değiştirebilirsin.",
+  "sections": {
+    "hedef": "Gelişim hedefim",
+    "tercih": "Öğrenme tercihlerim"
+  },
+  "questions": [
+    {
+      "key": "alan",
+      "section": "hedef",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "goal": true,
+      "label": "Bu yıl odaklanmak istediğim gelişim alanı:",
+      "help": "Bu cevabın hedef bayrağın olur.",
+      "options": [
+        { "value": "liderlik", "label": "Liderlik ve ekip yönetimi", "color": "red" },
+        { "value": "iletisim", "label": "İletişim ve sunum", "color": "teal" },
+        { "value": "yalin", "label": "Yalın üretim ve verimlilik", "color": "navy" },
+        { "value": "kariyer", "label": "Kariyer geçişi / terfi", "color": "pink" },
+        { "value": "dijital", "label": "Dijital beceriler", "color": "gray" }
+      ]
+    },
+    {
+      "key": "seviye",
+      "section": "hedef",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "label": "Bu alanda kendimi nasıl görüyorum?",
+      "options": [
+        { "value": "baslangic", "label": "Başlangıç" },
+        { "value": "orta", "label": "Orta" },
+        { "value": "ileri", "label": "İleri" }
+      ]
+    },
+    {
+      "key": "format",
+      "section": "tercih",
+      "step": 1,
+      "type": "checkbox",
+      "required": true,
+      "label": "Hangi formatta öğrenmeyi tercih ederim? (birden fazla seçebilirsin)",
+      "options": [
+        { "value": "video", "label": "Kendi hızımda video dersler" },
+        { "value": "canli", "label": "Takvimli canlı oturumlar" },
+        { "value": "birebir", "label": "Birebir görüşme / mentorluk" },
+        { "value": "okuma", "label": "Okuma materyalleri" }
+      ]
+    },
+    {
+      "key": "haftalik",
+      "section": "tercih",
+      "step": 1,
+      "type": "radio",
+      "required": true,
+      "label": "Haftada ayırabileceğim süre:",
+      "options": [
+        { "value": "1", "label": "1 saatten az" },
+        { "value": "2", "label": "1–3 saat" },
+        { "value": "3", "label": "3–5 saat" },
+        { "value": "4", "label": "5 saatten fazla" }
+      ]
+    }
+  ]
+}

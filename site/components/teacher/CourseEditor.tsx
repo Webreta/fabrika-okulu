@@ -184,9 +184,9 @@ export function CourseEditor({
             <textarea rows={6} value={c.description} onChange={(e) => set("description", e.target.value)} className="input font-mono text-xs" />
           </div>
           <div>
-            <label className="label">Kapak görseli <span className="text-muted">(önerilen oran 2,5:1 — ör. 1000×400 px)</span></label>
+            <label className="label">Kapak görseli <span className="text-muted">(önerilen oran 16:9 — ör. 1280×720 px, YouTube kapak ölçüsü)</span></label>
             <div className="flex items-center gap-3">
-              {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-16 w-40 rounded-lg object-cover" /> : <div className="flex h-16 w-40 items-center justify-center rounded-lg bg-surface text-muted"><Icon name="upload" className="size-5" /></div>}
+              {c.imageUrl ? <img src={c.imageUrl} alt="" className="aspect-video w-40 rounded-lg object-cover" /> : <div className="flex aspect-video w-40 items-center justify-center rounded-lg bg-surface text-muted"><Icon name="upload" className="size-5" /></div>}
               <label className="btn-secondary btn-sm cursor-pointer">{busy === "cover" ? "Yükleniyor…" : "Görsel seç"}<input type="file" accept="image/*" className="hidden" onChange={(e) => uploadCover(e.target.files?.[0])} /></label>
               {c.imageUrl && <button onClick={() => set("imageUrl", "")} className="text-xs text-red-600">Kaldır</button>}
             </div>
@@ -203,6 +203,8 @@ export function CourseEditor({
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.lifetime} onChange={(e) => set("lifetime", e.target.checked)} /> Ömür boyu erişim</label>
             {isAdmin && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.featured} onChange={(e) => set("featured", e.target.checked)} /> Öne çıkan</label>}
             {isAdmin && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.closed} onChange={(e) => set("closed", e.target.checked)} /> Kapalı (satış yok)</label>}
+            {isAdmin && <label className="flex items-center gap-2 text-sm" title="Sitede Yakında! rozetiyle görünür, satın alınamaz; ziyaretçiler açılınca haber ver diyerek talep bırakır. Kutuyu kaldırıp kaydedince talep bırakanlara haber gider."><input type="checkbox" checked={!!c.comingSoon} onChange={(e) => set("comingSoon", e.target.checked)} /> Yakında (ön gösterim, talep topla)</label>}
+            {isAdmin && c.comingSoon && <label className="flex items-center gap-2 text-sm" title="Kapalıysa kartta ve program sayfasında fiyat yerine Yakında yazar"><input type="checkbox" checked={!!c.soonShowPrice} onChange={(e) => set("soonShowPrice", e.target.checked)} /> Yakında iken fiyatı göster</label>}
           </div>
           {isAdmin && (
             <>

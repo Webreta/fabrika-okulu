@@ -1,15 +1,22 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CourseWithMeta } from "@/lib/data/courses";
-import { GROUP_LABELS, effectivePrice, hasActiveSale } from "@/lib/course-logic";
-import { fmtMoney, excerpt } from "@/lib/format";
+import { effectivePrice, hasActiveSale, GROUP_LABELS, LEVEL_LABELS } from "@/lib/course-logic";
+import { fmtMoney, excerpt, initials } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { FavoriteButton } from "@/components/site/FavoriteButton";
 import { getCurrentUser } from "@/lib/auth/session";
 import { myFavoriteIds } from "@/lib/favorites";
 import { prerequisiteMap } from "@/lib/prerequisites";
+import { surveyGateMap } from "@/lib/survey-gate";
+import { SoonRibbon } from "@/components/site/SoonRibbon";
 
-export function Price({ course, className = "" }: { course: Pick<CourseWithMeta, "isFree" | "price" | "salePrice" | "saleTo">; className?: string }) {
+type PriceCourse = Pick<CourseWithMeta, "isFree" | "price" | "salePrice" | "saleTo"> & Partial<Pick<CourseWithMeta, "comingSoon" | "soonShowPrice">>;
+
+/** Metin fiyat (program sayfası, yapışkan çubuk vb.) */
+export function Price({ course, className = "" }: { course: PriceCourse; className?: string }) {
+  // Yakında modunda fiyat isteğe bağlı gizlenir
+  if (course.comingSoon && !course.soonShowPrice) return <span className={`font-bold text-amber-600 ${className}`}>Yakında</span>;
   if (course.isFree) return <span className={`font-bold text-emerald-600 ${className}`}>ÜCRETSİZ</span>;
   const eff = effectivePrice(course);
   if (hasActiveSale(course)) {
@@ -23,38 +30,89 @@ export function Price({ course, className = "" }: { course: Pick<CourseWithMeta,
   return <span className={`font-bold text-navy-800 ${className}`}>{fmtMoney(eff)}</span>;
 }
 
-/** size="lg": geniş kartlar (2'li vitrin) için masaüstünde büyük yazı ve düğme */
+/** Kart görselinin köşesindeki cam efektli fiyat kapsülü */
+function PricePill({ course, lg }: { course: PriceCourse; lg: boolean }) {
+  const base = `inline-flex items-baseline gap-1.5 rounded-2xl px-3 py-1.5 shadow-lg ring-1 ring-white/40 backdrop-blur-md ${lg ? "lg:px-4 lg:py-2" : ""}`;
+  if (course.comingSoon && !course.soonShowPrice) return <span className={`${base} bg-amber-400/95 text-sm font-extrabold text-navy-900`}>Yakında</span>;
+  if (course.isFree) return <span className={`${base} bg-emerald-500/95 text-sm font-extrabold uppercase tracking-wide text-white`}>Ücretsiz</span>;
+  const eff = effectivePrice(course);
+  if (hasActiveSale(course)) {
+    return (
+      <span className={`${base} bg-white/95 text-navy-900`}>
+        <span className="text-[11px] font-semibold text-muted line-through">{fmtMoney(course.price)}</span>
+        <span className={`text-base font-extrabold ${lg ? "lg:text-xl" : ""}`}>{fmtMoney(eff)}</span>
+      </span>
+    );
+  }
+  return <span className={`${base} bg-white/95 text-base font-extrabold text-navy-900 ${lg ? "lg:text-xl" : ""}`}>{fmtMoney(eff)}</span>;
+}
+
+/**
+ * Katalog kartı: görsel üstünde koyu gradyan + cam fiyat kapsülü + grup çipi, altta başlık, eğitmen avatarı,
+ * ders/öğrenci/seviye bilgileri ve ok düğmeli aksiyon. size="lg": geniş kartlar (2'li vitrin) için büyük yazı.
+ */
 export async function CourseCard({ course, size = "md" }: { course: CourseWithMeta; size?: "md" | "lg" }) {
   const lg = size === "lg";
   // Kalp: giriş yapan kullanıcının favorileri istek başına bir kez okunur (cache)
   const user = await getCurrentUser();
   const fav = user ? (await myFavoriteIds(user.id)).has(course.id) : false;
   const prereq = (await prerequisiteMap()).get(course.id) ?? null;
+  const gate = (await surveyGateMap()).get(course.id)?.[0] ?? null;
+  const href = `/program/${course.slug}`;
+  const sale = hasActiveSale(course) && !course.comingSoon;
+  const salePercent = sale ? Math.round((1 - effectivePrice(course) / Number(course.price)) * 100) : 0;
+  const cta = course.comingSoon ? "Haber ver" : course.closed ? "İncele" : course.isFree ? "Kayıt ol" : "Sepete ekle";
+  const meta: { icon: "play" | "users" | "chart" | "award"; text: string }[] = [
+    ...(course.lessonCount > 0 ? [{ icon: "play" as const, text: `${course.lessonCount} ders` }] : []),
+    ...(course.durationText ? [{ icon: "chart" as const, text: course.durationText }] : course.level && LEVEL_LABELS[course.level] ? [{ icon: "chart" as const, text: LEVEL_LABELS[course.level] }] : []),
+    ...(course.studentCount > 0 ? [{ icon: "users" as const, text: `${course.studentCount} katılımcı` }] : []),
+    ...(course.hasCertificate ? [{ icon: "award" as const, text: "Sertifika" }] : []),
+  ].slice(0, 3);
+
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <FavoriteButton courseId={course.id} initial={fav} />
-      <Link href={`/program/${course.slug}`} className="relative block overflow-hidden bg-navy-50">
+    <article className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_10px_30px_-18px_rgba(20,43,86,.35)] ring-1 ring-black/5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_-20px_rgba(20,43,86,.45)]">
+      <FavoriteButton courseId={course.id} initial={fav} position={course.comingSoon ? "left" : "right"} />
+      {/* Görsel */}
+      <Link href={href} className="relative block overflow-hidden bg-navy-50">
         {course.imageUrl ? (
-          <Image src={course.imageUrl} alt={course.title} width={640} height={440} className="cover transition group-hover:scale-[1.02]" />
+          <Image src={course.imageUrl} alt={course.title} width={640} height={360} className="cover transition duration-500 ease-out group-hover:scale-105" />
         ) : (
-          <div className="cover flex items-center justify-center text-navy-300"><Icon name="book" className="size-12" /></div>
+          <div className="cover flex items-center justify-center bg-gradient-to-br from-navy-100 to-sky-100 text-navy-300"><Icon name="book" className="size-12" /></div>
         )}
-        <span className="absolute left-3 top-3 flex gap-1.5">
-          <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-navy-800 shadow">{GROUP_LABELS[course.group]}</span>
-          {hasActiveSale(course) && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-semibold text-white shadow">İndirim</span>}
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-navy-950/85 via-navy-950/30 to-transparent" />
+        {sale && <span className="absolute left-3 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-extrabold text-white shadow">%{salePercent} indirim</span>}
+        {course.comingSoon && <SoonRibbon />}
+        <span className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-2">
+          <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">{GROUP_LABELS[course.group]}</span>
+          <PricePill course={course} lg={lg} />
         </span>
       </Link>
-      <div className={`flex flex-1 flex-col p-4 ${lg ? "lg:p-6" : ""}`}>
-        <h3 className={`font-bold leading-snug text-navy-800 ${lg ? "lg:text-2xl" : ""}`}>
-          <Link href={`/program/${course.slug}`} className="hover:text-sky-600">{course.title}</Link>
+
+      {/* Metin */}
+      <div className={`flex flex-1 flex-col p-5 ${lg ? "lg:p-7" : ""}`}>
+        <h3 className={`line-clamp-2 font-bold leading-snug text-navy-800 ${lg ? "text-lg lg:text-2xl" : "text-[17px]"}`}>
+          <Link href={href} className="transition hover:text-sky-600">{course.title}</Link>
         </h3>
-        {course.instructor && <p className={`mt-1 text-sm text-sky-600 ${lg ? "lg:text-base" : ""}`}>{course.instructor.name}</p>}
-        {prereq && <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-700" title={`Bu eğitim için önce "${prereq.requiredTitle}" ${prereq.condition === "completed" ? "tamamlanmalı" : "alınmalı"}`}><Icon name="lock" className="size-3" /> Ön koşul: {prereq.requiredTitle}</p>}
-        <p className={`mt-2 flex-1 text-sm text-muted ${lg ? "lg:text-base lg:leading-relaxed" : ""}`}>{excerpt(course.shortDescription || course.description, lg ? 180 : 100)}</p>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <Price course={course} className={lg ? "lg:text-xl" : ""} />
-          <Link href={`/program/${course.slug}`} className={lg ? "btn-sky lg:px-6 lg:py-3 lg:text-base" : "btn-sky btn-sm"}>
-            {course.closed ? "İncele" : course.isFree ? "Kayıt Ol" : "Sepete Ekle"}
+        {course.instructor && (
+          <p className={`mt-2 flex items-center gap-2 text-sm text-navy-700 ${lg ? "lg:text-base" : ""}`}>
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy-700 to-sky-500 text-[10px] font-bold text-white">{initials(course.instructor.name)}</span>
+            <span className="truncate">{course.instructor.name}</span>
+          </p>
+        )}
+        <p className={`mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-navy-700 ${lg ? "lg:text-base" : ""}`}>{excerpt(course.shortDescription || course.description, lg ? 180 : 120)}</p>
+        {prereq && <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-700" title={`Bu eğitim için önce "${prereq.requiredTitle}" ${prereq.condition === "completed" ? "tamamlanmalı" : "alınmalı"}`}><Icon name="lock" className="size-3" /> Ön koşul: {prereq.requiredTitle}</p>}
+        {gate && <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-amber-700" title={`Bu eğitimi almadan önce "${gate.title}" hedef testi doldurulur`}><Icon name="survey" className="size-3" /> Önce hedef testi: {gate.title}</p>}
+
+        {meta.length > 0 && (
+          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[12px] font-medium text-navy-700">
+            {meta.map((m) => <li key={m.text} className="flex items-center gap-1.5"><Icon name={m.icon} className="size-3.5 text-sky-500" /> {m.text}</li>)}
+          </ul>
+        )}
+
+        <div className="mt-4 border-t border-line pt-4">
+          <Link href={href} className={`flex items-center justify-between font-semibold text-navy-800 transition group-hover:text-sky-600 ${lg ? "lg:text-lg" : "text-sm"}`}>
+            {cta}
+            <span className={`flex size-9 items-center justify-center rounded-full transition duration-300 group-hover:translate-x-1 ${course.comingSoon ? "bg-amber-400 text-navy-900" : "bg-navy-800 text-white group-hover:bg-sky-500"}`}><Icon name={course.comingSoon ? "bell" : "arrowRight"} className="size-4" /></span>
           </Link>
         </div>
       </div>

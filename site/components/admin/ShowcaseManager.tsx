@@ -8,7 +8,7 @@ import type { ShowcaseContent } from "@/lib/content-defaults";
 import { Icon } from "@/components/site/Icon";
 import { Toast } from "@/components/Toast";
 
-type CourseOpt = { id: number; title: string; imageUrl: string; group: string; status: string; closed: boolean; featured: boolean };
+type CourseOpt = { id: number; title: string; imageUrl: string; group: string; status: string; closed: boolean; featured: boolean; comingSoon?: boolean };
 const GROUP: Record<string, string> = { takvimli: "Takvimli", esnek: "Esnek", ucretsiz: "Ücretsiz" };
 
 /**
@@ -55,9 +55,9 @@ export function ShowcaseManager({ initial, courses }: { initial: ShowcaseContent
             {available.map((c) => (
               <li key={c.id}>
                 <button type="button" onClick={() => setIds([...f.courseIds, c.id])} className="flex w-full items-center gap-2 rounded-lg border border-line bg-white p-1.5 text-left text-sm hover:border-sky-300 hover:bg-sky-50">
-                  <div className="h-7 w-12 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={48} height={28} className="h-full w-full object-cover" />}</div>
+                  <div className="aspect-video w-12 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={48} height={27} className="h-full w-full object-cover" />}</div>
                   <span className="min-w-0 flex-1 truncate font-medium text-navy-800">{c.featured && <span className="mr-1 text-amber-500">★</span>}{c.title}</span>
-                  <span className="text-[10px] text-muted">{c.status !== "published" ? "taslak" : c.closed ? "kapalı" : GROUP[c.group] ?? c.group}</span>
+                  <span className="text-[10px] text-muted">{c.status !== "published" ? "taslak" : c.closed ? "kapalı" : c.comingSoon ? "yakında" : GROUP[c.group] ?? c.group}</span>
                   <Icon name="plus" className="size-4 shrink-0 text-sky-500" />
                 </button>
               </li>
@@ -85,11 +85,11 @@ export function ShowcaseManager({ initial, courses }: { initial: ShowcaseContent
                     onDragEnd={() => setDragIdx(null)}
                     className={`group relative cursor-grab overflow-hidden rounded-2xl border bg-white shadow-sm active:cursor-grabbing ${dragIdx === i ? "border-dashed border-navy-300 opacity-50" : "border-line"}`}
                   >
-                    <div className="aspect-[2.5/1] bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={400} height={160} className="h-full w-full object-cover" />}</div>
+                    <div className="aspect-video bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={400} height={225} className="h-full w-full object-cover" />}</div>
                     <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-navy-800 text-xs font-bold text-white">{i + 1}</span>
                     <div className="p-3">
                       <p className="truncate text-sm font-semibold text-navy-800">{c.title}</p>
-                      <p className="text-[11px] text-muted">{c.status !== "published" ? "Taslak · sitede görünmez" : c.closed ? "Kapalı · sitede görünmez" : GROUP[c.group] ?? c.group}</p>
+                      <p className="text-[11px] text-muted">{c.status !== "published" ? "Taslak · sitede görünmez" : c.closed ? "Kapalı · sitede görünmez" : c.comingSoon ? "Yakında · rozetle görünür, satış kapalı" : GROUP[c.group] ?? c.group}</p>
                       <div className="mt-2 flex items-center gap-1">
                         <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} className="btn-secondary btn-sm px-2" title="Öne al"><Icon name="arrowLeft" className="size-3.5" /></button>
                         <button type="button" onClick={() => move(i, i + 1)} disabled={i === selected.length - 1} className="btn-secondary btn-sm px-2" title="Sona al"><Icon name="arrowRight" className="size-3.5" /></button>

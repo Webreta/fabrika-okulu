@@ -74,6 +74,7 @@ const paths = {
   expand: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
   chevronDown: "m6 9 6 6 6-6",
   chevronUp: "m6 15 6-6 6 6",
+  chevronRight: "m9 6 6 6-6 6",
   grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   linkedin: "M4 9h4v12H4zM6 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM10 9h4v2c1-1.5 2.5-2.5 4.5-2.5S22 10 22 14v7h-4v-6c0-2-1-3-2.5-3S13 13 13 15v6h-3z",
   instagram: "M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm5 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.5-1.5h.01",

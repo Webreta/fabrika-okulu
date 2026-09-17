@@ -69,7 +69,7 @@ body {
 .table tr:last-child td { @apply border-b-0; }
 
 /* Kurs kapak görselleri sabit oran */
-.cover { @apply aspect-[5/2] w-full object-cover; }
+.cover { @apply aspect-video w-full object-cover; }
 
 /* Tarih göstergeleri: köşeleri hafif oval, koyu renkli küçük etiket */
 .date-chip { @apply inline-block rounded-md bg-navy-100/70 px-1.5 py-0.5 text-[11px] font-medium text-navy-700; }
@@ -182,12 +182,20 @@ body {
 .route-node { animation: route-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 .route-flag { animation: route-float 3s ease-in-out infinite; }
 .route-current { animation: route-pulse 2s ease-out infinite; }
-.route-cloud { animation: route-cloud 12s ease-in-out infinite alternate; }
+.route-cloud { animation: route-cloud 9s ease-in-out infinite alternate; }
 @keyframes sky-drift { from { transform: translateX(110vw); } to { transform: translateX(-40vw); } }
 @keyframes sky-sun { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.06); opacity: 1; } }
 .sky-cloud { animation: sky-drift linear infinite; will-change: transform; }
 .sky-sun { animation: sky-sun 6s ease-in-out infinite; transform-origin: center; }
+/* Panel ikincil menü baloncuğu: gizli → üzerine gelince aşağı doğru yaylanarak açılır */
+.menu-tip { opacity: 0; transform: translateY(-6px) scale(.85); transform-origin: top center; visibility: hidden; transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s; }
+.group:hover > .menu-tip, .group:focus-visible > .menu-tip { opacity: 1; visibility: visible; transition: visibility 0s; animation: menu-tip-pop .28s cubic-bezier(.34,1.56,.64,1) forwards; }
+@keyframes menu-tip-pop { 0% { opacity: 0; transform: translateY(-8px) scale(.8); } 60% { opacity: 1; transform: translateY(2px) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .group:hover > .menu-tip, .group:focus-visible > .menu-tip { animation: none; transform: none; } }
+@keyframes sky-glow { 0%, 100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.14); opacity: 1; } }
+.sky-glow { animation: sky-glow 7s ease-in-out infinite; transform-origin: center; will-change: transform, opacity; }
+.sky-glow-2 { animation: sky-glow 4.5s ease-in-out -2s infinite; transform-origin: center; will-change: transform, opacity; }
 @keyframes arrow-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
 .arrow-nudge { animation: arrow-nudge 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .arrow-nudge { animation: none; } }
-@media (prefers-reduced-motion: reduce) { .route-path, .route-node, .route-flag, .route-current, .route-cloud, .sky-cloud, .sky-sun { animation: none; stroke-dashoffset: 0; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .route-path, .route-node, .route-flag, .route-current, .route-cloud, .sky-cloud, .sky-sun, .sky-glow, .sky-glow-2 { animation: none; stroke-dashoffset: 0; opacity: 1; } }

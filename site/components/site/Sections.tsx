@@ -1,27 +1,39 @@
 import Link from "next/link";
-import Image from "next/image";
+import { MountainBackdrop } from "@/components/site/MountainBackdrop";
+import { Icon } from "@/components/site/Icon";
 
-export function PageHero({ title, subtitle, image = "/img/site/page-hero.jpg" }: { title: string; subtitle?: string; image?: string }) {
+export type Crumb = { label: string; href?: string };
+
+/**
+ * Tüm sayfaların ortak başlığı: lacivert zemin + dağ illüstrasyonu, ortalı ince başlık, altında tek cümle,
+ * en altta cam efektli breadcrumb kapsülü (Anasayfa otomatik başa eklenir; son öğe vurgulu).
+ */
+export function PageHero({ title, subtitle, crumbs = [], flags = false }: { title: string; subtitle?: string; crumbs?: Crumb[]; flags?: boolean }) {
+  const trail: Crumb[] = [{ label: "Anasayfa", href: "/" }, ...crumbs];
   return (
     <section className="relative overflow-hidden bg-navy-900">
-      <Image src={image} alt="" fill className="object-cover opacity-50" priority />
-      <div className="relative mx-auto max-w-7xl px-4 py-20 text-center text-white md:py-28">
-        <h1 className="text-3xl font-bold md:text-5xl">{title}</h1>
-        {subtitle && <p className="mx-auto mt-3 max-w-2xl text-lg text-white/85">{subtitle}</p>}
-      </div>
-    </section>
-  );
-}
-
-export function CtaBand({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="relative mt-16 overflow-hidden">
-      <Image src="/img/site/cta.jpg" alt="" fill className="object-cover" />
-      <div className="absolute inset-0 bg-navy-900/70" />
-      <div className="relative mx-auto max-w-7xl px-4 py-20 text-center text-white">
-        <h2 className="text-3xl font-bold md:text-4xl">{title}</h2>
-        <p className="mt-2 text-lg text-white/85">{text}</p>
-        <Link href="/kesfet" className="btn-sky mt-6 px-7 py-3 text-base">Keşfet</Link>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(91,174,207,.3),transparent_60%)]" />
+      <MountainBackdrop className="absolute inset-x-0 bottom-0 h-[78%]" flags={flags} />
+      <div className="relative mx-auto max-w-7xl px-4 py-16 text-center text-white md:py-24">
+        <h1 className="text-3xl font-medium tracking-tight md:text-5xl [text-shadow:0_2px_12px_rgba(10,21,48,.9)]">{title}</h1>
+        {subtitle && <p className="mx-auto mt-3 max-w-4xl truncate text-base text-white/85 md:text-lg [text-shadow:0_1px_8px_rgba(10,21,48,.9)]" title={subtitle}>{subtitle}</p>}
+        <nav aria-label="Konum" className="mt-6 flex justify-center">
+          <ol className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs font-semibold backdrop-blur-md sm:text-[13px]">
+            {trail.map((c, i) => {
+              const last = i === trail.length - 1;
+              return (
+                <li key={i} className="flex items-center gap-1">
+                  {i > 0 && <Icon name="chevronRight" className="size-3.5 shrink-0 text-white/40" />}
+                  {last || !c.href ? (
+                    <span aria-current={last ? "page" : undefined} className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${last ? "bg-white text-navy-800 shadow" : "text-white/75"}`}>{i === 0 && <Icon name="home" className="size-3.5" />}{c.label}</span>
+                  ) : (
+                    <Link href={c.href} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-white/75 transition hover:bg-white/10 hover:text-white">{i === 0 && <Icon name="home" className="size-3.5" />}{c.label}</Link>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
       </div>
     </section>
   );

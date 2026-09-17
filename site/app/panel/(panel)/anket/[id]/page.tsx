@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getSurveyById, getSurveyAnswers, completedSurveyKeys } from "@/lib/survey";
-import { groupBySection, isVisible, toArr } from "@/lib/survey-logic";
+import { groupBySection, isVisible, toArr, goalQuestion } from "@/lib/survey-logic";
+import { GoalPicker } from "@/components/panel/GoalPicker";
 import { PageTitle } from "@/components/panel/ui";
 import { SurveyForm } from "@/components/panel/SurveyForm";
 import { Icon } from "@/components/site/Icon";
@@ -11,9 +12,11 @@ import { Icon } from "@/components/site/Icon";
  * Hedef testi: doldurmadıysa (ya da test düzenlenebilirse ve güncellemek istiyorsa) form;
  * tamamladıysa yalnızca kendi cevapları (başka katılımcıların sonuçları gösterilmez).
  */
-export default async function SurveyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ duzenle?: string }> }) {
+export default async function SurveyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ duzenle?: string; donus?: string }> }) {
   const { id } = await params;
-  const { duzenle } = await searchParams;
+  const { duzenle, donus } = await searchParams;
+  // Satın alma akışından gelindiyse (yalnızca site içi yol) tamamlanınca oraya dönüş bağlantısı gösterilir
+  const returnTo = donus && donus.startsWith("/") && !donus.startsWith("//") ? donus : null;
   const user = (await getCurrentUser())!;
   const survey = await getSurveyById(Number(id));
   if (!survey || survey.status !== "published") notFound();
@@ -25,8 +28,9 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
     return (
       <>
         <PageTitle title={survey.title} action={back} />
+        {returnTo && <p className="mx-auto mb-4 max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Seçtiğin eğitimi alabilmek için önce bu hedef testini tamamlaman gerekiyor. Bitirince satın alma sayfasına dönebilirsin.</p>}
         <div className="card mx-auto max-w-2xl">
-          <SurveyForm schema={{ id: survey.id, title: survey.title, intro: survey.intro, mode: survey.mode, sections: survey.sections, questions: survey.questions }} answers={answers} skipIntro={!!duzenle} />
+          <SurveyForm schema={{ id: survey.id, title: survey.title, intro: survey.intro, mode: survey.mode, sections: survey.sections, questions: survey.questions }} answers={answers} skipIntro={!!duzenle} returnTo={returnTo} />
         </div>
       </>
     );
@@ -49,6 +53,10 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
         sub={survey.editable ? "Cevaplarını istediğin zaman güncelleyebilirsin." : "Bu test tek seferlik; verdiğin cevaplar aşağıda."}
         action={<div className="flex gap-2">{back}{survey.editable && <Link href={`/panel/anket/${survey.id}?duzenle=1`} className="btn-primary btn-sm"><Icon name="edit" className="size-4" /> Cevaplarımı güncelle</Link>}</div>}
       />
+      {(() => {
+        const gq = goalQuestion(survey);
+        return gq ? <div className="mb-6"><GoalPicker surveyId={survey.id} question={gq.label} options={gq.options ?? []} initial={toArr(answers[gq.key])[0] ?? null} /></div> : null;
+      })()}
       <div className="card mx-auto max-w-2xl space-y-6">
         {groups.map((g) => (
           <section key={g.key || "_"}>

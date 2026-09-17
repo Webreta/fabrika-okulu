@@ -9,11 +9,11 @@ import { Icon } from "@/components/site/Icon";
  * Giriş yapan tek tıkla listeye girer (ve vazgeçebilir); misafir e-posta bırakır.
  * Boş yer açılınca lib/waitlist.ts e-posta + bildirim gönderir.
  */
-export function WaitlistButton({ courseId, periodId, loggedIn, waitlisted, userEmail, meeting = false }: { courseId: number; periodId?: number | null; loggedIn: boolean; waitlisted: boolean; userEmail?: string; meeting?: boolean }) {
+export function WaitlistButton({ courseId, periodId, loggedIn, waitlisted, userEmail, meeting = false, comingSoon = false }: { courseId: number; periodId?: number | null; loggedIn: boolean; waitlisted: boolean; userEmail?: string; meeting?: boolean; comingSoon?: boolean }) {
   const [state, action, pending] = useActionState<WaitlistState, FormData>(waitlistAction, {});
   const on = state.ok ?? waitlisted;
   const email = state.email ?? userEmail ?? "";
-  const what = meeting ? "Yeni görüşme saati açılınca" : "Kontenjan açılınca";
+  const what = comingSoon ? "Eğitim açılınca" : meeting ? "Yeni görüşme saati açılınca" : "Kontenjan açılınca";
 
   if (on) {
     return (
@@ -36,7 +36,7 @@ export function WaitlistButton({ courseId, periodId, loggedIn, waitlisted, userE
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="intent" value="join" />
       {periodId && <input type="hidden" name="periodId" value={periodId} />}
-      <p className="text-sm text-amber-900">{meeting ? "Yeni görüşme saati" : "Yeni dönem ya da boş kontenjan"} açıldığında sana e-posta gönderelim.</p>
+      <p className="text-sm text-amber-900">{comingSoon ? "Eğitim" : meeting ? "Yeni görüşme saati" : "Yeni dönem ya da boş kontenjan"} açıldığında sana e-posta gönderelim.</p>
       {!loggedIn && (
         <div className="mt-2 grid gap-2">
           <input name="name" placeholder="Adın (isteğe bağlı)" className="input" autoComplete="name" />
@@ -45,7 +45,7 @@ export function WaitlistButton({ courseId, periodId, loggedIn, waitlisted, userE
       )}
       {state.error && <p className="mt-2 text-xs text-red-600">{state.error}</p>}
       <button disabled={pending} className="btn mt-2 w-full bg-amber-500 py-2.5 text-white hover:bg-amber-600 disabled:opacity-60">
-        <Icon name="bell" className="size-4" /> {pending ? "Kaydediliyor…" : "Tekrar açılınca haber ver"}
+        <Icon name="bell" className="size-4" /> {pending ? "Kaydediliyor…" : comingSoon ? "Açılınca bana haber ver" : "Tekrar açılınca haber ver"}
       </button>
     </form>
   );

@@ -42,8 +42,8 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
             {favs.map((c) => (
               <div key={c.id} className="card relative flex flex-col p-0 overflow-hidden">
                 <FavoriteButton courseId={c.id} initial />
-                <Link href={`/program/${c.slug}`} className="relative block aspect-[5/2] bg-navy-50">
-                  {c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
+                <Link href={`/program/${c.slug}`} className="relative block aspect-video bg-navy-50">
+                  {c.imageUrl && <Image src={c.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}
                   <span className="absolute left-3 top-3 flex gap-1.5">
                     {c.onSale && <Chip color="red">İndirimde</Chip>}
                     {c.enrolled && <Chip color="green">Kayıtlısın</Chip>}
@@ -72,8 +72,8 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => (
             <div key={c.id} className="card flex flex-col p-0 overflow-hidden">
-              <div className="relative aspect-[5/2] bg-navy-50">
-                {c.imageUrl && <Image src={c.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}
+              <div className="relative aspect-video bg-navy-50">
+                {c.imageUrl && <Image src={c.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}
                 <span className="absolute left-3 top-3 flex gap-1.5"><Chip color={c.percent >= 100 ? "green" : c.percent > 0 ? "sky" : "gray"}>{c.percent >= 100 ? "Tamamlandı" : c.percent > 0 ? "Devam ediyor" : "Başlanmadı"}</Chip>{c.type === "meeting" && <Chip color="purple">Online görüşme</Chip>}</span>
               </div>
               <div className="flex flex-1 flex-col p-4">

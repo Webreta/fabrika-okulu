@@ -6,7 +6,7 @@ import { saveRoute, deleteRoute, reorderRoutes, type RouteInput } from "@/app/ac
 import { Icon } from "@/components/site/Icon";
 import { RouteMountain, type MountainStep } from "@/components/site/RouteMountain";
 
-type CourseOpt = { id: number; title: string; imageUrl: string; group: string; status: string; shortDescription: string; price: number; isFree: boolean };
+type CourseOpt = { id: number; title: string; imageUrl: string; group: string; status: string; shortDescription: string; price: number; isFree: boolean; comingSoon?: boolean };
 type RouteRow = { id: number; name: string; slug: string; description: string; goal: string; active: boolean; steps: { courseId: number; note: string }[] };
 
 const EMPTY: RouteInput = { name: "", description: "", goal: "", active: true, steps: [] };
@@ -50,7 +50,7 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
 
   const previewSteps: MountainStep[] = (form?.steps ?? []).map((s, i) => {
     const c = byId.get(s.courseId);
-    return { id: i, title: c?.title ?? "Eğitim seç", note: s.note, href: "#", imageUrl: c?.imageUrl ?? "", meta: c ? (c.isFree ? "Ücretsiz" : `${c.price.toLocaleString("tr-TR")} ₺`) : "", state: "open" };
+    return { id: i, title: c?.title ?? "Eğitim seç", note: s.note, href: "#", imageUrl: c?.imageUrl ?? "", meta: c ? (c.comingSoon ? "Yakında" : c.isFree ? "Ücretsiz" : `${c.price.toLocaleString("tr-TR")} ₺`) : "", state: "open", comingSoon: !!c?.comingSoon };
   });
   const available = courses.filter((c) => !(form?.steps ?? []).some((s) => s.courseId === c.id));
 
@@ -84,7 +84,7 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
                     <div className="min-w-0 flex-1 space-y-2">
                       <select value={s.courseId} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, courseId: Number(e.target.value) } : x)) })} className="input">
                         <option value={0}>Eğitim seç…</option>
-                        {(c ? [c, ...available] : available).map((o) => <option key={o.id} value={o.id}>{o.title}{o.status !== "published" ? " (taslak)" : ""}</option>)}
+                        {(c ? [c, ...available] : available).map((o) => <option key={o.id} value={o.id}>{o.title}{o.status !== "published" ? " (taslak)" : o.comingSoon ? " (yakında)" : ""}</option>)}
                       </select>
                       <textarea value={s.note} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)) })} className="input min-h-16 text-sm" placeholder="Baloncuk notu: bu adımda ne öğrenilir, neden bu sırada?" maxLength={400} />
                     </div>

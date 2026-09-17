@@ -3,7 +3,7 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations, courseCategories } from "@/db/schema";
-import { notifyWaitlistIfOpen } from "@/lib/waitlist";
+import { notifyWaitlistIfOpen, notifyComingSoonOpened } from "@/lib/waitlist";
 import { notifyFavoritesOnSale } from "@/lib/favorites";
 import { slugify } from "@/lib/uploads";
 import { normalizeDuration } from "@/lib/course-logic";
@@ -114,6 +114,8 @@ const courseObjectSchema = z.object({
   categoryIds: z.array(z.number().int()).optional(),
   featured: z.boolean().optional(),
   closed: z.boolean().optional(),
+  comingSoon: z.boolean().optional(),
+  soonShowPrice: z.boolean().optional(),
   whatsappNumber: z.string().optional(),
   whatsappMessage: z.string().optional(),
 });
@@ -186,18 +188,20 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
     ...(opts.isAdmin && input.instructorId !== undefined ? { instructorId: input.instructorId } : {}),
     ...(opts.isAdmin && input.featured !== undefined ? { featured: input.featured } : {}),
     ...(opts.isAdmin && input.closed !== undefined ? { closed: input.closed } : {}),
+    ...(opts.isAdmin && input.comingSoon !== undefined ? { comingSoon: input.comingSoon } : {}),
+    ...(opts.isAdmin && input.soonShowPrice !== undefined ? { soonShowPrice: input.soonShowPrice } : {}),
     ...(opts.isAdmin && input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber } : {}),
     ...(opts.isAdmin && input.whatsappMessage !== undefined ? { whatsappMessage: input.whatsappMessage } : {}),
   };
 
   let courseId: number;
-  let before: { isFree: boolean; price: string; salePrice: string | null; saleTo: string | null } | null = null;
+  let before: { isFree: boolean; price: string; salePrice: string | null; saleTo: string | null ; comingSoon: boolean } | null = null;
   if (isNew) {
     const [c] = await db.insert(courses).values({ ...base, authorId: opts.authorId, instructorId: opts.instructorId }).returning({ id: courses.id });
     courseId = c.id;
   } else {
     courseId = input.id!;
-    const [old] = await db.select({ isFree: courses.isFree, price: courses.price, salePrice: courses.salePrice, saleTo: courses.saleTo }).from(courses).where(eq(courses.id, courseId)).limit(1);
+    const [old] = await db.select({ isFree: courses.isFree, price: courses.price, salePrice: courses.salePrice, saleTo: courses.saleTo, comingSoon: courses.comingSoon }).from(courses).where(eq(courses.id, courseId)).limit(1);
     before = old ?? null;
     await db.update(courses).set(base).where(eq(courses.id, courseId));
   }
@@ -232,7 +236,8 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
   const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(periods).where(eq(periods.courseId, courseId));
   const group = n > 0 ? "takvimli" : input.isFree ? "ucretsiz" : "esnek";
   await db.update(courses).set({ group }).where(eq(courses.id, courseId));
-  // Yeni dönem / kontenjan artışı ile boş yer açıldıysa bekleme listesine haber ver
+  // "Yakında" kaldırıldıysa (eğitim açıldı) talep bırakanlara haber ver; yoksa boş yer açıldıysa bekleme listesine
+  if (before?.comingSoon && opts.isAdmin && input.comingSoon === false) await notifyComingSoonOpened(courseId);
   await notifyWaitlistIfOpen(courseId);
   // İndirim başladı/değiştiyse favorileyenlere haber ver (yalnızca yayındaki kurs)
   if (before && input.status === "published") await notifyFavoritesOnSale(courseId, before);

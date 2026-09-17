@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { catalogCourses } from "@/lib/data/courses";
-import { getSetting } from "@/lib/settings";
 import { groupFromSlug, GROUP_LABELS } from "@/lib/course-logic";
 import { CourseCard } from "@/components/site/CourseCard";
-import { PageHero, CtaBand } from "@/components/site/Sections";
+import { PageHero } from "@/components/site/Sections";
 import { db } from "@/db";
 import { pages } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -13,8 +12,8 @@ import { eq } from "drizzle-orm";
 // diğer slug'lar → yasal / serbest sayfalar (pages tablosu)
 
 const GROUP_SUB: Record<string, string> = {
-  esnek: "Kendine uygun saatlerde online içeriğe ulaş, çalışmaları tamamla, mentor eğitmenine sorularını sor.",
-  takvimli: "Haftalık plana uyarak online içeriğe ulaş, mentor eğitmenle planlı oturumlara katıl.",
+  esnek: "Kendine uygun saatlerde ilerle, mentor eğitmenine istediğin zaman sor.",
+  takvimli: "Haftalık planla ilerle, mentor eğitmenle canlı oturumlara katıl.",
   ucretsiz: "Ücretsiz kaynaklarla gelişimine hemen başla.",
 };
 
@@ -29,13 +28,12 @@ export async function generateMetadata({ params }: { params: Promise<{ grup: str
 export default async function GroupOrPage({ params }: { params: Promise<{ grup: string }> }) {
   const { grup } = await params;
   const g = groupFromSlug(grup);
-  const general = await getSetting("general");
 
   if (g) {
     const list = await catalogCourses(g);
     return (
       <>
-        <PageHero title={GROUP_LABELS[g]} subtitle={GROUP_SUB[g]} />
+        <PageHero title={GROUP_LABELS[g]} subtitle={GROUP_SUB[g]} crumbs={[{ label: "Eğitimler", href: "/kesfet" }, { label: GROUP_LABELS[g] }]} />
         <section className="mx-auto max-w-7xl px-4 py-14">
           {list.length === 0 ? (
             <p className="text-center text-muted">Bu kategoride henüz program yok.</p>
@@ -45,7 +43,6 @@ export default async function GroupOrPage({ params }: { params: Promise<{ grup: 
             </div>
           )}
         </section>
-        <CtaBand title={general.ctaTitle} text={general.ctaText} />
       </>
     );
   }
@@ -60,7 +57,6 @@ export default async function GroupOrPage({ params }: { params: Promise<{ grup: 
         </div>
       </section>
       <article className="prose-fabo mx-auto max-w-4xl px-4 py-10" dangerouslySetInnerHTML={{ __html: page.html }} />
-      <CtaBand title={general.ctaTitle} text={general.ctaText} />
     </>
   );
 }

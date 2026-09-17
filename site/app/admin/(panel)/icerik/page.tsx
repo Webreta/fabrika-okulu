@@ -22,7 +22,6 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
           { key: "heroText", label: "Hero metni", type: "textarea", rows: 3 },
           { key: "introTitle", label: "Tanıtım başlığı", type: "text" }, { key: "introText", label: "Tanıtım metni", type: "textarea", rows: 3 },
           { key: "esnekText", label: "Esnek programlar açıklaması", type: "textarea", rows: 2 }, { key: "takvimliText", label: "Takvimli programlar açıklaması", type: "textarea", rows: 2 },
-          { key: "ctaTitle", label: "CTA başlığı", type: "text" }, { key: "ctaText", label: "CTA metni", type: "text" },
           { key: "footerText", label: "Footer metni", type: "textarea", rows: 2 },
         ]} />
       )}

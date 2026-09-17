@@ -28,14 +28,14 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
           <div className="space-y-4">
             {t.lines.map((l) => (
               <div key={l.courseId} className="card flex items-center gap-4">
-                <div className="h-16 w-40 shrink-0 overflow-hidden rounded-lg bg-navy-50">
-                  {l.imageUrl && <Image src={l.imageUrl} alt="" width={200} height={80} className="h-full w-full object-cover" />}
+                <div className="aspect-video w-40 shrink-0 overflow-hidden rounded-lg bg-navy-50">
+                  {l.imageUrl && <Image src={l.imageUrl} alt="" width={200} height={112} className="h-full w-full object-cover" />}
                 </div>
                 <div className="flex-1">
                   <Link href={`/program/${l.slug}`} className="font-semibold text-navy-800 hover:text-sky-600">{l.title}</Link>
                   {l.periodName && <p className="text-sm text-muted">Dönem: {l.periodName}</p>}
                   {l.periodFull && <p className="mt-1 text-xs font-semibold text-red-600">Bu dönemin kontenjanı doldu. Program sayfasından başka dönem seç ya da tekrar açılınca haber ver.</p>}
-                  {l.prereqError && <p className="mt-1 text-xs font-semibold text-red-600">{l.prereqError}</p>}
+                  {l.prereqError && <p className="mt-1 text-xs font-semibold text-red-600">{l.prereqError}{l.surveyGate && <> <Link href={`/panel/anket/${l.surveyGate.id}?donus=${encodeURIComponent("/sepet")}`} className="underline underline-offset-2">Testi doldur →</Link></>}</p>}
                   {l.personalPercent > 0 && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Sana özel %{l.personalPercent} indirim</span>}
                 </div>
                 <span className="text-right">

@@ -4,6 +4,9 @@ import { getSurveyById } from "@/lib/survey";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { SurveyBuilder } from "@/components/admin/SurveyBuilder";
 import { PublishSurveyButton } from "@/components/admin/SurveyAdminButtons";
+import { SurveyCourseLinks } from "@/components/admin/SurveyCourseLinks";
+import { surveyCourseIds } from "@/lib/survey-gate";
+import { listCourses } from "@/lib/data/courses";
 
 export default async function AdminSurveyEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,6 +20,7 @@ export default async function AdminSurveyEditPage({ params }: { params: Promise<
   }
   const s = await getSurveyById(Number(id));
   if (!s) notFound();
+  const [linked, allCourses] = await Promise.all([surveyCourseIds(s.id), listCourses({ includeDrafts: true })]);
   return (
     <>
       <PageTitle
@@ -31,6 +35,7 @@ export default async function AdminSurveyEditPage({ params }: { params: Promise<
         }
       />
       <SurveyBuilder survey={{ id: s.id, title: s.title, intro: s.intro, mode: s.mode, editable: s.editable, sections: s.sections, questions: s.questions }} />
+      <SurveyCourseLinks surveyId={s.id} published={s.status === "published"} initial={linked} courses={allCourses.filter((c) => !c.closed).map((c) => ({ id: c.id, title: c.title, group: c.group, published: c.status === "published" }))} />
     </>
   );
 }

@@ -51,9 +51,9 @@ export function RecoSlider({ items }: { items: RecoCard[] }) {
             : (r.discountPercent > 0 ? `Sana özel %${r.discountPercent} indirim seni bekliyor.` : "Bu program da ilgini çekebilir."));
           return (
             <div key={r.courseId} aria-hidden={i !== idx} className={`col-start-1 row-start-1 flex flex-col transition-opacity duration-300 ${i === idx ? "opacity-100" : "invisible opacity-0"}`}>
-              <div className="relative aspect-[5/2] shrink-0 bg-navy-50">
+              <div className="relative aspect-video shrink-0 bg-navy-50">
                 {r.imageUrl ? (
-                  <Image src={r.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />
+                  <Image src={r.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />
                 ) : (
                   <div className="h-full w-full bg-gradient-to-br from-sky-400 to-navy-700" />
                 )}

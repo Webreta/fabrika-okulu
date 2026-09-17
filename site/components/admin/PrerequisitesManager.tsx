@@ -85,7 +85,7 @@ export function PrerequisitesManager({ courses, initial }: { courses: CourseOpt[
         {depth > 0 && <span className="absolute -left-4 top-6 h-px w-4 bg-navy-200" />}
         <div {...dragProps(id)} {...dropProps(id)} className={`flex flex-wrap items-center gap-2 rounded-xl border-2 bg-white p-2 pr-3 shadow-sm transition ${isOver ? "border-sky-400 bg-sky-50 ring-2 ring-sky-200" : dragId === id ? "border-dashed border-navy-300 opacity-50" : depth === 0 ? "border-navy-800" : "border-line"}`}>
           <span className="cursor-grab text-navy-300 active:cursor-grabbing" title="Sürükle"><Icon name="grip" className="size-4" /></span>
-          <div className="h-8 w-14 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={56} height={32} className="h-full w-full object-cover" />}</div>
+          <div className="aspect-video w-14 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={56} height={32} className="h-full w-full object-cover" />}</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy-800">{depth === 0 && <Icon name="star" className="mr-1 inline size-3.5 text-amber-500" />}{c.title}</p>
             <p className="text-[11px] text-muted">{GROUP[c.group] ?? c.group}{c.status !== "published" && " · taslak"}{kids.length > 0 && ` · ${kids.length} alt eğitim`}</p>
@@ -131,7 +131,7 @@ export function PrerequisitesManager({ courses, initial }: { courses: CourseOpt[
             {pool.map((c) => (
               <li key={c.id} {...dragProps(c.id)} className={`flex cursor-grab items-center gap-2 rounded-lg border border-line bg-white p-1.5 text-sm active:cursor-grabbing ${dragId === c.id ? "opacity-50" : ""}`}>
                 <Icon name="grip" className="size-4 shrink-0 text-navy-300" />
-                <div className="h-7 w-12 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={48} height={28} className="h-full w-full object-cover" />}</div>
+                <div className="aspect-video w-12 shrink-0 overflow-hidden rounded bg-navy-50">{c.imageUrl && <Image src={c.imageUrl} alt="" width={48} height={27} className="h-full w-full object-cover" />}</div>
                 <span className="min-w-0 flex-1 truncate font-medium text-navy-800">{c.title}</span>
                 <select value="" onChange={(e) => { const v = Number(e.target.value); if (v) attach(c.id, v); }} className="input h-7 w-7 shrink-0 px-1 py-0 text-xs" title="Bir eğitimin altına bağla">
                   <option value="">→</option>

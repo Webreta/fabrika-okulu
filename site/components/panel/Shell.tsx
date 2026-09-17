@@ -7,17 +7,20 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { logout } from "@/app/actions/auth";
 import { NotificationWatcher } from "@/components/panel/NotificationWatcher";
+import { goalColor } from "@/lib/survey-logic";
 
 /** match: bu yollarda da sekme aktif sayılır (örn. Tercihler altındaki alt sayfalar) */
 /** end: ikincil menüde sağa, Çıkış butonunun yanına yaslanır */
 export type NavItem = { href: string; label: string; icon: IconName; badge?: number; exact?: boolean; match?: string[]; end?: boolean; newTab?: boolean };
+/** Hedef bayrağı: ana sorusu olan anket + öğrencinin cevabı (cevapsızsa gri) */
+export type GoalFlagItem = { surveyId: number; title: string; question: string; answer: string | null; color: string | null };
 
 /**
  * Öğrenci + eğitmen paneli ortak kabuk: üst çubuk (logo, pill nav, zil, kullanıcı menüsü),
  * mobilde sol çekmece.
  */
 export function Shell({
-  primary, secondary, user, unread, homeHref, children, accent = "student", theme = "yok", menuStyle = "normal",
+  primary, secondary, user, unread, homeHref, children, accent = "student", theme = "yok", menuStyle = "normal", flags = [],
 }: {
   primary: NavItem[];
   secondary: NavItem[];
@@ -27,7 +30,9 @@ export function Shell({
   accent?: "student" | "teacher";
   theme?: string;
   /** Ikincil menu: normal = ikon+metin; icon = buyuk ikon, uzerine gelince saga acilip metni gosterir */
-  menuStyle?: "normal" | "icon";
+  menuStyle?: "normal" | "icon" | "tooltip";
+  /** İkincil çubukta sağa yaslı hedef bayrakları (öğrenci) */
+  flags?: GoalFlagItem[];
   children: React.ReactNode;
 }) {
   const [drawer, setDrawer] = useState(false);
@@ -102,11 +107,32 @@ export function Shell({
         </header>
         {/* İkincil menü: yatay butonlar (yalnızca masaüstü) */}
         <div className="relative z-10 hidden border-b border-line bg-white/95 backdrop-blur lg:block">
-          <div className="mx-auto flex max-w-[1310px] items-center gap-1.5 overflow-x-auto px-4 py-1.5 lg:px-6">
+          {/* Baloncuk modunda etiket çubuğun altına taştığı için overflow kırpılmaz */}
+          <div className={`mx-auto flex max-w-[1310px] items-center gap-1.5 px-4 py-1.5 lg:px-6 ${menuStyle === "tooltip" ? "overflow-visible" : "overflow-x-auto"}`}>
             <button onClick={() => router.back()} className="flex shrink-0 items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200"><Icon name="arrowLeft" className="size-3.5" /> Geri</button>
             <span className="mx-1 h-4 w-px bg-line" />
-            {secondary.filter((n) => !n.end).map((n) => <SecondaryLink key={n.href} n={n} active={isActive(n)} iconMode={menuStyle === "icon"} />)}
+            {secondary.filter((n) => !n.end).map((n) => <SecondaryLink key={n.href} n={n} active={isActive(n)} mode={menuStyle} />)}
             <span className="ml-auto" />
+            {/* Hedef bayrakları: her anket için renkli bayrak; üzerine gelince hedef cevabı, tıklayınca değiştirme alanı */}
+            {flags.length > 0 && (
+              <span className="mr-1 flex items-center gap-1 border-r border-line pr-2">
+                {flags.map((f) => {
+                  const c = f.answer ? goalColor(f.color) : null;
+                  return (
+                    <Link key={f.surveyId} href={`/panel/anket/${f.surveyId}#hedef`} aria-label={`${f.title}: ${f.answer ?? "hedef seçilmedi"}`} className="group relative flex size-9 shrink-0 items-center justify-center rounded-full transition hover:bg-surface">
+                      <span className={`flex transition group-hover:scale-110 ${c ? "" : "text-navy-300"}`} style={c ? { color: c.hex } : undefined}><Icon name="flag" className="size-5" /></span>
+                      {c && <span className="absolute bottom-1 right-1 size-2 rounded-full ring-2 ring-white" style={{ background: c.hex }} />}
+                      <span role="tooltip" className="menu-tip pointer-events-none absolute right-0 top-full z-20 mt-2 w-max max-w-[260px] origin-top-right rounded-xl bg-navy-900 px-3 py-2 text-left text-white shadow-xl">
+                        <span className="absolute -top-1 right-3 size-2.5 rotate-45 bg-navy-900" />
+                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-white/60">{f.title}</span>
+                        <span className="mt-0.5 flex items-center gap-1.5 text-sm font-bold"><span className="size-2.5 shrink-0 rounded-full" style={{ background: c ? c.hex : "#9aabc7" }} />{f.answer ?? "Hedef seçilmedi"}</span>
+                        <span className="mt-0.5 block text-[11px] text-white/70">{f.answer ? "Değiştirmek için tıkla" : "Seçmek için tıkla"}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </span>
+            )}
             {/* Sağa yaslı sekmeler (Tercihler & Ayarlar) ikon modunda da metinli kalır, Çıkış gibi */}
             {secondary.filter((n) => n.end).map((n) => <SecondaryLink key={n.href} n={n} active={isActive(n)} />)}
             <form action={logout} className="shrink-0">
@@ -144,12 +170,27 @@ export function Shell({
   );
 }
 
-function SecondaryLink({ n, active, iconMode = false }: { n: NavItem; active: boolean; iconMode?: boolean }) {
+function SecondaryLink({ n, active, mode = "normal" }: { n: NavItem; active: boolean; mode?: "normal" | "icon" | "tooltip" }) {
   // Sağa yaslı (end) sekmeler Çıkış gibi renkli kapsül: mavi ton
   const tone = n.end
     ? active ? "border-sky-700 bg-sky-700 text-white" : "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
     : active ? "border-navy-800 bg-navy-800 text-white" : "border-line bg-white text-navy-800 hover:bg-surface";
-  if (iconMode) {
+  if (mode === "tooltip") {
+    // Sabit genişlikte yalnız ikon; öğeler kaymaz. Üzerine gelince/odaklanınca adı hemen altında küçük bir baloncukta belirir.
+    return (
+      <Link href={n.href} aria-label={n.label} className={`group relative flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors ${tone}`}>
+        <Icon name={n.icon} className="size-5 shrink-0" />
+        <span role="tooltip" className="menu-tip pointer-events-none absolute left-1/2 top-full z-20 mt-2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl bg-navy-900 px-3.5 py-2 text-sm font-semibold text-white shadow-xl">
+          <span className="absolute -top-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-navy-900" />
+          <span className="flex size-6 items-center justify-center rounded-lg bg-white/15"><Icon name={n.icon} className="size-3.5" /></span>
+          {n.label}
+          {n.badge ? <span className="rounded-full bg-sky-400 px-1.5 text-[10px] font-bold text-white">{n.badge}</span> : null}
+        </span>
+        {n.badge ? <span className="absolute -right-1 -top-1 rounded-full bg-sky-400 px-1.5 text-[10px] font-bold text-white">{n.badge}</span> : null}
+      </Link>
+    );
+  }
+  if (mode === "icon") {
     // Yalnız ikon; üzerine gelince metin sağa doğru yumuşakça açılır (max-width geçişi)
     return (
       <Link href={n.href} title={n.label} aria-label={n.label} className={`group relative flex h-9 shrink-0 items-center rounded-full border px-2 transition-colors ${tone}`}>

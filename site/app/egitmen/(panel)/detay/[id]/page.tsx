@@ -30,7 +30,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
   return (
     <>
       <div className="card mb-6 flex flex-col gap-4 md:flex-row">
-        <div className="aspect-[5/2] w-full shrink-0 overflow-hidden rounded-xl bg-navy-50 md:w-56">{course.imageUrl && <Image src={course.imageUrl} alt="" width={500} height={200} className="aspect-[5/2] w-full object-cover" />}</div>
+        <div className="aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-navy-50 md:w-56">{course.imageUrl && <Image src={course.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}</div>
         <div className="flex-1">
           <div className="flex flex-wrap gap-2">
             <Chip color={course.status === "published" ? "green" : "amber"}>{course.status === "published" ? "Yayında" : "Taslak"}</Chip>
@@ -71,7 +71,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
       <Tabs items={[
         { href: `${base}?sekme=ogrenciler`, label: "Öğrenciler", count: students.length, active: sekme === "ogrenciler" },
         { href: `${base}?sekme=gonderimler`, label: "Görevler & Sınavlar", active: sekme === "gonderimler" },
-        ...(course.periods.length > 0 || waitlist.length > 0 ? [{ href: `${base}?sekme=bekleme`, label: "Bekleme Listesi", count: waiting.length, active: sekme === "bekleme" }] : []),
+        ...(course.periods.length > 0 || waitlist.length > 0 || course.comingSoon ? [{ href: `${base}?sekme=bekleme`, label: course.comingSoon ? "Talep Listesi" : "Bekleme Listesi", count: waiting.length, active: sekme === "bekleme" }] : []),
         { href: `/egitmen/sorular`, label: "Sorular →", active: false },
       ]} />
       {sekme === "ogrenciler" && (

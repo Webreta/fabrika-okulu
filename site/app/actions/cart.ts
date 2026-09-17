@@ -17,6 +17,7 @@ import { siteUrl } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
 import { periodCapacity } from "@/lib/waitlist";
 import { checkPrerequisite } from "@/lib/prerequisites";
+import { checkSurveyGate } from "@/lib/survey-gate";
 import { cookies } from "next/headers";
 
 export async function addToCart(formData: FormData) {
@@ -25,6 +26,8 @@ export async function addToCart(formData: FormData) {
   const periodId = periodRaw ? Number(periodRaw) : null;
   const [c] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
   if (!c || c.status !== "published" || c.closed) redirect("/kesfet");
+  // Yakında: satış kapalı, yalnızca talep toplanır
+  if (c.comingSoon) redirect(`/program/${c.slug}?hata=yakinda`);
 
   // Dönemli kurs → dönem şart ve kapasite kontrolü
   if (c.group === "takvimli") {
@@ -48,6 +51,9 @@ export async function addToCart(formData: FormData) {
   const cartNow = await getCart();
   const pre = await checkPrerequisite({ userId: user?.id ?? null, courseId: c.id, cartCourseIds: cartNow.map((i) => i.courseId) });
   if (!pre.ok) redirect(`/program/${c.slug}?hata=kosul`);
+
+  // Bağlı anket: giriş yapmış öğrenci hedef testini doldurmadan alamaz (misafir önce girişe gider, sonra tekrar kontrol edilir)
+  if (user && !(await checkSurveyGate({ userId: user.id, courseId: c.id })).ok) redirect(`/program/${c.slug}?hata=anket`);
 
   // Ücretsiz kurs: giriş yapmışsa direkt kaydet, değilse girişe yönlendir
   if (c.isFree) {
@@ -95,7 +101,7 @@ export async function applyCoupon(formData: FormData) {
 }
 
 export type CartTotals = {
-  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string; prereqError: string | null }[];
+  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string; prereqError: string | null; surveyGate: { id: number; title: string } | null }[];
   subtotal: number;
   discount: number;
   total: number;
@@ -139,7 +145,7 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
           personalPercent,
           periodId: p?.id ?? null,
           periodName: p?.name ?? null,
-          periodFull: !!p && p.enrolled >= p.capacity, prereqError: null as string | null,
+          periodFull: !!p && p.enrolled >= p.capacity, prereqError: null as string | null, surveyGate: null as { id: number; title: string } | null,
           group: c.group,
         };
       })
@@ -151,6 +157,11 @@ export async function cartTotals(userId?: number): Promise<CartTotals> {
   for (const l of lines) {
     const pre = await checkPrerequisite({ userId: userId ?? null, courseId: l.courseId, cartCourseIds: cartIds });
     l.prereqError = pre.ok ? null : pre.message;
+    // Bağlı anket doldurulmamışsa satır kilitli (ödeme başlatılamaz); sepet sayfası teste bağlantı verir
+    if (!l.prereqError) {
+      const gate = await checkSurveyGate({ userId: userId ?? null, courseId: l.courseId });
+      if (!gate.ok) { l.prereqError = gate.message; l.surveyGate = gate.survey; }
+    }
   }
 
   const subtotal = lines.reduce((s, l) => s + l.price, 0);

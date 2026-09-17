@@ -9,7 +9,7 @@ import { ShowcaseManager } from "@/components/admin/ShowcaseManager";
 export default async function ShowcasePage() {
   const [showcase, list] = await Promise.all([
     getRawSetting<ShowcaseContent>("showcase", DEFAULT_SHOWCASE),
-    db.select({ id: courses.id, title: courses.title, imageUrl: courses.imageUrl, group: courses.group, status: courses.status, closed: courses.closed, featured: courses.featured }).from(courses).orderBy(desc(courses.featured), asc(courses.sortOrder), asc(courses.title)),
+    db.select({ id: courses.id, title: courses.title, imageUrl: courses.imageUrl, group: courses.group, status: courses.status, closed: courses.closed, featured: courses.featured, comingSoon: courses.comingSoon }).from(courses).orderBy(desc(courses.featured), asc(courses.sortOrder), asc(courses.title)),
   ]);
   return (
     <>

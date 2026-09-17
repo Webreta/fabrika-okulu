@@ -41,7 +41,7 @@ export function MeetingView({ course, meeting, preview }: { course: { id: number
       </header>
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
         <div className="card overflow-hidden p-0">
-          {course.imageUrl && <Image src={course.imageUrl} alt="" width={900} height={360} className="aspect-[5/2] w-full object-cover" />}
+          {course.imageUrl && <Image src={course.imageUrl} alt="" width={960} height={540} className="aspect-video w-full object-cover" />}
           <div className="p-5">
             <h1 className="text-2xl font-bold text-navy-800">{course.title}</h1>
             {course.shortDescription && <p className="mt-1 text-sm text-muted">{course.shortDescription}</p>}

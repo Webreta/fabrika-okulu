@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSetting, getRawSetting } from "@/lib/settings";
+import { getRawSetting } from "@/lib/settings";
 import { DEFAULT_FAQ, type FaqContent } from "@/lib/content-defaults";
-import { PageHero, CtaBand } from "@/components/site/Sections";
+import { PageHero } from "@/components/site/Sections";
 import { FaqAccordion } from "@/components/site/FaqAccordion";
 
 export const metadata: Metadata = { title: "Sıkça Sorulan Sorular", description: "Programlar, katılım, ödeme ve sertifika hakkında merak edilenler." };
 
 /** S.S.S.: admin Site İçeriği → S.S.S. sekmesindeki tüm sorular (anasayfada yalnızca ilk homeLimit soru görünür) */
 export default async function FaqPage() {
-  const [raw, g] = await Promise.all([getRawSetting<FaqContent>("faq", DEFAULT_FAQ), getSetting("general")]);
+  const raw = await getRawSetting<FaqContent>("faq", DEFAULT_FAQ);
   const faq = { ...DEFAULT_FAQ, ...raw };
   return (
     <>
-      <PageHero title="Sıkça Sorulan Sorular" subtitle={faq.sub} />
+      <PageHero title="Sıkça Sorulan Sorular" subtitle={faq.sub} crumbs={[{ label: "S.S.S." }]} />
       <section className="mx-auto max-w-7xl px-4 py-14">
         {faq.items.length === 0 ? (
           <p className="text-center text-muted">Henüz soru eklenmedi.</p>
@@ -26,7 +26,6 @@ export default async function FaqPage() {
           <Link href="/iletisim" className="btn-primary mt-4">İletişime geç</Link>
         </div>
       </section>
-      <CtaBand title={g.ctaTitle} text={g.ctaText} />
     </>
   );
 }
