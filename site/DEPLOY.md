@@ -28,7 +28,7 @@ Canlıda **örnek veri ve test hesabı üretilmez**.
 
 ```
 DATABASE_URL=postgres://KULLANICI:SIFRE@projeadi_db:5432/VERITABANI
-NEXT_PUBLIC_SITE_URL=https://fabrikaokulu.com
+NEXT_PUBLIC_SITE_URL=https://fabrikaokulu.com.tr
 
 # Yönetici hesabı (ilk açılışta oluşturulur; şifreyi panelden değiştirdikten sonra ADMIN_PASSWORD kaldırılabilir)
 ADMIN_EMAIL=yonetici@alanadi.com
@@ -67,13 +67,13 @@ Bu iki mount yoksa her deploy'da yüklenen dosyalar silinir.
 
 ## 5. Alan adı
 
-App → Domains'den `fabrikaokulu.com` (ve istenirse `www.fabrikaokulu.com`) ekle; Let's Encrypt otomatik.
+App → Domains'den `fabrikaokulu.com.tr` (ve istenirse `www.fabrikaokulu.com.tr`) ekle; Let's Encrypt otomatik.
 DNS A kaydı sunucu IP'sine bakmalı. `NEXT_PUBLIC_SITE_URL` bu adresle aynı olmalı (e-posta bağlantıları,
 ödeme dönüş adresi, sitemap ve paylaşım etiketleri bu adresi kullanır).
 
 ## 6. İlk açılıştan sonra
 
-1. `https://fabrikaokulu.com/admin/giris` adresinden yönetici hesabıyla gir (bakım modu açıkken de çalışır).
+1. `https://fabrikaokulu.com.tr/admin/giris` adresinden yönetici hesabıyla gir (bakım modu açıkken de çalışır).
 2. **Hesabım**'dan şifreyi değiştir; ardından Easypanel'den `ADMIN_PASSWORD` satırını sil.
 3. **Ayarlar → Sistem sağlığı** sekmesine bak: örnek hesap uyarısı varsa "Pasif yap", saat dilimi ve zamanlayıcı satırları yeşil olmalı.
 4. **Ayarlar → E-posta** (SMTP + yönetici e-postaları), **Ayarlar → Ödeme**, **Site İçeriği → İletişim / Footer** alanlarını doldur.
