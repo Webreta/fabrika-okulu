@@ -11,3 +11,6 @@ site/private/korumali/*
 # (test raporu güvenlik bulgularını anlatır; görseller kullanıcının ekran görüntüleridir)
 TEST-RAPORU-*.md
 görseller/
+
+# Canlıya veri aktarım paketi (veritabanı dökümü ve yüklenen dosyalar): kişisel veri ve ayar içerir
+canli-aktarim/
