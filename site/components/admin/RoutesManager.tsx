@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveRoute, deleteRoute, reorderRoutes, type RouteInput } from "@/app/actions/routes";
@@ -16,9 +17,11 @@ const EMPTY: RouteInput = { name: "", description: "", goal: "", active: true, s
  * Sağda canlı önizleme: /rotam sayfasındaki dağ aynı bileşenle çizilir.
  */
 export function RoutesManager({ initial, courses }: { initial: RouteRow[]; courses: CourseOpt[] }) {
+  const fid = useFieldId();
   const [list, setList] = useState(initial);
   const [form, setForm] = useState<RouteInput | null>(null);
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
   const byId = new Map(courses.map((c) => [c.id, c]));
@@ -43,7 +46,7 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
     if (!form) return;
     start(async () => {
       const r = await saveRoute(form);
-      setMsg(r.ok ? r.message ?? "Kaydedildi." : r.error);
+      setMsg(r.ok ? r.message ?? "Kaydedildi." : r.error); setErr(!r.ok);
       if (r.ok) { setForm(null); router.refresh(); }
     });
   };
@@ -63,9 +66,9 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
               <p className="font-bold text-navy-800">{form.id ? "Rotayı düzenle" : "Yeni rota"}</p>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Sitede göster</label>
             </div>
-            <div><label className="label">Rota adı</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" placeholder="Örn. Vardiya Amirliğine Giden Yol" /></div>
-            <div><label className="label">Zirvedeki hedef (bayrakta yazar)</label><input value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} className="input" placeholder="Örn. Üretim Müdürü" maxLength={80} /></div>
-            <div><label className="label">Açıklama</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input min-h-24" placeholder="Bu rota kimin için, sonunda ne kazanılır?" /></div>
+            <div><label htmlFor={fid("a1")} className="label">Rota adı</label><input id={fid("a1")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} className="input" placeholder="Örn. Vardiya Amirliğine Giden Yol" /></div>
+            <div><label htmlFor={fid("a2")} className="label">Zirvedeki hedef (bayrakta yazar)</label><input id={fid("a2")} value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} className="input" placeholder="Örn. Üretim Müdürü" maxLength={80} /></div>
+            <div><label htmlFor={fid("a3")} className="label">Açıklama</label><textarea id={fid("a3")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={500} className="input min-h-24" placeholder="Bu rota kimin için, sonunda ne kazanılır?" /></div>
           </div>
 
           <div className="card">
@@ -82,11 +85,11 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
                       <button disabled={i === form.steps.length - 1} onClick={() => moveStep(i, 1)} className="rounded p-0.5 text-muted hover:bg-white disabled:opacity-30" title="Aşağı"><Icon name="chevronDown" className="size-4" /></button>
                     </div>
                     <div className="min-w-0 flex-1 space-y-2">
-                      <select value={s.courseId} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, courseId: Number(e.target.value) } : x)) })} className="input">
+                      <select aria-label="Adım eğitimi" value={s.courseId} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, courseId: Number(e.target.value) } : x)) })} className="input">
                         <option value={0}>Eğitim seç…</option>
                         {(c ? [c, ...available] : available).map((o) => <option key={o.id} value={o.id}>{o.title}{o.status !== "published" ? " (taslak)" : o.comingSoon ? " (yakında)" : ""}</option>)}
                       </select>
-                      <textarea value={s.note} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)) })} className="input min-h-16 text-sm" placeholder="Baloncuk notu: bu adımda ne öğrenilir, neden bu sırada?" maxLength={400} />
+                      <textarea aria-label="Baloncuk notu" value={s.note} onChange={(e) => setForm({ ...form, steps: form.steps.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)) })} className="input min-h-16 text-sm" placeholder="Baloncuk notu: bu adımda ne öğrenilir, neden bu sırada?" maxLength={400} />
                     </div>
                     <button onClick={() => setForm({ ...form, steps: form.steps.filter((_, j) => j !== i) })} className="self-start rounded p-1.5 text-red-600 hover:bg-red-50" title="Adımı kaldır"><Icon name="trash" className="size-4" /></button>
                   </div>
@@ -99,7 +102,7 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
           <div className="flex flex-wrap items-center gap-2">
             <button disabled={pending || form.name.trim().length < 2} onClick={submit} className="btn-primary"><Icon name="save" className="size-4" /> Kaydet</button>
             <button onClick={() => { setForm(null); setMsg(""); }} className="btn-secondary">Vazgeç</button>
-            {msg && <span className="text-sm text-navy-800">{msg}</span>}
+            {msg && <span role="status" className={`text-sm ${err ? "font-semibold text-red-600" : "text-navy-800"}`}>{msg}</span>}
           </div>
         </div>
 
@@ -119,7 +122,7 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
         <p className="text-sm text-muted">{list.length} rota</p>
         <button onClick={() => { setForm({ ...EMPTY, steps: [] }); setMsg(""); }} className="btn-primary"><Icon name="plus" className="size-4" /> Yeni rota</button>
       </div>
-      {msg && <p className="text-sm text-navy-800">{msg}</p>}
+      {msg && <p role="status" className={`text-sm ${err ? "font-semibold text-red-600" : "text-navy-800"}`}>{msg}</p>}
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th className="w-24">Sıra</th><th>Rota</th><th>Zirve</th><th>Adım</th><th>Durum</th><th className="w-52"></th></tr></thead>
@@ -129,19 +132,19 @@ export function RoutesManager({ initial, courses }: { initial: RouteRow[]; cours
               <tr key={r.id}>
                 <td>
                   <span className="flex items-center gap-1">
-                    <button disabled={i === 0 || pending} onClick={() => move(i, -1)} className="rounded p-1 text-muted hover:bg-surface disabled:opacity-30"><Icon name="chevronUp" className="size-4" /></button>
-                    <button disabled={i === list.length - 1 || pending} onClick={() => move(i, 1)} className="rounded p-1 text-muted hover:bg-surface disabled:opacity-30"><Icon name="chevronDown" className="size-4" /></button>
+                    <button aria-label="Yukarı taşı" disabled={i === 0 || pending} onClick={() => move(i, -1)} className="rounded p-1 text-muted hover:bg-surface disabled:opacity-30"><Icon name="chevronUp" className="size-4" /></button>
+                    <button aria-label="Aşağı taşı" disabled={i === list.length - 1 || pending} onClick={() => move(i, 1)} className="rounded p-1 text-muted hover:bg-surface disabled:opacity-30"><Icon name="chevronDown" className="size-4" /></button>
                   </span>
                 </td>
-                <td><p className="font-semibold text-navy-800">{r.name}</p>{r.description && <p className="max-w-md truncate text-xs text-muted">{r.description}</p>}</td>
-                <td className="text-sm">{r.goal || <span className="text-muted">Zirve</span>}</td>
+                <td className="max-w-md break-words"><p className="font-semibold text-navy-800">{r.name}</p>{r.description && <p className="max-w-md truncate text-xs text-muted">{r.description}</p>}</td>
+                <td className="max-w-xs break-words text-sm">{r.goal || <span className="text-muted">Zirve</span>}</td>
                 <td className="text-sm">{r.steps.length}</td>
                 <td>{r.active ? <span className="badge bg-emerald-50 text-emerald-700">Yayında</span> : <span className="badge bg-surface text-muted">Gizli</span>}</td>
                 <td>
                   <span className="flex justify-end gap-1">
                     <a href={`/rotam?rota=${r.slug}`} target="_blank" rel="noopener" className="btn-secondary btn-sm"><Icon name="eye" className="size-3.5" /> Gör</a>
                     <button onClick={() => { setForm({ id: r.id, name: r.name, description: r.description, goal: r.goal, active: r.active, steps: r.steps.map((s) => ({ ...s })) }); setMsg(""); }} className="btn-secondary btn-sm"><Icon name="edit" className="size-3.5" /> Düzenle</button>
-                    <button disabled={pending} onClick={() => { if (confirm(`"${r.name}" rotası silinsin mi?`)) start(async () => { await deleteRoute(r.id); setList(list.filter((x) => x.id !== r.id)); router.refresh(); }); }} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Sil"><Icon name="trash" className="size-4" /></button>
+                    <button disabled={pending} onClick={() => { if (confirm(`"${r.name}" rotası silinsin mi?`)) start(async () => { const x = await deleteRoute(r.id); setMsg(x.ok ? x.message ?? "Rota silindi." : x.error); setErr(!x.ok); if (x.ok) { setList(list.filter((y) => y.id !== r.id)); router.refresh(); } }); }} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Sil"><Icon name="trash" className="size-4" /></button>
                   </span>
                 </td>
               </tr>

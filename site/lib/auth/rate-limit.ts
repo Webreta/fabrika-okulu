@@ -21,3 +21,29 @@ export function checkRateLimit(
   }
   return bucket.count <= max;
 }
+
+// ---- Başarısız deneme sayaçları (giriş) ----
+// checkRateLimit her çağrıda sayar; girişte yalnızca BAŞARISIZ denemeler sayılmalı ki
+// doğru şifreyle giren kullanıcı kendi sınırını doldurmasın.
+
+/** Sınır dolmuş mu? (saymaz, yalnızca bakar) */
+export function isRateLimited(key: string, max: number): boolean {
+  const b = buckets.get(key);
+  return !!b && b.resetAt >= Date.now() && b.count >= max;
+}
+
+/** Başarısız denemeyi kaydeder */
+export function recordFailure(key: string, windowMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  const b = buckets.get(key);
+  if (!b || b.resetAt < now) buckets.set(key, { count: 1, resetAt: now + windowMs });
+  else b.count += 1;
+  if (buckets.size > 10_000) {
+    for (const [k, x] of buckets) if (x.resetAt < now) buckets.delete(k);
+  }
+}
+
+/** Başarılı işlemden sonra sayacı sıfırlar */
+export function clearRateLimit(key: string) {
+  buckets.delete(key);
+}

@@ -13,6 +13,8 @@ export type SurveyDef = {
   mode?: SurveyMode;
   /** Cevaplar sonradan değiştirilebilir mi (varsayılan: evet) */
   editable?: boolean;
+  /** Zorunlu: öğrenci tamamlamadan panelde gezinemez (varsayılan: hayır) */
+  required?: boolean;
   sections: Record<string, string>;
   questions: SurveyQuestion[];
 };
@@ -88,11 +90,23 @@ export function isVisible(q: SurveyQuestion, a: Answers) {
 export type SectionGroup = { key: string; label: string; questions: SurveyQuestion[] };
 
 /**
+ * Bölümler, soruların dizideki sırasına göre (bölümün ilk sorusunun yeri) sıralanır; sorusu olmayan bölümler sona gelir.
+ * Neden: `sections` veritabanında jsonb nesnesi olarak durur ve PostgreSQL anahtarları kendi sırasına göre dizer
+ * (önce kısa anahtar, sonra alfabetik); `durum`/`plan` gibi anahtarlarda bölüm sırası bozulur, koşullu soru
+ * bağlı olduğu sorudan önce gelir. Soru dizisi (jsonb array) sırasını korur ve editör soruları bölüm sırasıyla kaydeder.
+ */
+export function orderedSections(sections: Record<string, string>, questions: Pick<SurveyQuestion, "section">[]): [string, string][] {
+  const entries = Object.entries(sections);
+  const first = (key: string) => { const i = questions.findIndex((q) => q.section === key); return i === -1 ? Number.MAX_SAFE_INTEGER : i; };
+  return entries.map((e, i) => ({ e, i, f: first(e[0]) })).sort((x, y) => x.f - y.f || x.i - y.i).map((x) => x.e);
+}
+
+/**
  * Soruları bölümlere göre gruplar. Bölümü tanımsız (silinmiş / yeniden adlandırılmış) sorular
  * kaybolmasın diye ilk bölüme eklenir — eski editörde bu sorular hiç gösterilmiyor ama zorunlu sayılıyordu.
  */
 export function groupBySection(sections: Record<string, string>, questions: SurveyQuestion[]): SectionGroup[] {
-  const groups: SectionGroup[] = Object.entries(sections).map(([key, label]) => ({ key, label, questions: [] }));
+  const groups: SectionGroup[] = orderedSections(sections, questions).map(([key, label]) => ({ key, label, questions: [] }));
   if (groups.length === 0) groups.push({ key: "", label: "", questions: [] });
   for (const q of questions) {
     const g = groups.find((x) => x.key === q.section) ?? groups[0];
@@ -217,7 +231,7 @@ export function normalizeSurveyDef(input: SurveyDef): SurveyDef {
     return out;
   });
 
-  return { id: input.id, title: (input.title ?? "").trim(), intro: (input.intro ?? "").trim(), mode: input.mode === "steps" ? "steps" : "flow", editable: input.editable !== false, sections, questions };
+  return { id: input.id, title: (input.title ?? "").trim(), intro: (input.intro ?? "").trim(), mode: input.mode === "steps" ? "steps" : "flow", editable: input.editable !== false, required: input.required === true, sections, questions };
 }
 
 /** Kaydetmeyi engelleyen sorunlar (kullanıcıya gösterilecek, Türkçe) */

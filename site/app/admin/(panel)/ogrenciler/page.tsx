@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   users, enrollments, courses, assignments, assignmentSubmissions, quizzes, quizAttempts,
@@ -11,6 +11,7 @@ import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/format";
 import { RESUME_KINDS, fmtBytes } from "@/lib/resume-kinds";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { StudentDetail, StudentDangerZone } from "@/components/admin/StudentDetail";
+import { requireAdmin } from "@/lib/auth/session";
 
 const excerpt = (t: string, n = 90) => (t.length > n ? t.slice(0, n) + "…" : t);
 
@@ -24,6 +25,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default async function AdminStudentsPage({ searchParams }: { searchParams: Promise<{ detail?: string; s?: string; kurs?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { detail, s, kurs } = await searchParams;
   if (detail) {
     const uid = Number(detail);
@@ -32,7 +35,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
     const [list, subs, atts, qs, nts, certs, ords, cvs] = await Promise.all([
       db.select({ e: enrollments, c: courses }).from(enrollments).innerJoin(courses, eq(enrollments.courseId, courses.id)).where(eq(enrollments.userId, uid)).orderBy(desc(enrollments.enrolledAt)),
       db.select({ s: assignmentSubmissions, title: assignments.title, courseTitle: courses.title }).from(assignmentSubmissions).innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id)).innerJoin(courses, eq(assignments.courseId, courses.id)).where(eq(assignmentSubmissions.userId, uid)).orderBy(desc(assignmentSubmissions.submittedAt)),
-      db.select({ a: quizAttempts, title: quizzes.title, courseTitle: courses.title }).from(quizAttempts).innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id)).innerJoin(courses, eq(quizzes.courseId, courses.id)).where(eq(quizAttempts.userId, uid)).orderBy(desc(quizAttempts.startedAt)),
+      db.select({ a: quizAttempts, title: quizzes.title, courseTitle: courses.title }).from(quizAttempts).innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id)).innerJoin(courses, eq(quizzes.courseId, courses.id)).where(and(eq(quizAttempts.userId, uid), ne(quizAttempts.status, "in_progress"))).orderBy(desc(quizAttempts.startedAt)),
       db.select({ q: questions, courseTitle: courses.title }).from(questions).innerJoin(courses, eq(questions.courseId, courses.id)).where(eq(questions.userId, uid)).orderBy(desc(questions.createdAt)),
       db.select({ n: notes, courseTitle: courses.title }).from(notes).leftJoin(courses, eq(notes.courseId, courses.id)).where(eq(notes.userId, uid)).orderBy(desc(notes.createdAt)),
       db.select({ ic: issuedCertificates, tplTitle: certificateTemplates.title }).from(issuedCertificates).innerJoin(certificateTemplates, eq(issuedCertificates.templateId, certificateTemplates.id)).where(eq(issuedCertificates.userId, uid)).orderBy(desc(issuedCertificates.issuedAt)),
@@ -79,17 +82,15 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
           <Section title={`Görev gönderimleri (${subs.length})`}>
             <div className="card overflow-x-auto p-0">
               <table className="table">
-                <thead><tr><th>Görev</th><th>Eğitim</th><th>Teslim</th><th>Durum</th><th>Puan</th><th>Geri bildirim</th></tr></thead>
+                <thead><tr><th>Görev</th><th>Eğitim</th><th>Teslim</th><th>Durum</th></tr></thead>
                 <tbody>
-                  {subs.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-muted">Gönderim yok.</td></tr>}
+                  {subs.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-muted">Gönderim yok.</td></tr>}
                   {subs.map(({ s: x, title, courseTitle }) => (
                     <tr key={x.id}>
                       <td className="font-semibold text-navy-800">{title}</td>
                       <td className="text-sm">{courseTitle}</td>
                       <td className="text-xs"><span className="date-chip">{fmtDateTime(x.submittedAt)}</span></td>
-                      <td>{x.status === "graded" ? <Chip color="green">Değerlendirildi</Chip> : <Chip color="amber">Bekliyor</Chip>}</td>
-                      <td className="text-sm">{x.score ?? "—"}</td>
-                      <td className="max-w-[240px] truncate text-xs text-muted">{x.feedback || "—"}</td>
+                      <td><Chip color="sky">Teslim edildi</Chip></td>
                     </tr>
                   ))}
                 </tbody>
@@ -254,13 +255,14 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
     <>
       <PageTitle title="Kayıtlı Öğrenciler" sub={`${rows.length} öğrenci`} />
       <form className="mb-4 flex flex-wrap gap-2">
-        <select name="kurs" defaultValue={kursId || ""} className="input w-auto max-w-xs">
+        <select aria-label="Eğitim" name="kurs" defaultValue={kursId || ""} className="input w-auto max-w-xs">
           <option value="">Tüm eğitimler</option>
           {allCourses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
-        <input name="s" defaultValue={q} placeholder="Ad / e-posta ara" className="input max-w-xs" />
+        <input aria-label="Ad / e-posta ara" name="s" defaultValue={q} placeholder="Ad / e-posta ara" className="input max-w-xs" />
         <button className="btn-secondary">Filtrele</button>
       </form>
+      {rows.length >= 300 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">En yeni 300 öğrenci gösteriliyor. Daha eskileri için arama ya da filtre kullan.</p>}
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>Öğrenci</th><th>Eğitimler</th><th>Adet</th><th>Son kayıt</th><th></th></tr></thead>

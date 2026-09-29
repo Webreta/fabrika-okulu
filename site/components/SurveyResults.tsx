@@ -55,7 +55,8 @@ export async function SurveyResults({ survey, base, params, canExport }: { surve
   const qs = (extra: Record<string, string | number>) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...params, ...extra })) if (v !== undefined && v !== "" && k !== "uid") p.set(k, String(v));
-    return `${base}?${p.toString()}`;
+    // base kendi sorgu parametresini taşıyabilir (ör. /egitmen/anketler?anket=18)
+    return `${base}${base.includes("?") ? "&" : "?"}${p.toString()}`;
   };
 
   return (
@@ -68,10 +69,10 @@ export async function SurveyResults({ survey, base, params, canExport }: { surve
       </div>
       <form className="card grid gap-3 md:grid-cols-4" method="get">
         {Object.entries(params).filter(([k, v]) => v && !k.startsWith("f_") && !["s", "durum", "sayfa", "uid"].includes(k)).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-        <input name="s" defaultValue={s} placeholder="Ad / e-posta" className="input" />
-        <select name="durum" defaultValue={durum} className="input"><option value="">Tüm durumlar</option><option value="done">Tamamladı</option><option value="never">Doldurmadı</option></select>
+        <input aria-label="Ad / e-posta" name="s" defaultValue={s} placeholder="Ad / e-posta" className="input" />
+        <select aria-label="Durum" name="durum" defaultValue={durum} className="input"><option value="">Tüm durumlar</option><option value="done">Tamamladı</option><option value="never">Doldurmadı</option></select>
         {filterable.map((q) => (
-          <select key={q.key} name={`f_${q.key}`} defaultValue={params[`f_${q.key}`] ?? ""} className="input">
+          <select aria-label={q.label} key={q.key} name={`f_${q.key}`} defaultValue={params[`f_${q.key}`] ?? ""} className="input">
             <option value="">{q.label}</option>{q.options!.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         ))}

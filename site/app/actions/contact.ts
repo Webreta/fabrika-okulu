@@ -5,21 +5,25 @@ import { z } from "zod";
 import { db } from "@/db";
 import { contactMessages } from "@/db/schema";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
-import { sendMail, emailTemplate, adminEmails } from "@/lib/mailer";
+import { sendMail, emailTemplate, adminEmails, escapeHtml } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
 import type { FormState } from "@/app/actions/auth";
 
 const schema = z.object({
-  name: z.string().trim().min(2, "Adınızı girin."),
-  email: z.string().trim().email("Geçerli bir e-posta girin."),
-  subject: z.string().trim().max(200).optional(),
-  message: z.string().trim().min(5, "İletinizi yazın."),
+  name: z.string("Adınızı girin.").trim().min(2, "Adınızı girin.").max(100, "Ad en fazla 100 karakter olabilir."),
+  email: z.string("Geçerli bir e-posta girin.").trim().max(160, "E-posta en fazla 160 karakter olabilir.").email("Geçerli bir e-posta girin."),
+  subject: z.string("Konu metin olmalı.").trim().max(200, "Konu en fazla 200 karakter olabilir.").optional(),
+  message: z.string("İletinizi yazın.").trim().min(5, "İletinizi yazın (en az 5 karakter).").max(5000, "İleti en fazla 5.000 karakter olabilir."),
   website: z.string().optional(), // honeypot
 });
 
 export async function sendContact(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Form hatalı." };
+  if (!parsed.success) {
+    // Doğrulama kütüphanesinin kendi (İngilizce) iletisi kullanıcıya gösterilmez
+    const m = parsed.error.issues[0]?.message;
+    return { error: !m || /^(invalid|too |expected|required)/i.test(m) ? "Form eksik ya da hatalı; alanları kontrol edin." : m };
+  }
   const d = parsed.data;
   if (d.website) return { ok: "Mesajınız alındı." };
 
@@ -45,7 +49,7 @@ export async function sendContact(_prev: FormState, formData: FormData): Promise
     subject: `İletişim formu: ${d.subject || d.name}`,
     html: emailTemplate({
       title: "Yeni iletişim mesajı",
-      html: `<p><b>Ad:</b> ${d.name}<br><b>E-posta:</b> ${d.email}<br><b>Konu:</b> ${d.subject ?? "-"}</p><p style="white-space:pre-line">${d.message}</p>`,
+      html: `<p><b>Ad:</b> ${escapeHtml(d.name)}<br><b>E-posta:</b> ${escapeHtml(d.email)}<br><b>Konu:</b> ${escapeHtml(d.subject || "-")}</p><p style="white-space:pre-line">${escapeHtml(d.message)}</p>`,
     }),
   });
   return { ok: "Mesajınız alındı, en kısa sürede dönüş yapacağız." };

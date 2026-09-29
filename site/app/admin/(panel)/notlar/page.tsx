@@ -6,10 +6,13 @@ import { fmtDateTime } from "@/lib/format";
 import { PageTitle, Chip, Kpi } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 import { NoteViewButton } from "@/components/admin/NoteViewButton";
+import { requireAdmin } from "@/lib/auth/session";
 
 function fmtSecs(s: number) { return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`; }
 
 export default async function AdminNotesPage({ searchParams }: { searchParams: Promise<{ s?: string; course?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { s, course } = await searchParams;
   const q = s?.trim() ?? "";
   const courseId = Number(course) || undefined;
@@ -32,8 +35,8 @@ export default async function AdminNotesPage({ searchParams }: { searchParams: P
       <PageTitle title="Öğrenci Notları" sub="Öğrencilerin ders içinde ve genel olarak aldığı notlar (salt okunur)" />
       <div className="mb-5 grid grid-cols-3 gap-4"><Kpi label="Toplam not" value={stats.n} icon="edit" /><Kpi label="Not alan öğrenci" value={stats.u} icon="users" color="sky" /><Kpi label="Bu listede" value={rows.length} icon="list" /></div>
       <form className="mb-4 flex flex-wrap gap-2">
-        <input name="s" defaultValue={q} placeholder="Öğrenci / e-posta / not içinde ara" className="input max-w-xs" />
-        <select name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm kurslar</option>{cs.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
+        <input aria-label="Öğrenci / e-posta / not içinde ara" name="s" defaultValue={q} placeholder="Öğrenci / e-posta / not içinde ara" className="input max-w-xs" />
+        <select aria-label="Eğitim" name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm kurslar</option>{cs.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
         <button className="btn-secondary">Filtrele</button>
         <a
           href={`/api/admin/disa-aktar/notlar?${new URLSearchParams({ ...(q ? { s: q } : {}), ...(courseId ? { course: String(courseId) } : {}) }).toString()}`}

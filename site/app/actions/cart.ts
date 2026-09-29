@@ -1,51 +1,48 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { headers, cookies } from "next/headers";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, coupons, orders, periods, periodEnrollments, users, type BillingInfo } from "@/db/schema";
-import { addressFromForm } from "@/lib/address";
+import { courses, orders, periods, periodEnrollments, users, type BillingInfo } from "@/db/schema";
+import { addressFromForm, addressFormatError } from "@/lib/address";
 import { getCart, setCart, clearCart } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth/session";
-import { effectivePrice } from "@/lib/course-logic";
-import { personalDiscountPercent } from "@/lib/recommendations";
-import { hasAccess } from "@/lib/data/student";
 import { enrollUser, fulfillOrder } from "@/lib/enroll";
 import { initCheckoutForm, iyzicoEnabled } from "@/lib/iyzico";
 import { siteUrl } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
-import { periodCapacity } from "@/lib/waitlist";
 import { checkPrerequisite } from "@/lib/prerequisites";
 import { checkSurveyGate } from "@/lib/survey-gate";
-import { cookies } from "next/headers";
+import { checkCartLine } from "@/lib/cart-rules";
+import { cartTotals } from "@/lib/cart-totals";
+import { heldSeatsSql, releaseOrderCoupon, reserveCoupon, supersedePendingOrders, unreserveCoupon } from "@/lib/orders";
+import { toId } from "@/lib/ids";
+
+/** Misafirken başlatılan kayıt niyeti (ücretsiz eğitim / görüşme koltuğu); girişten sonra program sayfası sürdürür */
+const INTENT_COOKIE = "fabo_intent";
 
 export async function addToCart(formData: FormData) {
-  const courseId = Number(formData.get("courseId"));
-  const periodRaw = formData.get("periodId");
-  const periodId = periodRaw ? Number(periodRaw) : null;
+  // Elle oynanmış (sayı olmayan) kimlik sorguya gitmez
+  const courseId = toId(formData.get("courseId"));
+  const periodNum = toId(formData.get("periodId")) ?? NaN;
+  if (!courseId) redirect("/kesfet");
   const [c] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
-  if (!c || c.status !== "published" || c.closed) redirect("/kesfet");
-  // Yakında: satış kapalı, yalnızca talep toplanır
-  if (c.comingSoon) redirect(`/program/${c.slug}?hata=yakinda`);
-
-  // Dönemli kurs → dönem şart ve kapasite kontrolü
-  if (c.group === "takvimli") {
-    if (!periodId) redirect(`/program/${c.slug}?hata=donem`);
-    const [p] = await db
-      .select({
-        id: periods.id,
-        capacity: periods.capacity,
-        enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
-      })
-      .from(periods)
-      .where(and(eq(periods.id, periodId), eq(periods.courseId, c.id)))
-      .limit(1);
-    if (!p || p.enrolled >= p.capacity) redirect(`/program/${c.slug}?hata=dolu`);
-  }
-
+  if (!c) redirect("/kesfet");
   const user = await getCurrentUser();
-  if (user && (await hasAccess(user.id, c.id))) redirect(`/kurs-izle/${c.id}`);
+  const jar = await cookies();
+  // Önceki yarım kalmış kayıt niyeti bu işlemle kapanır (başarısız olursa program sayfası yeniden denemez)
+  if (user) jar.delete(INTENT_COOKIE);
+
+  // Satın alınabilirlik: sepet, ödeme ve sipariş aşamalarıyla aynı kural (lib/cart-rules.ts)
+  const chk = await checkCartLine(c, Number.isInteger(periodNum) ? periodNum : null, user?.id ?? null);
+  if (!chk.ok) {
+    if (chk.code === "kapali") redirect("/kesfet");
+    if (chk.code === "kayitli") redirect(`/kurs-izle/${c.id}`);
+    // yakinda | donem | dolu | gecmis → program sayfası ilgili uyarıyı gösterir
+    redirect(`/program/${c.slug}?hata=${chk.code === "gecmis" ? "kapali" : chk.code}`);
+  }
+  const periodId = chk.periodId;
 
   // Satın alım koşulu: üst basamak alınmamışsa (ya da tamamlanmamışsa) sepete giremez
   const cartNow = await getCart();
@@ -57,40 +54,49 @@ export async function addToCart(formData: FormData) {
 
   // Ücretsiz kurs: giriş yapmışsa direkt kaydet, değilse girişe yönlendir
   if (c.isFree) {
-    if (!user) redirect(`/panel/giris?r=${encodeURIComponent(`/program/${c.slug}?kayit=1${periodId ? `&donem=${periodId}` : ""}`)}`);
+    if (!user) {
+      // Niyet çerezde saklanır; girişten (ya da üye olduktan) sonra program sayfası seçili dönemle kaydı tamamlar
+      jar.set(INTENT_COOKIE, JSON.stringify({ courseId: c.id, periodId }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 30 });
+      redirect(`/panel/giris?r=${encodeURIComponent(`/program/${c.slug}?kayit=1${periodId ? `&donem=${periodId}` : ""}`)}`);
+    }
     const [o] = await db
       .insert(orders)
       .values({
         userId: user.id,
         status: "paid",
-        items: [{ courseId: c.id, title: c.title, price: 0, periodId, periodName: null }],
+        items: [{ courseId: c.id, title: c.title, price: 0, periodId, periodName: chk.periodName }],
         subtotal: "0",
         discount: "0",
         total: "0",
         provider: "free",
         paidAt: new Date(),
+        fulfilledAt: new Date(),
       })
       .returning({ id: orders.id });
-    await enrollUser({ userId: user.id, courseId: c.id, orderId: o.id, periodId });
+    // Koltuk kilitli alınır: aynı anda gelen iki kayıttan yalnızca biri son koltuğu alır
+    const r = await enrollUser({ userId: user.id, courseId: c.id, orderId: o.id, periodId, strictCapacity: true });
+    if (!r.ok) {
+      await db.delete(orders).where(eq(orders.id, o.id));
+      redirect(`/program/${c.slug}?hata=dolu`);
+    }
     // Ücretsiz eğitim kitaplığa eklenir; oynatıcı yerine "Yeni Program" listesine gider
     redirect(`/panel/egitim?sekme=yeni`);
   }
 
-  const cart = await getCart();
-  const rest = cart.filter((i) => i.courseId !== c.id);
+  const rest = cartNow.filter((i) => i.courseId !== c.id);
   await setCart([...rest, { courseId: c.id, periodId }]);
   redirect("/sepet");
 }
 
 export async function removeFromCart(formData: FormData) {
-  const courseId = Number(formData.get("courseId"));
+  const courseId = toId(formData.get("courseId"));
   const cart = await getCart();
-  await setCart(cart.filter((i) => i.courseId !== courseId));
+  if (courseId) await setCart(cart.filter((i) => i.courseId !== courseId));
   redirect("/sepet");
 }
 
 export async function applyCoupon(formData: FormData) {
-  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  const code = String(formData.get("code") ?? "").trim().toUpperCase().slice(0, 64);
   const jar = await cookies();
   if (!code) {
     jar.delete("fabo_coupon");
@@ -98,95 +104,6 @@ export async function applyCoupon(formData: FormData) {
   }
   jar.set("fabo_coupon", code, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 });
   redirect("/sepet");
-}
-
-export type CartTotals = {
-  lines: { courseId: number; slug: string; title: string; imageUrl: string; price: number; listPrice: number; personalPercent: number; periodId: number | null; periodName: string | null; periodFull: boolean; group: string; prereqError: string | null; surveyGate: { id: number; title: string } | null }[];
-  subtotal: number;
-  discount: number;
-  total: number;
-  coupon: { code: string; percent: number; amount: number } | null;
-  couponError: string | null;
-};
-
-export async function cartTotals(userId?: number): Promise<CartTotals> {
-  const cart = await getCart();
-  const jar = await cookies();
-  const code = jar.get("fabo_coupon")?.value?.toUpperCase() ?? "";
-  if (cart.length === 0) return { lines: [], subtotal: 0, discount: 0, total: 0, coupon: null, couponError: null };
-
-  const ids = cart.map((i) => i.courseId);
-  const cs = await db.select().from(courses).where(inArray(courses.id, ids));
-  const pids = cart.map((i) => i.periodId).filter((x): x is number => !!x);
-  const ps = pids.length
-    ? await db
-        .select({ id: periods.id, name: periods.name, capacity: periods.capacity, enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number) })
-        .from(periods)
-        .where(inArray(periods.id, pids))
-    : [];
-
-  const lines = (
-    await Promise.all(
-      cart.map(async (i) => {
-        const c = cs.find((x) => x.id === i.courseId);
-        if (!c || c.status !== "published" || c.closed) return null;
-        const p = i.periodId ? ps.find((x) => x.id === i.periodId) : null;
-        const listPrice = effectivePrice(c);
-        // Kişiye özel indirim (kurs ilişkilerinden): satır fiyatına doğrudan uygulanır
-        const personalPercent = userId ? await personalDiscountPercent(userId, c.id) : 0;
-        const price = Math.round(listPrice * (1 - Math.max(0, Math.min(100, personalPercent)) / 100) * 100) / 100;
-        return {
-          courseId: c.id,
-          slug: c.slug,
-          title: c.title,
-          imageUrl: c.imageUrl,
-          price,
-          listPrice,
-          personalPercent,
-          periodId: p?.id ?? null,
-          periodName: p?.name ?? null,
-          periodFull: !!p && p.enrolled >= p.capacity, prereqError: null as string | null, surveyGate: null as { id: number; title: string } | null,
-          group: c.group,
-        };
-      })
-    )
-  ).filter((x): x is NonNullable<typeof x> => x !== null);
-
-  // Satın alım koşulu: aynı sepetteki üst basamak koşulu sağlar (enrolled), tamamlanma koşulu sağlamaz
-  const cartIds = lines.map((l) => l.courseId);
-  for (const l of lines) {
-    const pre = await checkPrerequisite({ userId: userId ?? null, courseId: l.courseId, cartCourseIds: cartIds });
-    l.prereqError = pre.ok ? null : pre.message;
-    // Bağlı anket doldurulmamışsa satır kilitli (ödeme başlatılamaz); sepet sayfası teste bağlantı verir
-    if (!l.prereqError) {
-      const gate = await checkSurveyGate({ userId: userId ?? null, courseId: l.courseId });
-      if (!gate.ok) { l.prereqError = gate.message; l.surveyGate = gate.survey; }
-    }
-  }
-
-  const subtotal = lines.reduce((s, l) => s + l.price, 0);
-  let discount = 0;
-  let coupon: CartTotals["coupon"] = null;
-  let couponError: string | null = null;
-  if (code) {
-    const [cp] = await db.select().from(coupons).where(eq(coupons.code, code)).limit(1);
-    if (!cp) couponError = "Kupon bulunamadı.";
-    else if (cp.expiresAt && cp.expiresAt.getTime() < Date.now()) couponError = "Kuponun süresi dolmuş.";
-    else if (cp.usageLimit > 0 && cp.usedCount >= cp.usageLimit) couponError = "Kupon kullanılmış.";
-    else if (cp.userId && cp.userId !== userId) couponError = userId ? "Bu kupon hesabınıza ait değil." : "Kuponu kullanmak için giriş yapın.";
-    else {
-      const applicable = lines.filter((l) => !cp.courseId || cp.courseId === l.courseId);
-      if (applicable.length === 0) couponError = "Kupon sepetteki programlar için geçerli değil.";
-      else {
-        const applicableTotal = applicable.reduce((s, l) => s + l.price, 0);
-        const amount = Number(cp.amount ?? 0);
-        // Sabit tutar: uygulanabilir satırların toplamını aşamaz; yüzde: satır bazında
-        discount = amount > 0 ? Math.min(amount, applicableTotal) : Math.round(applicable.reduce((s, l) => s + (l.price * cp.percent) / 100, 0) * 100) / 100;
-        coupon = { code: cp.code, percent: cp.percent, amount };
-      }
-    }
-  }
-  return { lines, subtotal, discount, total: Math.max(0, subtotal - discount), coupon, couponError };
 }
 
 export type CheckoutState = { error?: string; formHtml?: string };
@@ -198,17 +115,9 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   const t = await cartTotals(user.id);
   if (t.lines.length === 0) redirect("/sepet");
   if (t.couponError) return { error: t.couponError };
-  const blocked = t.lines.find((l) => l.prereqError);
-  if (blocked) return { error: `${blocked.title}: ${blocked.prereqError}` };
-  // Ödeme öncesi son kontenjan kontrolü: sepete eklendikten sonra dolan dönem varsa ödeme başlatılmaz
-  for (const l of t.lines) {
-    if (!l.periodId) continue;
-    const cap = await periodCapacity(l.periodId, l.courseId);
-    if (!cap || cap.full) {
-      await setCart((await getCart()).filter((i) => i.courseId !== l.courseId));
-      return { error: `${l.title} — ${l.periodName ?? "seçilen dönem"} kontenjanı doldu; sepetten çıkarıldı. Program sayfasından başka bir dönem seçebilir ya da "tekrar açılınca haber ver" diyebilirsin.` };
-    }
-  }
+  // Sepete eklendikten sonra durumu değişen satır (Yakında oldu, dönem kapandı/doldu, öğrenci kaydoldu, koşul sağlanmıyor)
+  const blocked = t.lines.find((l) => l.blockError || l.prereqError);
+  if (blocked) return { error: `${blocked.title}: ${blocked.blockError ?? blocked.prereqError} Sepete dönüp bu eğitimi çıkarabilir ya da program sayfasından yeniden seçebilirsin.` };
 
   const billingAddr = addressFromForm(formData, "billing_");
   if (!billingAddr.name) billingAddr.name = user.name;
@@ -220,46 +129,87 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
     ...(shippingSame ? {} : { shipping: shippingAddr }),
   };
   if (!formData.get("sozlesme")) return { error: "Mesafeli satış sözleşmesini onaylamalısın." };
+  // Fatura bilgileri sunucuda da zorunlu (tarayıcıdaki "required" elle gönderilen istekte atlanabilir)
+  if (billingAddr.name.trim().length < 3) return { error: "Fatura bilgilerinde ad soyad zorunlu." };
+  if (billingAddr.phone.replace(/\D/g, "").length < 10) return { error: "Fatura bilgilerinde telefon zorunlu (alan koduyla, en az 10 rakam)." };
+  if (!billingAddr.city.trim()) return { error: "Fatura bilgilerinde şehir zorunlu." };
+  if (billingAddr.address.trim().length < 5) return { error: "Fatura bilgilerinde adres zorunlu." };
+  if (!shippingSame && (shippingAddr.name || shippingAddr.address || shippingAddr.city) && (!shippingAddr.address.trim() || !shippingAddr.city.trim())) {
+    return { error: "Gönderim adresinde şehir ve adres zorunlu (ya da \"Fatura adresiyle aynı\" kutusunu işaretle)." };
+  }
+  // Biçim denetimi (telefon, kimlik/vergi no, posta kodu): Adreslerim formuyla aynı kurallar
+  const formatError = addressFormatError(formData, "billing_", "Fatura adresi") ?? (shippingSame ? null : addressFormatError(formData, "shipping_", "Gönderim adresi"));
+  if (formatError) return { error: formatError };
   // Adresler kullanıcıya kaydedilir: bir sonraki siparişte ön tanımlı gelir (Tercihler → Adreslerim'den de düzenlenir)
   await db.update(users).set({ addresses: { billing: billingAddr, shipping: shippingAddr } }).where(eq(users.id, user.id));
 
   const payment = await getSetting("payment");
   const provider = t.total === 0 ? "free" : payment.provider === "manual" || !iyzicoEnabled() ? "manual" : "iyzico";
 
-  const [o] = await db
-    .insert(orders)
-    .values({
-      userId: user.id,
-      status: provider === "free" ? "paid" : "pending",
-      items: t.lines.map((l) => ({ courseId: l.courseId, title: l.title, price: l.price, periodId: l.periodId, periodName: l.periodName })),
-      subtotal: t.subtotal.toFixed(2),
-      discount: t.discount.toFixed(2),
-      total: t.total.toFixed(2),
-      couponCode: t.coupon?.code ?? null,
-      provider,
-      billing,
-      paidAt: provider === "free" ? new Date() : null,
-    })
-    .returning({ id: orders.id });
+  // Aynı eğitim için eski bekleyen sipariş varsa yenisi onun yerine geçer (mükerrer sipariş ve çift kupon kullanımı olmasın)
+  await supersedePendingOrders(user.id, t.lines.map((l) => l.courseId));
+
+  // Kupon sipariş oluşurken ayrılır: tek kullanımlık kupon onay bekleyen birden çok siparişte kullanılamaz
+  if (t.coupon && !(await reserveCoupon(t.coupon.code))) return { error: "Kuponun kullanım hakkı doldu." };
+
+  // Koltuk denetimi ve sipariş kaydı tek işlemde: dönem satırı kilitlenir, son koltuk için yarışan iki siparişten yalnızca biri oluşur
+  const created: { id: number } | { full: { title: string; periodName: string | null } } = await db.transaction(async (tx) => {
+    for (const l of [...t.lines].filter((x) => x.periodId).sort((a, b) => a.periodId! - b.periodId!)) {
+      await tx.execute(sql`select id from periods where id = ${l.periodId} for update`);
+      const [p] = await tx
+        .select({
+          capacity: periods.capacity,
+          enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
+          held: heldSeatsSql(user.id).mapWith(Number),
+        })
+        .from(periods)
+        .where(eq(periods.id, l.periodId!))
+        .limit(1);
+      if (!p || p.enrolled + p.held >= p.capacity) return { full: l };
+    }
+    const [o] = await tx
+      .insert(orders)
+      .values({
+        userId: user.id,
+        status: provider === "free" ? "paid" : "pending",
+        items: t.lines.map((l) => ({ courseId: l.courseId, title: l.title, price: l.price, periodId: l.periodId, periodName: l.periodName })),
+        subtotal: t.subtotal.toFixed(2),
+        discount: t.discount.toFixed(2),
+        total: t.total.toFixed(2),
+        couponCode: t.coupon?.code ?? null,
+        couponReserved: !!t.coupon,
+        provider,
+        billing,
+        paidAt: provider === "free" ? new Date() : null,
+      })
+      .returning({ id: orders.id });
+    return { id: o.id };
+  });
+  if ("full" in created) {
+    if (t.coupon) await unreserveCoupon(t.coupon.code);
+    return { error: `${created.full.title} — ${created.full.periodName ?? "seçilen dönem"} az önce doldu. Sepete dönüp bu eğitimi çıkarabilir, program sayfasından başka bir dönem seçebilir ya da "tekrar açılınca haber ver" diyebilirsin.` };
+  }
+  const orderId = created.id;
+  const jar = await cookies();
 
   if (provider === "free") {
-    await fulfillOrder(o.id);
+    await fulfillOrder(orderId);
     await clearCart();
-    const jar = await cookies();
     jar.delete("fabo_coupon");
-    redirect(`/odeme/tamam?siparis=${o.id}`);
+    redirect(`/odeme/tamam?siparis=${orderId}`);
   }
 
   if (provider === "manual") {
     await clearCart();
-    redirect(`/odeme/havale?siparis=${o.id}`);
+    jar.delete("fabo_coupon");
+    redirect(`/odeme/havale?siparis=${orderId}`);
   }
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "85.34.78.112";
   const [first, ...rest] = billing.name.split(" ");
   const init = await initCheckoutForm({
-    conversationId: String(o.id),
+    conversationId: String(orderId),
     price: t.total,
     buyer: {
       id: String(user.id),
@@ -272,13 +222,28 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
       city: billing.city,
       ip,
     },
-    items: t.lines.map((l) => ({ id: String(l.courseId), name: l.title, price: l.price })),
-    callbackUrl: siteUrl(`/api/odeme/callback?siparis=${o.id}`),
+    items: basketItems(t.lines.map((l) => ({ id: String(l.courseId), name: l.title, price: l.price })), t.total),
+    callbackUrl: siteUrl(`/api/odeme/callback?siparis=${orderId}`),
   });
   if (init.status !== "success" || !init.checkoutFormContent) {
-    await db.update(orders).set({ status: "failed", note: init.errorMessage ?? "iyzico başlatılamadı" }).where(eq(orders.id, o.id));
+    await db.update(orders).set({ status: "failed", note: init.errorMessage ?? "iyzico başlatılamadı" }).where(eq(orders.id, orderId));
+    await releaseOrderCoupon(orderId);
     return { error: `Ödeme başlatılamadı: ${init.errorMessage ?? "bilinmeyen hata"}` };
   }
-  await db.update(orders).set({ providerToken: init.token ?? null }).where(eq(orders.id, o.id));
+  await db.update(orders).set({ providerToken: init.token ?? null }).where(eq(orders.id, orderId));
   return { formHtml: init.checkoutFormContent };
+}
+
+/**
+ * iyzico sepet kalemleri: kalem fiyatlarının toplamı ödenecek tutara EŞİT olmalı (kuponlu siparişte aksi hâlde ödeme başlatılamaz).
+ * İndirim kalemlere oranla dağıtılır, kuruş farkı son kaleme eklenir; 0 TL'ye düşen kalem sepete yazılmaz.
+ */
+function basketItems(lines: { id: string; name: string; price: number }[], total: number) {
+  const sum = lines.reduce((s, l) => s + l.price, 0);
+  const factor = sum > 0 ? total / sum : 1;
+  const items = lines.map((l) => ({ ...l, price: Math.round(l.price * factor * 100) / 100 })).filter((l) => l.price > 0);
+  if (items.length === 0) return lines.slice(0, 1).map((l) => ({ ...l, price: total }));
+  const diff = Math.round((total - items.reduce((s, l) => s + l.price, 0)) * 100) / 100;
+  items[items.length - 1].price = Math.round((items[items.length - 1].price + diff) * 100) / 100;
+  return items;
 }

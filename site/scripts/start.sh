@@ -2,17 +2,26 @@
 # Her açılışta migration'ları uygula, ardından sunucuyu başlat.
 # Ayrıca 15 dakikada bir /api/cron çağıran basit zamanlayıcı (hatırlatmalar, günlük rapor).
 set -e
+# Saat dilimi ortamda tanımlı değilse Türkiye saati (tarih/saat kuralları yerel saate göre çalışır)
+export TZ="${TZ:-Europe/Istanbul}"
 node scripts/migrate.mjs
-# Örnek online görüşme ürünleri (slug varsa atlar); hata deploy'u durdurmaz
-node node_modules/tsx/dist/cli.mjs scripts/seed-gorusme.mts || echo "seed-gorusme atlandı"
-# Örnek kontenjanı dolu takvimli eğitim (başlık varsa atlar)
-node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-dolu.mts || echo "seed-dolu atlandı"
-# Başlangıç kategorileri (tablo boşsa: eski üç grup kategori olur)
+# Canlıda örnek veri ve bilinen parolalı test hesabı ÜRETİLMEZ: örnek veri betikleri (seed-*.mts) yalnızca
+# geliştirme ortamında elle çalıştırılır.
+# Yönetici hesabı: ADMIN_EMAIL + ADMIN_PASSWORD tanımlıysa ve hesap yoksa oluşturulur (varsa şifresine dokunulmaz)
+node scripts/ensure-admin.mjs || echo "ensure-admin atlandı"
+# Eksik yasal sayfalar (KVKK, mesafeli satış, iade…) eklenir; var olan sayfanın içeriğine dokunulmaz
+node scripts/ensure-pages.mjs || echo "ensure-pages atlandı"
+# Başlangıç kategorileri (yalnızca kategori tablosu boşsa: eski üç grup kategori olur)
 node node_modules/tsx/dist/cli.mjs scripts/seed-kategoriler.mts || echo "seed-kategoriler atlandı"
-# İki örnek rota (slug varsa atlar)
-node node_modules/tsx/dist/cli.mjs scripts/seed-rotalar.mts || echo "seed-rotalar atlandı"
-# Üç örnek "Yakında" eğitimi (başlık varsa atlar)
-node node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/seed-yakinda.mts || echo "seed-yakinda atlandı"
+# Zamanlayıcı anahtarı tanımsız ya da örnek değerdeyse bu açılışa özel rastgele anahtar üretilir:
+# /api/cron dışarıdan tetiklenemez, aşağıdaki iç zamanlayıcı çalışmaya devam eder.
+# (Harici bir zamanlayıcı kullanılacaksa ortam değişkenlerine gerçek bir CRON_SECRET tanımlanmalı.)
+if [ -z "${CRON_SECRET}" ] || [ "${CRON_SECRET}" = "degistir-beni" ] || [ "${#CRON_SECRET}" -lt 16 ]; then
+  CRON_SECRET="$(node -e "process.stdout.write(require('crypto').randomBytes(24).toString('hex'))")"
+  export CRON_SECRET
+  export CRON_SECRET_AUTO=1
+  echo "CRON_SECRET tanımlı değil ya da örnek değerde; bu açılış için rastgele anahtar üretildi."
+fi
 (
   sleep 90
   while true; do

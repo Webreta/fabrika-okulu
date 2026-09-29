@@ -6,8 +6,11 @@ import { fmtDate } from "@/lib/format";
 import { couponValue } from "@/lib/coupon-label";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { CouponsManager, DeleteCouponButton, PersonalCouponCard } from "@/components/admin/CouponsManager";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function CouponsPage() {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const [list, opts, emails] = await Promise.all([
     db.select({ c: coupons, email: users.email, courseTitle: courses.title, docId: documents.id }).from(coupons).leftJoin(users, eq(coupons.userId, users.id)).leftJoin(courses, eq(coupons.courseId, courses.id)).leftJoin(documents, eq(documents.couponCode, coupons.code)).orderBy(desc(coupons.id)).limit(300),
     courseOptions(),
@@ -30,10 +33,10 @@ export default async function CouponsPage() {
             {list.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted">Kupon yok.</td></tr>}
             {list.map(({ c, email, courseTitle, docId }) => (
               <tr key={c.id}>
-                <td className="font-mono font-bold text-navy-800">{c.code}</td>
+                <td className="max-w-[220px] break-all font-mono font-bold text-navy-800">{c.code}</td>
                 <td>{couponValue(c)}</td>
-                <td className="text-sm">{courseTitle ?? "Tüm eğitimler"}</td>
-                <td className="text-xs">{email ?? "Herkes"}{email && <> <Chip color={docId ? "sky" : "amber"}>{docId ? "Belge" : "Özel"}</Chip></>}</td>
+                <td className="max-w-xs break-words text-sm">{courseTitle ?? "Tüm eğitimler"}</td>
+                <td className="max-w-[240px] break-all text-xs">{email ?? "Herkes"}{email && <> <Chip color={docId ? "sky" : "amber"}>{docId ? "Belge" : "Özel"}</Chip></>}</td>
                 <td className="text-xs">{c.usedCount}/{c.usageLimit || "∞"} {c.usageLimit > 0 && c.usedCount >= c.usageLimit && <Chip color="gray">Bitti</Chip>}</td>
                 <td className="text-xs">{c.expiresAt ? <span className="date-chip">{fmtDate(c.expiresAt)}</span> : "—"}</td>
                 <td><DeleteCouponButton id={c.id} /></td>

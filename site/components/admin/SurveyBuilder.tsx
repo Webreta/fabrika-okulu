@@ -1,12 +1,13 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { SurveyCondition, SurveyMode, SurveyQuestion } from "@/db/schema";
 import { saveSurveyAdmin } from "@/app/actions/admin";
 import { Icon } from "@/components/site/Icon";
 import { SurveyForm } from "@/components/panel/SurveyForm";
-import { GOAL_COLORS, QUESTION_TYPES, SURVEY_MODES, goalColor, hasOptions, makeOptionValue, normalizeSurveyDef, slugKey, uniqueKey, validateSurveyDef, type SurveyDef } from "@/lib/survey-logic";
+import { GOAL_COLORS, QUESTION_TYPES, SURVEY_MODES, goalColor, hasOptions, makeOptionValue, normalizeSurveyDef, orderedSections, slugKey, uniqueKey, validateSurveyDef, type SurveyDef } from "@/lib/survey-logic";
 
 /*
  * Anket oluşturucu (admin).
@@ -16,7 +17,7 @@ import { GOAL_COLORS, QUESTION_TYPES, SURVEY_MODES, goalColor, hasOptions, makeO
  */
 
 type Section = { key: string; label: string };
-type State = { id?: number; title: string; intro: string; mode: SurveyMode; editable: boolean; sections: Section[]; questions: SurveyQuestion[] };
+type State = { id?: number; title: string; intro: string; mode: SurveyMode; editable: boolean; required: boolean; sections: Section[]; questions: SurveyQuestion[] };
 
 const OPS: { value: SurveyCondition["op"]; label: string; needsVal: boolean }[] = [
   { value: "in", label: "cevabı şunlardan biriyse", needsVal: true },
@@ -26,10 +27,10 @@ const OPS: { value: SurveyCondition["op"]; label: string; needsVal: boolean }[] 
 ];
 
 function toState(def: SurveyDef): State {
-  return { id: def.id, title: def.title, intro: def.intro, mode: def.mode === "steps" ? "steps" : "flow", editable: def.editable !== false, sections: Object.entries(def.sections).map(([key, label]) => ({ key, label })), questions: def.questions };
+  return { id: def.id, title: def.title, intro: def.intro, mode: def.mode === "steps" ? "steps" : "flow", editable: def.editable !== false, required: def.required === true, sections: orderedSections(def.sections, def.questions).map(([key, label]) => ({ key, label })), questions: def.questions };
 }
 function toDef(s: State): SurveyDef {
-  return { id: s.id, title: s.title, intro: s.intro, mode: s.mode, editable: s.editable, sections: Object.fromEntries(s.sections.map((x) => [x.key, x.label])), questions: s.questions };
+  return { id: s.id, title: s.title, intro: s.intro, mode: s.mode, editable: s.editable, required: s.required, sections: Object.fromEntries(s.sections.map((x) => [x.key, x.label])), questions: s.questions };
 }
 
 /** Sorular bölüm sırasına göre dizilir; bölümü tanımsız sorular ilk bölüme alınır */
@@ -40,6 +41,7 @@ function ordered(s: State): SurveyQuestion[] {
 }
 
 export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
+  const fid = useFieldId();
   const [s, setS] = useState<State>(() => toState(normalizeSurveyDef(survey)));
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -141,7 +143,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
   };
   const exportJson = () => {
     const def = normalizeSurveyDef(toDef(s));
-    const blob = new Blob([JSON.stringify({ title: def.title, intro: def.intro, mode: def.mode, editable: def.editable, sections: def.sections, questions: def.questions }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ title: def.title, intro: def.intro, mode: def.mode, editable: def.editable, required: def.required, sections: def.sections, questions: def.questions }, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `anket-${slugKey(def.title) || "anket"}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -149,7 +151,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
     try {
       const raw = JSON.parse(await file.text()) as Partial<SurveyDef>;
       if (!raw || !Array.isArray(raw.questions)) throw new Error("Dosyada soru listesi yok.");
-      const def = normalizeSurveyDef({ id: s.id, title: raw.title ?? s.title, intro: raw.intro ?? "", mode: raw.mode ?? s.mode, editable: raw.editable ?? s.editable, sections: raw.sections ?? {}, questions: raw.questions });
+      const def = normalizeSurveyDef({ id: s.id, title: raw.title ?? s.title, intro: raw.intro ?? "", mode: raw.mode ?? s.mode, editable: raw.editable ?? s.editable, required: raw.required ?? s.required, sections: raw.sections ?? {}, questions: raw.questions });
       update(toState(def));
       setMsg({ kind: "ok", text: `İçe aktarıldı: ${def.questions.length} soru. Kaydetmeyi unutma.` });
     } catch (e) {
@@ -182,8 +184,8 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
             </ul>
           </div>
         )}
-        <div><label className="label">Anket başlığı</label><input value={s.title} onChange={(e) => update({ title: e.target.value })} placeholder="Örn. Güncel Kariyer Hedefim" className="input" /></div>
-        <div><label className="label">Giriş metni</label><textarea rows={4} value={s.intro} onChange={(e) => update({ intro: e.target.value })} placeholder="Anketin amacını kısaca anlat. Satır sonları korunur." className="input" /></div>
+        <div><label htmlFor={fid("a1")} className="label">Anket başlığı</label><input id={fid("a1")} value={s.title} onChange={(e) => update({ title: e.target.value })} placeholder="Örn. Güncel Kariyer Hedefim" className="input" /></div>
+        <div><label htmlFor={fid("a2")} className="label">Giriş metni</label><textarea id={fid("a2")} rows={4} value={s.intro} onChange={(e) => update({ intro: e.target.value })} placeholder="Anketin amacını kısaca anlat. Satır sonları korunur." className="input" /></div>
       </div>
 
       {/* Görünüm */}
@@ -220,6 +222,16 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
             ))}
           </div>
         </div>
+        <div className="border-t border-line pt-3">
+          <p className="mb-2 text-sm font-semibold text-navy-800">Doldurmak zorunlu mu?</p>
+          <label className={`flex cursor-pointer gap-3 rounded-xl border-2 p-3 transition ${s.required ? "border-amber-400 bg-amber-50" : "border-line hover:bg-surface"}`}>
+            <input type="checkbox" className="mt-1" checked={s.required} onChange={(e) => update({ required: e.target.checked })} />
+            <span>
+              <span className="block font-semibold text-navy-800">Zorunlu: bu anketi yapmadan hareket ettirme</span>
+              <span className="block text-xs text-muted">Anket yayındayken öğrenci panele girdiğinde doğrudan bu ankete yönlendirilir; tamamlayana kadar menüler kapalıdır, panelde gezinemez ve eğitim izleyemez. &quot;Daha sonra&quot; seçeneği olmaz. Site sayfaları (katalog, sepet) etkilenmez. Yalnızca öğrencilere uygulanır.</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Bölümler ve sorular */}
@@ -233,7 +245,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
           <div key={sec.key} className="rounded-2xl border-2 border-dashed border-line p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded-lg bg-navy-800 px-2 py-1 text-xs font-bold text-white">Bölüm {si + 1}</span>
-              <input value={sec.label} onChange={(e) => update((p) => ({ ...p, sections: p.sections.map((x, j) => (j === si ? { ...x, label: e.target.value } : x)) }))} placeholder="Bölüm başlığı" className="input flex-1 font-semibold" />
+              <input aria-label="Bölüm başlığı" value={sec.label} onChange={(e) => update((p) => ({ ...p, sections: p.sections.map((x, j) => (j === si ? { ...x, label: e.target.value } : x)) }))} placeholder="Bölüm başlığı" className="input flex-1 font-semibold" />
               <div className="flex gap-1">
                 <button type="button" title="Yukarı" onClick={() => moveSection(si, -1)} className="rounded p-1 hover:bg-surface"><Icon name="chevronUp" className="size-4" /></button>
                 <button type="button" title="Aşağı" onClick={() => moveSection(si, 1)} className="rounded p-1 hover:bg-surface"><Icon name="chevronDown" className="size-4" /></button>
@@ -270,7 +282,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
           <button type="button" onClick={() => setPreview(true)} className="btn-secondary btn-sm"><Icon name="eye" className="size-4" /> Önizleme</button>
           <button type="button" onClick={exportJson} className="btn-secondary btn-sm" title="Anket tanımını JSON dosyası olarak indir"><Icon name="download" className="size-4" /> Dışa aktar</button>
           <button type="button" onClick={() => fileRef.current?.click()} className="btn-secondary btn-sm" title="Daha önce dışa aktarılmış bir anket tanımını yükle"><Icon name="upload" className="size-4" /> İçe aktar</button>
-          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
+          <input aria-label="Anket dosyası (JSON)" ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
           {msg && <span className={`rounded-lg px-3 py-1.5 text-sm ${msg.kind === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{msg.text}</span>}
           {dirty && !msg && <span className="text-xs text-amber-700">Kaydedilmemiş değişiklikler var</span>}
           <button type="button" disabled={pending} onClick={save} className="btn-primary ml-auto"><Icon name="save" className="size-4" /> {pending ? "Kaydediliyor…" : "Anketi kaydet"}</button>
@@ -282,7 +294,7 @@ export function SurveyBuilder({ survey }: { survey: SurveyDef }) {
           <div className="my-6 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Önizleme — öğrenci böyle görür, kayıt yapılmaz</span>
-              <button type="button" onClick={() => setPreview(false)} className="rounded p-1 hover:bg-surface"><Icon name="x" className="size-5" /></button>
+              <button aria-label="Kapat" type="button" onClick={() => setPreview(false)} className="rounded p-1 hover:bg-surface"><Icon name="x" className="size-5" /></button>
             </div>
             <PreviewForm def={normalizeSurveyDef(toDef(s))} />
           </div>
@@ -350,7 +362,7 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
       {/* Üst satır */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-lg bg-sky-50 px-2 py-1 text-xs font-bold text-sky-800">Soru {number}</span>
-        <select value={q.type} onChange={(e) => setType(e.target.value as SurveyQuestion["type"])} className="input w-auto py-1.5 text-sm">
+        <select aria-label="Soru türü" value={q.type} onChange={(e) => setType(e.target.value as SurveyQuestion["type"])} className="input w-auto py-1.5 text-sm">
           {QUESTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         {sections.length > 1 && (
@@ -372,8 +384,8 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
         </div>
       </div>
 
-      <input value={q.label} onChange={(e) => onChange({ label: e.target.value })} placeholder="Soru metni — örn. Bugünkü kariyerim:" className="input font-medium" />
-      <input value={q.help ?? ""} onChange={(e) => onChange({ help: e.target.value })} placeholder="Açıklama / ipucu (isteğe bağlı, sorunun altında küçük yazıyla görünür)" className="input text-xs" />
+      <input aria-label="Soru metni" value={q.label} onChange={(e) => onChange({ label: e.target.value })} placeholder="Soru metni — örn. Bugünkü kariyerim:" className="input font-medium" />
+      <input aria-label="Açıklama / ipucu" value={q.help ?? ""} onChange={(e) => onChange({ help: e.target.value })} placeholder="Açıklama / ipucu (isteğe bağlı, sorunun altında küçük yazıyla görünür)" className="input text-xs" />
 
       {/* Seçenekler */}
       {q.goal && q.type === "radio" && (
@@ -389,7 +401,7 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
             {opts.map((o, i) => (
               <div key={o.value} className="flex items-center gap-1.5">
                 <span className="w-5 text-center text-xs text-muted">{q.type === "radio" ? "○" : "☐"}</span>
-                <input value={o.label} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} className="input py-1.5 text-sm" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOpt(); } }} />
+                <input aria-label={`Seçenek ${i + 1}`} value={o.label} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} className="input py-1.5 text-sm" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOpt(); } }} />
                 {q.goal && q.type === "radio" && (
                   <span className="flex shrink-0 items-center gap-1">
                     <span className="size-4 rounded-full border border-white shadow" style={{ background: o.color ? goalColor(o.color).hex : "#e5e7eb" }} />
@@ -400,15 +412,15 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
                   </span>
                 )}
                 {advanced && <code className="rounded bg-white px-1.5 py-0.5 text-[10px] text-muted" title="Teknik değer (cevaplarda bu saklanır)">{o.value}</code>}
-                <button type="button" onClick={() => moveOpt(i, -1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronUp" className="size-3.5" /></button>
-                <button type="button" onClick={() => moveOpt(i, 1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronDown" className="size-3.5" /></button>
-                <button type="button" onClick={() => removeOpt(i)} className="rounded p-1 text-red-600 hover:bg-white"><Icon name="x" className="size-3.5" /></button>
+                <button aria-label="Yukarı taşı" type="button" onClick={() => moveOpt(i, -1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronUp" className="size-3.5" /></button>
+                <button aria-label="Aşağı taşı" type="button" onClick={() => moveOpt(i, 1)} className="rounded p-1 text-muted hover:bg-white"><Icon name="chevronDown" className="size-3.5" /></button>
+                <button aria-label="Seçeneği sil" type="button" onClick={() => removeOpt(i)} className="rounded p-1 text-red-600 hover:bg-white"><Icon name="x" className="size-3.5" /></button>
               </div>
             ))}
           </div>
           {bulk !== null ? (
             <div className="mt-2 space-y-1.5">
-              <textarea rows={4} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder={"Her satıra bir seçenek yaz, sonra Ekle'ye bas.\nÇalışıyorum\nİş arıyorum\nÖğrenciyim"} className="input text-sm" />
+              <textarea aria-label="Seçenekler (her satıra bir seçenek)" rows={4} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder={"Her satıra bir seçenek yaz, sonra Ekle'ye bas.\nÇalışıyorum\nİş arıyorum\nÖğrenciyim"} className="input text-sm" />
               <button type="button" onClick={() => { addOpt(bulk.split("\n").map((l) => l.trim()).filter(Boolean)); setBulk(null); }} className="btn-primary btn-sm">Ekle</button>
             </div>
           ) : (
@@ -429,12 +441,12 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
           <div className="space-y-1.5">
             {(q.links ?? []).map((l, i) => (
               <div key={i} className="flex flex-wrap items-center gap-1.5">
-                <input value={l.label} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} placeholder="Buton metni" className="input w-40 py-1.5 text-sm" />
-                <input value={l.url} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })} placeholder="https://…" className="input min-w-[200px] flex-1 py-1.5 text-sm" />
-                <select value={l.style} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, style: e.target.value as "button" | "link" } : x)) })} className="input w-auto py-1.5 text-sm">
+                <input aria-label="Buton metni" value={l.label} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} placeholder="Buton metni" className="input w-40 py-1.5 text-sm" />
+                <input aria-label="Bağlantı adresi" value={l.url} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })} placeholder="https://…" className="input min-w-[200px] flex-1 py-1.5 text-sm" />
+                <select aria-label="Bağlantı görünümü" value={l.style} onChange={(e) => onChange({ links: (q.links ?? []).map((x, j) => (j === i ? { ...x, style: e.target.value as "button" | "link" } : x)) })} className="input w-auto py-1.5 text-sm">
                   <option value="button">Buton</option><option value="link">Link</option>
                 </select>
-                <button type="button" onClick={() => onChange({ links: (q.links ?? []).filter((_, j) => j !== i) })} className="rounded p-1 text-red-600 hover:bg-red-50"><Icon name="x" className="size-4" /></button>
+                <button aria-label="Bağlantıyı sil" type="button" onClick={() => onChange({ links: (q.links ?? []).filter((_, j) => j !== i) })} className="rounded p-1 text-red-600 hover:bg-red-50"><Icon name="x" className="size-4" /></button>
               </div>
             ))}
           </div>
@@ -460,11 +472,11 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
                 <div key={i} className="rounded-lg bg-surface p-2">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-xs text-muted">{i === 0 ? "Eğer" : q.showIfMode === "all" ? "ve" : "veya"}</span>
-                    <select value={c.q} onChange={(e) => { const t = all.find((x) => x.key === e.target.value); const canIn = t && hasOptions(t.type); setRule(i, { q: e.target.value, op: canIn ? (needsVal ? c.op : "in") : needsVal ? "filled" : c.op, val: [] }); }} className="input w-auto max-w-[320px] py-1 text-sm">
+                    <select aria-label="Koşul sorusu" value={c.q} onChange={(e) => { const t = all.find((x) => x.key === e.target.value); const canIn = t && hasOptions(t.type); setRule(i, { q: e.target.value, op: canIn ? (needsVal ? c.op : "in") : needsVal ? "filled" : c.op, val: [] }); }} className="input w-auto max-w-[320px] py-1 text-sm">
                       <option value="">— soru seç —</option>
                       {others.map((x) => <option key={x.key} value={x.key}>{qLabel(x)}</option>)}
                     </select>
-                    <select value={c.op} onChange={(e) => setRule(i, { op: e.target.value as SurveyCondition["op"], val: [] })} className="input w-auto py-1 text-sm">
+                    <select aria-label="Koşul türü" value={c.op} onChange={(e) => setRule(i, { op: e.target.value as SurveyCondition["op"], val: [] })} className="input w-auto py-1 text-sm">
                       {OPS.filter((o) => !o.needsVal || targetOpts.length).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <button type="button" onClick={() => onChange({ showIf: (q.showIf ?? []).filter((_, j) => j !== i) })} className="ml-auto rounded p-1 text-red-600 hover:bg-white" title="Kuralı kaldır"><Icon name="x" className="size-4" /></button>
@@ -506,7 +518,7 @@ function QuestionCard({ q, number, all, numberOf, sections, onChange, onMove, on
         {advanced && (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted">Soru anahtarı</span>
-            <input value={q.key} onChange={(e) => onChange({ key: e.target.value.replace(/[^a-z0-9_]/g, "") })} className="input w-40 py-1 font-mono text-xs" />
+            <input aria-label="Soru anahtarı" value={q.key} onChange={(e) => onChange({ key: e.target.value.replace(/[^a-z0-9_]/g, "") })} className="input w-40 py-1 font-mono text-xs" />
             <span className="text-amber-700">Anahtarı değiştirirsen bu soruya verilmiş eski cevaplar sonuçlarda eşleşmez.</span>
           </div>
         )}

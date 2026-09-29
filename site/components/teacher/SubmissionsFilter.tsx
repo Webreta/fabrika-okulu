@@ -46,16 +46,19 @@ export function SubmissionsFilter({ base, sekme, courses, statuses, initial }: {
     <form onSubmit={(e) => { e.preventDefault(); apply({}); }} className="mb-4 flex flex-wrap items-center gap-2">
       <div className="relative min-w-56 flex-1 sm:max-w-sm">
         <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} className="input pl-9" placeholder="Öğrenci adı, e-posta ya da başlık…" />
+        <input aria-label="Öğrenci adı, e-posta ya da başlık" value={q} onChange={(e) => setQ(e.target.value)} className="input pl-9" placeholder="Öğrenci adı, e-posta ya da başlık…" />
       </div>
-      <select value={course} onChange={(e) => { setCourse(e.target.value); apply({ course: e.target.value }); }} className="input w-auto">
+      <select aria-label="Eğitim" value={course} onChange={(e) => { setCourse(e.target.value); apply({ course: e.target.value }); }} className="input w-full max-w-full sm:w-auto">
         <option value="">Tüm kurslar</option>
         {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
       </select>
-      <select value={durum} onChange={(e) => { setDurum(e.target.value); apply({ durum: e.target.value }); }} className="input w-auto">
-        <option value="">Tüm durumlar</option>
-        {statuses.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-      </select>
+      {/* Görev teslimlerinde durum yoktur (puanlama yapılmaz); durum süzgeci yalnızca seçenek varsa görünür */}
+      {statuses.length > 0 && (
+        <select aria-label="Durum" value={durum} onChange={(e) => { setDurum(e.target.value); apply({ durum: e.target.value }); }} className="input w-full max-w-full sm:w-auto">
+          <option value="">Tüm durumlar</option>
+          {statuses.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      )}
       {active && (
         <button type="button" onClick={() => { setQ(""); setCourse(""); setDurum(""); router.push(sekme ? `${base}?sekme=${sekme}` : base); }} className="btn-secondary btn-sm">
           <Icon name="x" className="size-3.5" /> Temizle

@@ -5,8 +5,11 @@ import { certificateTemplates, courses } from "@/db/schema";
 import { DEFAULT_CERT_FIELDS, DEFAULT_CERT_RULE } from "@/lib/certificates";
 import { PageTitle } from "@/components/panel/ui";
 import { CertificateDesigner } from "@/components/admin/CertificateDesigner";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function CertificateEditPage({ params }: { params: Promise<{ id: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { id } = await params;
   const cs = await db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
   if (id === "yeni") {

@@ -5,8 +5,11 @@ import { PageTitle } from "@/components/panel/ui";
 import { RoutesManager } from "@/components/admin/RoutesManager";
 import { listRoutes } from "@/lib/data/routes";
 import { effectivePrice } from "@/lib/course-logic";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function RoutesPage() {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const [rs, list] = await Promise.all([
     listRoutes({ includeInactive: true }),
     db.select().from(courses).orderBy(asc(courses.title)),

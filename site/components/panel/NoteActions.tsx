@@ -20,7 +20,7 @@ export function NoteActions({ id, text, href }: { id: number; text: string; href
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(false)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="mb-2 font-bold text-navy-800">Notu düzenle</p>
-            <textarea rows={5} value={val} onChange={(e) => setVal(e.target.value)} maxLength={1000} className="input" /><p className="mt-1 text-right text-[11px] text-muted">{val.length}/1000</p>
+            <textarea aria-label="Not" rows={5} value={val} onChange={(e) => setVal(e.target.value)} maxLength={1000} className="input" /><p className="mt-1 text-right text-[11px] text-muted">{val.length}/1000</p>
             <div className="mt-3 flex justify-end gap-2"><button onClick={() => setEdit(false)} className="btn-secondary btn-sm">Vazgeç</button><button disabled={pending} onClick={() => start(async () => { await saveNote({ id, text: val }); setEdit(false); router.refresh(); })} className="btn-primary btn-sm">Kaydet</button></div>
           </div>
         </div>
@@ -41,7 +41,7 @@ export function GeneralNoteForm() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <p className="mb-2 font-bold text-navy-800">Genel not</p>
-            <textarea autoFocus rows={5} value={val} onChange={(e) => setVal(e.target.value)} placeholder="Notunu yaz…" className="input" />
+            <textarea aria-label="Notunu yaz" autoFocus rows={5} value={val} onChange={(e) => setVal(e.target.value)} placeholder="Notunu yaz…" className="input" />
             <div className="mt-3 flex justify-end gap-2"><button onClick={() => setOpen(false)} className="btn-secondary btn-sm">Vazgeç</button><button disabled={pending || !val.trim()} onClick={() => start(async () => { await saveNote({ text: val }); setOpen(false); setVal(""); router.refresh(); })} className="btn-primary btn-sm">Kaydet</button></div>
           </div>
         </div>

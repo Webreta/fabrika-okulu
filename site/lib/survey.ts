@@ -111,6 +111,19 @@ export async function pendingSurveyFor(user: SessionUser) {
   return pending[0] ?? null;
 }
 
+/**
+ * Zorunlu test kapısı: yayında + "zorunlu" işaretli olup öğrencinin henüz tamamlamadığı ilk test (en eski yayın önce).
+ * Varsa öğrenci panelde yalnızca bu testin sayfasını açabilir. Eğitmen/yönetici etkilenmez.
+ */
+export async function requiredSurveyFor(user: Pick<SessionUser, "id" | "role">) {
+  if (user.role !== "student") return null;
+  const list = (await listSurveys(true)).filter((s) => s.required);
+  if (!list.length) return null;
+  const done = await completedSurveyKeys(user.id);
+  const pending = list.filter((s) => !done.has(s.key)).reverse();
+  return pending[0] ? { id: pending[0].id, title: pending[0].title, intro: pending[0].intro } : null;
+}
+
 export async function getSurveyAnswers(userId: number, surveyKey: string) {
   const rows = await db
     .select()
@@ -121,7 +134,24 @@ export async function getSurveyAnswers(userId: number, surveyKey: string) {
   return out;
 }
 
-export async function saveSurvey(userId: number, survey: Survey, raw: Record<string, string | string[]>) {
+/**
+ * Görünmeyen soruların cevaplarını ayıklar. Zincirleme çalışır: gizlenen bir sorunun cevabı silinince
+ * ona bağlı başka bir soru da gizlenebilir; değişiklik kalmayana kadar yinelenir.
+ */
+export function pruneHiddenAnswers(survey: Pick<Survey, "sections" | "questions">, answers: Record<string, string | string[]>) {
+  let a = { ...answers };
+  for (let i = 0; i <= survey.questions.length; i++) {
+    const visible = new Set(visibleQuestions(survey, a).map((q) => q.key));
+    const next = Object.fromEntries(Object.entries(a).filter(([k]) => visible.has(k)));
+    if (Object.keys(next).length === Object.keys(a).length) break;
+    a = next;
+  }
+  return a;
+}
+
+export async function saveSurvey(userId: number, survey: Survey, input: Record<string, string | string[]>) {
+  // Gizli soruya ait (formda kalmış) cevap, başka bir soruyu görünür/zorunlu yapmasın
+  const raw = pruneHiddenAnswers(survey, input);
   const missing = missingRequired(survey, raw);
   if (missing.length) return { error: `"${missing[0].label}" sorusu zorunlu.` };
   const visible = visibleQuestions(survey, raw);
@@ -179,12 +209,23 @@ export async function studentGoalFlags(userId: number): Promise<GoalFlag[]> {
   });
 }
 
-/** Yalnızca ana sorunun cevabını değiştirir (test tek seferlik olsa bile); diğer cevaplara dokunmaz */
+/**
+ * Yalnızca ana sorunun cevabını değiştirir (test tek seferlik olsa bile). Görünen diğer cevaplara dokunmaz;
+ * yeni hedefle birlikte gizlenen koşullu soruların eski cevapları silinir (sonuçlarda ve dağılımda kalmasın).
+ */
 export async function setGoalAnswer(userId: number, survey: Survey, value: string) {
   const q = goalQuestion(survey);
   if (!q) return { error: "Bu testte hedef sorusu yok." };
   if (!q.options?.some((o) => o.value === value)) return { error: "Geçersiz seçenek." };
   await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key), eq(surveyAnswers.questionKey, q.key)));
   await db.insert(surveyAnswers).values({ userId, surveyKey: survey.key, questionKey: q.key, value });
+  const all = await getSurveyAnswers(userId, survey.key);
+  const kept = pruneHiddenAnswers(survey, all);
+  // Tanımı silinmiş sorulara ait eski kayıtlara dokunulmaz; yalnızca ankette duran ama artık görünmeyen sorular temizlenir
+  const known = new Set(survey.questions.map((x) => x.key));
+  const hidden = Object.keys(all).filter((k) => known.has(k) && !(k in kept));
+  if (hidden.length) {
+    await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key), inArray(surveyAnswers.questionKey, hidden)));
+  }
   return { ok: true };
 }

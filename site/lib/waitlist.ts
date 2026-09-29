@@ -2,32 +2,43 @@ import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, periodWaitlist, periods, periodEnrollments, users } from "@/db/schema";
-import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
+import { sendMail, emailTemplate, siteUrl, escapeHtml } from "@/lib/mailer";
 import { notifyUser } from "@/lib/notify";
 import { openPeriods, getCoursePeriods } from "@/lib/data/courses";
 import { fmtRange } from "@/lib/format";
+import { heldSeatsSql } from "@/lib/orders";
 
 /** Kayıt açık ve boş yeri olan dönemler */
 export async function availablePeriods(courseId: number) {
   const list = openPeriods(await getCoursePeriods(courseId));
-  return list.filter((p) => p.enrolled < p.capacity);
+  return list.filter((p) => p.enrolled + p.held < p.capacity);
 }
 
-/** Dönemin anlık doluluk durumu (sepet, ödeme ve kayıt aşamalarında ortak kontrol) */
-export async function periodCapacity(periodId: number, courseId?: number) {
+/**
+ * Dönemin anlık doluluk durumu (sepet, ödeme ve kayıt aşamalarında ortak kontrol).
+ * held: bekleyen siparişlerin tuttuğu koltuklar (lib/orders.ts heldSeatsSql); doluluk hesabına girer.
+ */
+export async function periodCapacity(periodId: number, courseId?: number, excludeUserId?: number | null) {
   const [p] = await db
     .select({
       id: periods.id,
       courseId: periods.courseId,
       name: periods.name,
       capacity: periods.capacity,
+      startDate: periods.startDate,
+      startTime: periods.startTime,
+      endDate: periods.endDate,
+      enrollmentDeadline: periods.enrollmentDeadline,
+      schedule: periods.schedule,
       enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
+      held: heldSeatsSql(excludeUserId).mapWith(Number),
     })
     .from(periods)
     .where(courseId ? and(eq(periods.id, periodId), eq(periods.courseId, courseId)) : eq(periods.id, periodId))
     .limit(1);
   if (!p) return null;
-  return { ...p, full: p.enrolled >= p.capacity, left: Math.max(0, p.capacity - p.enrolled) };
+  const taken = p.enrolled + p.held;
+  return { ...p, full: taken >= p.capacity, left: Math.max(0, p.capacity - taken) };
 }
 
 /** Listeye ekle (kurs + e-posta tekil). Daha önce haber verilmişse tekrar beklemeye alınır. */
@@ -107,11 +118,11 @@ export async function notifyWaitlistIfOpen(courseId: number): Promise<number> {
   const isMeeting = c.type === "meeting";
   const list = free
     .slice(0, 6)
-    .map((p) => `<li><b>${p.name}</b> · ${isMeeting ? p.startDate : fmtRange(p.startDate, p.endDate)} · ${p.capacity - p.enrolled} kişilik yer</li>`)
+    .map((p) => `<li><b>${escapeHtml(p.name)}</b> · ${isMeeting ? p.startDate : fmtRange(p.startDate, p.endDate)} · ${p.capacity - p.enrolled - p.held} kişilik yer</li>`)
     .join("");
   const html = emailTemplate({
     title: isMeeting ? "Yeni görüşme saati açıldı" : "Kontenjan açıldı!",
-    html: `<p><b>${c.title}</b> için ${isMeeting ? "yeni görüşme saatleri" : "kayıt açık ve boş yeri olan dönemler"} var. Yer sınırlı; kaydını hemen tamamlayabilirsin.</p><ul>${list}</ul><p style="color:#64748b;font-size:13px">Bu e-postayı "tekrar açılınca haber ver" dediğin için aldın.</p>`,
+    html: `<p><b>${escapeHtml(c.title)}</b> için ${isMeeting ? "yeni görüşme saatleri" : "kayıt açık ve boş yeri olan dönemler"} var. Yer sınırlı; kaydını hemen tamamlayabilirsin.</p><ul>${list}</ul><p style="color:#64748b;font-size:13px">Bu e-postayı "tekrar açılınca haber ver" dediğin için aldın.</p>`,
     buttonText: "Hemen kayıt ol",
     buttonUrl: url,
   });
@@ -148,7 +159,7 @@ export async function notifyComingSoonOpened(courseId: number): Promise<number> 
   const url = siteUrl(`/program/${c.slug}`);
   const html = emailTemplate({
     title: "Beklediğin eğitim açıldı!",
-    html: `<p><b>${c.title}</b> artık kayıt alıyor. İlk sen haberdar olanlardansın; yerini hemen ayırtabilirsin.</p><p style="color:#64748b;font-size:13px">Bu e-postayı "açılınca haber ver" dediğin için aldın.</p>`,
+    html: `<p><b>${escapeHtml(c.title)}</b> artık kayıt alıyor. İlk sen haberdar olanlardansın; yerini hemen ayırtabilirsin.</p><p style="color:#64748b;font-size:13px">Bu e-postayı "açılınca haber ver" dediğin için aldın.</p>`,
     buttonText: "Eğitime git",
     buttonUrl: url,
   });

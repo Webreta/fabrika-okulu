@@ -22,7 +22,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları (tüm kurslar)" />
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           <a
             href={`/api/admin/disa-aktar/gonderimler?tur=gorev${q}`}
             className="btn-secondary flex items-center gap-2"
@@ -46,21 +46,21 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
         sekme={sekme}
         courses={ov.courses.map((c) => ({ id: c.id, title: c.title }))}
         statuses={sekme === "sinav"
-          ? [{ value: "pending_review", label: "Değerlendirme bekliyor" }, { value: "passed", label: "Geçti" }, { value: "failed", label: "Kaldı" }, { value: "completed", label: "Tamamlandı (hepsi)" }]
-          : [{ value: "pending", label: "Puanlanmadı" }, { value: "graded", label: "Puanlandı" }]}
+          ? [{ value: "passed", label: "Geçti" }, { value: "failed", label: "Kaldı" }, { value: "completed", label: "Tamamlandı (hepsi)" }]
+          : []}
         initial={{ course: courseId ? String(courseId) : "", q: search, durum }}
       />
       <Tabs items={[{ href: `/admin/gonderimler?sekme=gorev${q}`, label: "Görev teslimleri", count: subs.length, active: sekme === "gorev" }, { href: `/admin/gonderimler?sekme=sinav${q}`, label: "Sınav sonuçları", count: attempts.length, active: sekme === "sinav" }]} />
       {sekme === "gorev" ? (
         <div className="grid gap-3 lg:grid-cols-2">
           {subs.length === 0 ? <p className="card text-sm text-muted">{qs ? "Filtreye uyan gönderim yok." : "Gönderim yok."}</p> : subs.map((r) => (
-            <SubmissionCard key={r.s.id} row={{ id: r.s.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.a.title, course: r.courseTitle, text: r.s.text, files: r.s.files, voices: r.s.voices, status: r.s.status, score: r.s.score, feedback: r.s.feedback, at: r.s.submittedAt.toISOString(), isGraded: r.a.isGraded, maxScore: r.a.maxScore, transcript: r.s.voiceTranscript }} />
+            <SubmissionCard key={r.s.id} row={{ id: r.s.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.a.title, course: r.courseTitle, text: r.s.text, files: r.s.files, voices: r.s.voices, at: r.s.submittedAt.toISOString(), transcript: r.s.voiceTranscript }} />
           ))}
         </div>
       ) : (
         <div className="space-y-3">
           {attempts.length === 0 ? <p className="card text-sm text-muted">{qs ? "Filtreye uyan sonuç yok." : "Sonuç yok."}</p> : attempts.map((r) => (
-            <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString() }} />
+            <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString(), passed: r.at.passed, voided: r.at.voided, passScore: r.q.passScore }} />
           ))}
         </div>
       )}

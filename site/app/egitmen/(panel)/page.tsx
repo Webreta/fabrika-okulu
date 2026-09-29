@@ -14,7 +14,7 @@ export default async function TeacherHome() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Kpi label="Eğitim" value={ov.courses.length} icon="book" href="/egitmen/kurslarim" />
         <Kpi label="Toplam öğrenci" value={ov.studentCount} icon="users" color="sky" href="/egitmen/ogrenciler" />
-        <Kpi label="Görev gönderimi" value={ov.pendingSubs} icon="task" color="amber" href="/egitmen/gonderim#gorev" />
+        <Kpi label="Görev teslimi" value={ov.submissionCount} icon="task" color="amber" href="/egitmen/gonderim#gorev" />
         <Kpi label="Bekleyen soru" value={ov.pendingQuestions} icon="message" color={ov.pendingQuestions ? "red" : "green"} href="/egitmen/sorular" />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -55,7 +55,6 @@ export default async function TeacherHome() {
             <p className="flex justify-between"><span className="text-muted">Toplam eğitim</span><b>{ov.courses.length}</b></p>
             <p className="flex justify-between"><span className="text-muted">Yayında</span><b>{ov.courses.filter((c) => c.status === "published").length}</b></p>
             <p className="flex justify-between"><span className="text-muted">Öğrenci</span><b>{ov.studentCount}</b></p>
-            <p className="flex justify-between"><span className="text-muted">Değerlendirme bekleyen sınav</span><b>{ov.pendingQuizzes}</b></p>
           </div>
         </aside>
       </div>

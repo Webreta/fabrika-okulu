@@ -4,13 +4,15 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { AuthLayout } from "@/components/panel/AuthLayout";
 import { getSetting } from "@/lib/settings";
 import { LoginForm } from "@/components/panel/AuthForms";
+import { safeInternalPath } from "@/lib/safe-path";
 
 export const metadata = { title: "Giriş Yap" };
 
 export default async function PanelLoginPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {
   const user = await getCurrentUser();
   const { r } = await searchParams;
-  if (user) redirect(r && r.startsWith("/") ? r : "/panel");
+  // Yalnızca site içi yol (//baska-site gibi adresler panele düşer)
+  if (user) redirect(safeInternalPath(r, "/panel"));
   const panelSettings = await getSetting("panel");
   return (
     <AuthLayout
@@ -21,7 +23,8 @@ export default async function PanelLoginPage({ searchParams }: { searchParams: P
       aside="Kariyer gelişiminde yol arkadaşın."
       bullets={["Esnek ve takvimli programlar", "Mentor eğitmenle canlı oturumlar", "Görev, sınav ve sertifika takibi"]}
     >
-      <Suspense><LoginForm area="panel" registerHref="/panel/kayit" forgotHref="/panel/sifre" /></Suspense>
+      {/* Üyelik kayıtları kapalıysa "Üye ol" bağlantısı gösterilmez */}
+      <Suspense><LoginForm area="panel" registerHref={panelSettings.registrationOpen ? "/panel/kayit" : undefined} forgotHref="/panel/sifre" /></Suspense>
     </AuthLayout>
   );
 }

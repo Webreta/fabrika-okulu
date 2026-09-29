@@ -4,8 +4,11 @@ import { contactMessages } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
 import { PageTitle } from "@/components/panel/ui";
 import { MessageActions } from "@/components/admin/MessageActions";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function MessagesPage() {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const list = await db.select().from(contactMessages).orderBy(desc(contactMessages.id)).limit(200);
   return (
     <>

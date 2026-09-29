@@ -5,13 +5,19 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notes, lessons } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isId } from "@/lib/format";
 
 export type NoteInput = { id?: number; courseId?: number | null; lessonId?: number | null; seconds?: number | null; text: string };
 
 export async function saveNote(input: NoteInput) {
   const user = await getCurrentUser();
   if (!user) return { ok: false as const, error: "Giriş gerekli." };
-  const text = (input.text ?? "").trim();
+  // Kimlikler istemciden gelir; geçersiz değer (metin, ondalık) sunucu hatasına dönüşmesin
+  if (!input || (input.id != null && !isId(input.id)) || (input.lessonId != null && !isId(input.lessonId)) || (input.courseId != null && !isId(input.courseId))) {
+    return { ok: false as const, error: "Not kaydedilemedi." };
+  }
+  const seconds = typeof input.seconds === "number" && isFinite(input.seconds) && input.seconds >= 0 ? Math.floor(input.seconds) : null;
+  const text = (typeof input?.text === "string" ? input.text : "").trim();
   if (!text) return { ok: false as const, error: "Not boş olamaz." };
   if (text.length > 1000) return { ok: false as const, error: "Not en fazla 1000 karakter olabilir." };
   let lessonTitle = "";
@@ -20,7 +26,7 @@ export async function saveNote(input: NoteInput) {
     const [l] = await db.select({ title: lessons.title, courseId: lessons.courseId }).from(lessons).where(eq(lessons.id, input.lessonId)).limit(1);
     if (l) { lessonTitle = l.title; courseId = l.courseId; }
   }
-  const v = { userId: user.id, courseId, lessonId: input.lessonId ?? null, lessonTitle, seconds: input.seconds ?? null, text, updatedAt: new Date() };
+  const v = { userId: user.id, courseId, lessonId: input.lessonId ?? null, lessonTitle, seconds, text, updatedAt: new Date() };
   let id = input.id;
   if (!id && courseId) {
     // Bir eğitim için en fazla 100 not
@@ -40,7 +46,7 @@ export async function saveNote(input: NoteInput) {
 
 export async function deleteNote(id: number) {
   const user = await getCurrentUser();
-  if (!user) return { ok: false as const };
+  if (!user || !isId(id)) return { ok: false as const };
   await db.delete(notes).where(and(eq(notes.id, id), eq(notes.userId, user.id)));
   revalidatePath("/panel/notlar");
   return { ok: true as const };
@@ -48,7 +54,7 @@ export async function deleteNote(id: number) {
 
 export async function listCourseNotes(courseId: number) {
   const user = await getCurrentUser();
-  if (!user) return [];
+  if (!user || !isId(courseId)) return [];
   const rows = await db.select().from(notes).where(and(eq(notes.userId, user.id), eq(notes.courseId, courseId))).orderBy(desc(notes.createdAt));
   return rows.map((n) => ({ id: n.id, lessonId: n.lessonId, lessonTitle: n.lessonTitle, seconds: n.seconds, text: n.text, createdAt: n.createdAt.toISOString() }));
 }

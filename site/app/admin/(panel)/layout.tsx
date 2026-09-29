@@ -9,11 +9,13 @@ import { Icon } from "@/components/site/Icon";
 import { AdminNav, type AdminNavItem } from "@/components/admin/AdminNav";
 import { SeenTracker } from "@/components/admin/SeenTracker";
 import { newCounts } from "@/lib/admin-seen";
+import { maintenanceInfo } from "@/lib/maintenance";
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await requireAdmin();
   const cnt = async (q: Promise<{ n: number }[]>) => (await q)[0]?.n ?? 0;
   const fresh = await newCounts(user.id);
+  const bakim = await maintenanceInfo();
   const [pq, pd, pm, po, ps] = await Promise.all([
     cnt(db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(questions).where(eq(questions.status, "pending"))),
     cnt(db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(documents).where(eq(documents.status, "pending"))),
@@ -69,10 +71,15 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
         <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 lg:hidden">
           <Link href="/admin"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={100} height={114} className="h-10 w-auto" /></Link>
           <details className="relative">
-            <summary className="cursor-pointer list-none rounded-lg p-2 hover:bg-surface"><Icon name="menu" className="size-6 text-navy-800" /></summary>
+            <summary aria-label="Menü" className="cursor-pointer list-none rounded-lg p-2 hover:bg-surface"><Icon name="menu" className="size-6 text-navy-800" /></summary>
             <nav className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-line bg-white p-2 shadow-xl"><AdminNav items={items} /></nav>
           </details>
         </header>
+        {bakim.enabled && (
+          <Link href="/admin/ayarlar?sekme=bakim" className="block bg-amber-400 px-4 py-2 text-center text-sm font-semibold text-[#0b1220] hover:bg-amber-300">
+            Bakım modu açık: site ziyaretçilere kapalı, yalnızca yöneticiler görebiliyor. Kapatmak için tıkla →
+          </Link>
+        )}
         <main className="admin-main flex-1 p-4 lg:p-8">{children}</main>
         <SeenTracker hasNew={fresh} />
       </div>

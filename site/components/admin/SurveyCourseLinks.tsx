@@ -49,7 +49,7 @@ export function SurveyCourseLinks({ surveyId, courses, initial, published }: { s
       </div>
       {msg && <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{msg.text}</p>}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Eğitim ara…" className="input max-w-xs" />
+        <input aria-label="Eğitim ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Eğitim ara…" className="input max-w-xs" />
         <span className="text-xs text-muted">{sel.size} eğitim seçili</span>
         {sel.size > 0 && <button type="button" onClick={() => { setSel(new Set()); setMsg(null); }} className="text-xs font-semibold text-red-600 hover:underline">Tümünü kaldır</button>}
       </div>

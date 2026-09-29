@@ -1,3 +1,4 @@
+import { CERT_CONDITIONS } from "@/lib/certificates";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
 import { certificateFeed, teacherOverview } from "@/lib/data/teacher";
@@ -15,7 +16,7 @@ export default async function AdminIssueCertificatesPage({ searchParams }: { sea
       <PageTitle title="Sertifikalar" />
       <Tabs items={[{ href: "/admin/sertifikalar", label: "Tasarımlar", active: false }, { href: "/admin/sertifikalar/ver", label: "Sertifika ver", active: true }, { href: "/admin/sertifikalar?sekme=verilenler", label: "Verilen sertifikalar", active: false }]} />
       <form className="mb-4 flex gap-2" method="get">
-        <select name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm eğitimler</option>{ov.courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
+        <select aria-label="Eğitim" name="course" defaultValue={courseId ?? ""} className="input w-auto"><option value="">Tüm eğitimler</option>{ov.courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
         <button className="btn-secondary btn-sm">Filtrele</button>
       </form>
       {feed.templates.length === 0 ? (
@@ -34,7 +35,7 @@ export default async function AdminIssueCertificatesPage({ searchParams }: { sea
                   <td>
                     <div className="flex flex-wrap items-center gap-2">
                       {r.issued.map((i) => <span key={i.id} className="flex items-center gap-1 text-xs"><a href={`/sertifika/${i.token}`} target="_blank" className="text-sky-600 underline">{i.title}</a><span className="date-chip">{fmtDate(i.issuedAt)}</span><RevokeCertButton id={i.id} /></span>)}
-                      <IssueCertButton userId={r.userId} courseId={r.courseId} eligible={r.eligible.map((t) => ({ id: t.id, title: t.title }))} />
+                      <IssueCertButton userId={r.userId} courseId={r.courseId} eligible={r.eligible.map((t) => ({ id: t.id, title: t.title, note: t.met ? "" : `Koşul henüz sağlanmadı: ${CERT_CONDITIONS[t.rule.condition]}` }))} />
                     </div>
                   </td>
                 </tr>

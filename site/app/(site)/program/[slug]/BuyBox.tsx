@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { addToCart } from "@/app/actions/cart";
 import { Icon } from "@/components/site/Icon";
@@ -11,17 +11,29 @@ import { WaitlistButton } from "@/components/site/WaitlistButton";
 type P = { id: number; name: string; range: string; left: number; full: boolean; schedule: number; date?: string; time?: string; sessions?: string[] };
 
 export function BuyBox({
-  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0, loggedIn = false, waitlisted = false, userEmail = "", locked = null,
-}: { courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number; loggedIn?: boolean; waitlisted?: boolean; userEmail?: string; locked?: { message: string; href: string; cta: string } | null }) {
+  courseId, isFree, periodBased, periods, buttonType, whatsappUrl, meeting = false, minutes = 0, loggedIn = false, waitlisted = false, userEmail = "", locked = null, preorder = false, initialPeriodId = null, autoSubmit = false,
+}: { preorder?: boolean; /** Girişten önce seçilmiş dönem/koltuk (hâlâ açıksa ön seçili gelir) */ initialPeriodId?: number | null; /** Misafirken başlatılan ücretsiz kayıt girişten sonra kendiliğinden tamamlanır */ autoSubmit?: boolean; courseId: number; isFree: boolean; periodBased: boolean; periods: P[]; buttonType: string; whatsappUrl: string; meeting?: boolean; minutes?: number; loggedIn?: boolean; waitlisted?: boolean; userEmail?: string; locked?: { message: string; href: string; cta: string } | null }) {
   // Görüşmede koltuk elle seçilir (ön seçim yok); dönemde ilk boş dönem ön seçilidir
-  const [periodId, setPeriodId] = useState<number | null>(meeting ? null : periods.find((p) => !p.full)?.id ?? null);
+  const [periodId, setPeriodId] = useState<number | null>(periods.find((p) => p.id === initialPeriodId && !p.full)?.id ?? (meeting ? null : periods.find((p) => !p.full)?.id ?? null));
   const [open, setOpen] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  const resumed = useRef(false);
+  const [resuming, setResuming] = useState(false);
   const sel = periods.find((p) => p.id === periodId);
   // Kayıt açık dönem yok ya da hepsi dolu: satın alma yerine "tekrar açılınca haber ver"
   const noSeat = periodBased && (periods.length === 0 || periods.every((p) => p.full));
   const allFull = periodBased && periods.length > 0 && periods.every((p) => p.full);
   const showCart = buttonType !== "whatsapp" && !noSeat && !locked;
   const showWa = (buttonType === "whatsapp" || buttonType === "both") && !!whatsappUrl;
+
+  // Yarım kalan kayıt: form bir kez kendiliğinden gönderilir (dönemli üründe seçili dönem hâlâ açıksa)
+  useEffect(() => {
+    if (!autoSubmit || resumed.current || !showCart || (periodBased && !periodId)) return;
+    resumed.current = true;
+    setResuming(true);
+    form.current?.requestSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSubmit]);
 
   return (
     <div className="mt-4 space-y-3">
@@ -101,11 +113,11 @@ export function BuyBox({
         <WaitlistButton courseId={courseId} periodId={periods[0]?.id ?? null} loggedIn={loggedIn} waitlisted={waitlisted} userEmail={userEmail} meeting={meeting} />
       )}
       {showCart && (
-        <form action={addToCart}>
+        <form ref={form} action={addToCart}>
           <input type="hidden" name="courseId" value={courseId} />
           {periodId && <input type="hidden" name="periodId" value={periodId} />}
-          <button disabled={periodBased && !periodId} className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-60">
-            <Icon name={isFree ? "library" : "cart"} className="size-4" /> {meeting && !periodId ? "Önce bir koltuk seç" : isFree ? "Kitaplığa Ekle" : "Hemen Kayıt Ol"}
+          <button disabled={(periodBased && !periodId) || resuming} className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-60">
+            <Icon name={isFree ? "library" : "cart"} className="size-4" /> {resuming ? "Kaydın tamamlanıyor…" : meeting && !periodId ? "Önce bir koltuk seç" : preorder ? "Erken Kayıt Ol" : isFree ? "Kitaplığa Ekle" : "Hemen Kayıt Ol"}
           </button>
         </form>
       )}

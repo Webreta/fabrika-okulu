@@ -39,7 +39,7 @@ export function FavoriteButton({ courseId, initial, variant = "overlay", positio
         aria-pressed={fav}
         aria-label={fav ? "Favorilerden çıkar" : "Favorilere ekle"}
         title={fav ? "Favorilerden çıkar" : "Favorilere ekle"}
-        className={`flex size-9 items-center justify-center rounded-full shadow transition disabled:opacity-60 ${fav ? "bg-rose-500 text-white" : "bg-white/95 text-navy-800 hover:text-rose-500"}`}
+        className={`flex size-10 items-center justify-center rounded-full shadow transition disabled:opacity-60 md:size-9 ${fav ? "bg-rose-500 text-white" : "bg-white/95 text-navy-800 hover:text-rose-500"}`}
       >
         <Icon name="heart" className={`size-4 ${fav ? "fill-current" : ""}`} />
       </button>

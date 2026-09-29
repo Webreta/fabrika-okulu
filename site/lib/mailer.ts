@@ -6,14 +6,12 @@ import { users } from "@/db/schema";
 import { getSetting } from "@/lib/settings";
 import { categoryOfMailType, wantsEmail } from "@/lib/notify-prefs";
 
+// Yalnızca gerçekten gönderilen türler listelenir (görev/sınav puanlama yok; o şablonlar kaldırıldı)
 export const MAIL_TYPES = {
   welcome: { title: "Kayıt hoş geldin maili", to: "öğrenci" },
   new_assignment: { title: "Yeni görev atandığında", to: "kursun öğrencileri" },
   assignment_submitted: { title: "Görev teslim edildiğinde", to: "yönetici + eğitmen" },
-  assignment_graded: { title: "Görev notlandığında", to: "öğrenci" },
   new_quiz: { title: "Yeni sınav atandığında", to: "kursun öğrencileri" },
-  quiz_completed: { title: "Sınav tamamlandığında", to: "yönetici" },
-  quiz_graded: { title: "Sınav değerlendirildiğinde", to: "öğrenci" },
   question_asked: { title: "Öğrenci soru sorduğunda", to: "yönetici + eğitmen" },
   question_answered: { title: "Soru cevaplandığında", to: "öğrenci" },
   event_reminder: { title: "Etkinlik hatırlatması (1 gün önce)", to: "öğrenci" },
@@ -25,6 +23,7 @@ export const MAIL_TYPES = {
   daily_report: { title: "Günlük rapor", to: "yönetici + eğitmenler" },
   waitlist: { title: "Kontenjan/yeni dönem açıldığında (bekleme listesi)", to: "haber ver diyenler" },
   favorite_sale: { title: "Favori eğitimde indirim başladığında", to: "favorileyen öğrenciler" },
+  preorder_open: { title: "Erken kayıt yapılan eğitim açıldığında", to: "erken kayıt yapan öğrenciler" },
   password_reset: { title: "Şifre sıfırlama", to: "kullanıcı" },
   contact: { title: "İletişim formu", to: "yönetici" },
 } as const;
@@ -50,12 +49,35 @@ async function transporter() {
   };
 }
 
+/** Kullanıcının yazdığı metin e-posta gövdesine girmeden önce HTML'den arındırılır (ad, mesaj, başlık, not…) */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Konu ve adres başlıkları tek satır olmalı: satır sonu başlık eklemeye (header injection) yol açar */
+const oneLine = (value: string, max = 250) => value.replace(/[\r\n\t\0]+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, max);
+
+/** E-postadaki bağlantı adresi: yalnızca http(s), mailto ve site içi yol; diğerleri (javascript: vb.) boş döner */
+export function safeMailUrl(value: unknown): string {
+  const u = String(value ?? "").trim();
+  return /^(https?:\/\/|mailto:|\/(?!\/))/i.test(u) ? escapeHtml(u) : "";
+}
+
 export function siteUrl(path = "") {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}${path}`;
 }
 
-/** Marka şablonu (lacivert başlık, logo, buton) */
+/**
+ * Marka şablonu (lacivert başlık, logo, buton).
+ * title ve buttonText düz metindir, burada kaçışlanır (çağıran ayrıca kaçışlamaz). html gövdesi HTML'dir:
+ * içine konan kullanıcı metni çağıran tarafta escapeHtml'den geçirilmelidir.
+ */
 export function emailTemplate(opts: {
   title: string;
   html: string;
@@ -65,14 +87,14 @@ export function emailTemplate(opts: {
   const logo = siteUrl("/img/site/logo.webp");
   const btn =
     opts.buttonText && opts.buttonUrl
-      ? `<p style="margin:26px 0 8px"><a href="${opts.buttonUrl}" style="display:inline-block;background:#142b56;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">${opts.buttonText}</a></p>`
+      ? `<p style="margin:26px 0 8px"><a href="${safeMailUrl(opts.buttonUrl)}" style="display:inline-block;background:#142b56;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">${escapeHtml(opts.buttonText)}</a></p>`
       : "";
   return `<!doctype html><html lang="tr"><body style="margin:0;background:#f3f5f9;font-family:Inter,Segoe UI,Arial,sans-serif;color:#1b2437">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:28px 12px"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e3e8ef">
 <tr><td style="background:#142b56;padding:22px 28px;text-align:center"><img src="${logo}" alt="Fabrika Okulu" style="height:52px;filter:brightness(0) invert(1)"></td></tr>
 <tr><td style="padding:28px">
-<h1 style="margin:0 0 14px;font-size:20px;color:#142b56">${opts.title}</h1>
+<h1 style="margin:0 0 14px;font-size:20px;color:#142b56">${escapeHtml(opts.title)}</h1>
 <div style="font-size:15px;line-height:1.6">${opts.html}</div>
 ${btn}
 </td></tr>
@@ -112,7 +134,8 @@ export async function sendMail(opts: {
   const templates = await getSetting("mailTemplates");
   const tpl = templates[opts.type];
   if (tpl && tpl.enabled === false && !TRANSACTIONAL.includes(opts.type)) return false;
-  const subject = tpl?.subject?.trim() ? tpl.subject : opts.subject;
+  const subject = oneLine(tpl?.subject?.trim() ? tpl.subject : opts.subject);
+  const replyTo = opts.replyTo ? oneLine(opts.replyTo, 200) : undefined;
 
   try {
     await tp.t.sendMail({
@@ -120,7 +143,7 @@ export async function sendMail(opts: {
       to: recipients,
       subject,
       html: opts.html,
-      replyTo: opts.replyTo,
+      replyTo,
     });
     return true;
   } catch (e) {
@@ -146,7 +169,7 @@ export async function sendTestMail(to: string) {
     subject: "Fabrika Okulu SMTP testi",
     html: emailTemplate({
       title: "SMTP çalışıyor",
-      html: `<p>Bu bir test e-postasıdır. Sunucu: ${tp.settings.host}:${tp.settings.port}</p>`,
+      html: `<p>Bu bir test e-postasıdır. Sunucu: ${escapeHtml(tp.settings.host)}:${escapeHtml(tp.settings.port)}</p>`,
     }),
   });
 }

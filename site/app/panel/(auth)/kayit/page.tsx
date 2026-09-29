@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getSetting } from "@/lib/settings";
@@ -16,12 +17,20 @@ export default async function RegisterPage() {
     <AuthLayout
       bg={panelSettings.loginBg || undefined}
       logo={panelSettings.loginLogo || undefined}
-      title="Üye ol"
-      subtitle="Ücretsiz hesap oluştur, programlara hemen başla."
+      title={panel.registrationOpen ? "Üye ol" : "Üyelik kayıtları kapalı"}
+      subtitle={panel.registrationOpen ? "Ücretsiz hesap oluştur, programlara hemen başla." : "Şu anda yeni üyelik alınmıyor."}
       aside="Kariyer gelişiminde yol arkadaşın."
       bullets={["Esnek ve takvimli programlar", "Mentor eğitmenle canlı oturumlar", "Görev, sınav ve sertifika takibi"]}
     >
-      {panel.registrationOpen ? <Suspense><RegisterForm /></Suspense> : <p className="text-muted">Üyelik kayıtları şu anda kapalı.</p>}
+      {panel.registrationOpen ? <Suspense><RegisterForm /></Suspense> : (
+        <div className="space-y-4">
+          <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">Üyelik kayıtları şu anda kapalı. Hesabın varsa giriş yapabilirsin; yeni üyelik için bizimle iletişime geçebilirsin.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/panel/giris" className="btn-primary">Giriş yap</Link>
+            <Link href="/iletisim" className="btn-secondary">İletişim</Link>
+          </div>
+        </div>
+      )}
     </AuthLayout>
   );
 }

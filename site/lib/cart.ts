@@ -11,8 +11,14 @@ export async function getCart(): Promise<CartItem[]> {
   const raw = jar.get(COOKIE)?.value;
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) ? parsed.filter((i) => Number.isInteger(i.courseId)) : [];
+    // Çerez kullanıcının elindedir: yalnızca veritabanı kimliği olabilecek tam sayılar kabul edilir
+    const ok = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n > 0 && n <= 2147483647;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as (Partial<CartItem> | null)[])
+      .filter((i): i is CartItem => !!i && typeof i === "object" && ok(i.courseId))
+      .slice(0, 50)
+      .map((i) => ({ courseId: i.courseId, periodId: ok(i.periodId) ? i.periodId : null }));
   } catch {
     return [];
   }

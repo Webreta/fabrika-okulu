@@ -1,3 +1,4 @@
+import { safeInternalPath } from "@/lib/safe-path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -16,7 +17,7 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
   const { id } = await params;
   const { duzenle, donus } = await searchParams;
   // Satın alma akışından gelindiyse (yalnızca site içi yol) tamamlanınca oraya dönüş bağlantısı gösterilir
-  const returnTo = donus && donus.startsWith("/") && !donus.startsWith("//") ? donus : null;
+  const returnTo = safeInternalPath(donus, "") || null;
   const user = (await getCurrentUser())!;
   const survey = await getSurveyById(Number(id));
   if (!survey || survey.status !== "published") notFound();

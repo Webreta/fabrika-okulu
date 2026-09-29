@@ -57,7 +57,7 @@ export function SuggestionsPanel({
         </p>
       ) : (
         <div className="rounded-xl border border-line p-3">
-          <textarea
+          <textarea aria-label="Bu kursla ilgili önerini yaz"
             rows={4}
             value={text}
             maxLength={SUGGESTION_MAX_LEN}

@@ -4,8 +4,11 @@ import { db } from "@/db";
 import { orders, users } from "@/db/schema";
 import { fmtDateTime, fmtMoney, ORDER_STATUS } from "@/lib/format";
 import { PageTitle, Chip, Tabs, Kpi } from "@/components/panel/ui";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { durum } = await searchParams;
   const list = await db
     .select({ o: orders, u: users })
@@ -18,8 +21,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   return (
     <>
       <PageTitle title="Siparişler" />
-      <div className="mb-5 grid grid-cols-3 gap-4"><Kpi label="Ödenen sipariş" value={sum.n} icon="cart" color="green" /><Kpi label="Toplam ciro" value={fmtMoney(sum.t)} icon="chart" color="sky" /><Kpi label="Bu listede" value={list.length} icon="list" /></div>
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3"><Kpi label="Ödenen sipariş" value={sum.n} icon="cart" color="green" /><Kpi label="Toplam ciro" value={fmtMoney(sum.t)} icon="chart" color="sky" /><Kpi label="Bu listede" value={list.length} icon="list" /></div>
       <Tabs items={[{ href: "/admin/siparisler", label: "Tümü", active: !durum }, ...Object.entries(ORDER_STATUS).map(([k, v]) => ({ href: `/admin/siparisler?durum=${k}`, label: v.label, active: durum === k }))]} />
+      {list.length >= 300 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">En yeni 300 sipariş gösteriliyor. Daha eskileri için arama ya da filtre kullan.</p>}
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>#</th><th>Müşteri</th><th>Ürünler</th><th>Tutar</th><th>Ödeme</th><th>Durum</th><th>Tarih</th><th></th></tr></thead>

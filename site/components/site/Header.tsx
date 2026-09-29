@@ -118,27 +118,27 @@ export function Header({ user, cartCount, categories = [], routes = [] }: { user
         <div className="lg:hidden border-t border-line bg-white px-4 py-3">
           <nav className="flex flex-col gap-1 text-[15px] font-medium">
             {NAV_BEFORE.map((n) => (
-              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-navy-800 hover:bg-navy-50">{n.label}</Link>
+              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-navy-800 hover:bg-navy-50">{n.label}</Link>
             ))}
             {MENUS.map((m) => (
               <div key={m.key} className="contents">
-                <button type="button" onClick={() => setMobileMenu(mobileMenu === m.key ? null : m.key)} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-navy-800 hover:bg-navy-50" aria-expanded={mobileMenu === m.key}>
+                <button type="button" onClick={() => setMobileMenu(mobileMenu === m.key ? null : m.key)} className="flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-navy-800 hover:bg-navy-50" aria-expanded={mobileMenu === m.key}>
                   {m.label} <Icon name="chevronDown" className={`size-4 transition ${mobileMenu === m.key ? "rotate-180" : ""}`} />
                 </button>
                 {mobileMenu === m.key && (
                   <div className="ml-3 flex flex-col gap-0.5 border-l-2 border-line pl-3">
                     {m.items.map((it) => (
-                      <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-navy-800 hover:bg-navy-50">{it.label}</Link>
+                      <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-navy-800 hover:bg-navy-50">{it.label}</Link>
                     ))}
-                    <Link href={m.all.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-navy-800 hover:bg-navy-50">{m.all.label} →</Link>
+                    <Link href={m.all.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-semibold text-navy-800 hover:bg-navy-50">{m.all.label} →</Link>
                   </div>
                 )}
               </div>
             ))}
             {NAV_AFTER.map((n) => (
-              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-navy-800 hover:bg-navy-50">{n.label}</Link>
+              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-navy-800 hover:bg-navy-50">{n.label}</Link>
             ))}
-            <Link href={panelHref} onClick={() => setOpen(false)} className="btn-primary mt-2">
+            <Link href={panelHref} onClick={() => setOpen(false)} className="btn-primary mt-2 min-h-10">
               {user ? "Çalışma Odam" : "Giriş Yap / Üye Ol"}
             </Link>
           </nav>

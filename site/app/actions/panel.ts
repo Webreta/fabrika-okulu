@@ -8,10 +8,11 @@ import { meetingSessions, canMarkAttended } from "@/lib/meeting";
 import { requireUser, getCurrentUser } from "@/lib/auth/session";
 import { saveUploadedFile, removeUploadedFile } from "@/lib/uploads";
 import { RESUME_EXTENSIONS, RESUME_QUOTA_BYTES, fmtBytes, isResumeKind } from "@/lib/resume-kinds";
-import { sendMail, emailTemplate, siteUrl, adminEmails } from "@/lib/mailer";
+import { sendMail, emailTemplate, siteUrl, adminEmails, escapeHtml } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
-import { saveSurvey, getSurveyById, completedSurveyKeys, setGoalAnswer } from "@/lib/survey";
+import { saveSurvey, getSurveyById, completedSurveyKeys, setGoalAnswer, requiredSurveyFor } from "@/lib/survey";
 import type { FormState } from "@/app/actions/auth";
+import { isId } from "@/lib/format";
 
 const DOC_EXT = new Set(["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"]);
 
@@ -19,6 +20,7 @@ const DOC_EXT = new Set(["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"]);
 
 export async function markMeetingAttended(courseId: number, periodId: number, sessionIndex: number): Promise<FormState> {
   const user = await requireUser();
+  if (!isId(courseId) || !isId(periodId) || !Number.isInteger(sessionIndex) || sessionIndex < 0) return { error: "Görüşme bulunamadı." };
   const [c] = await db.select({ type: courses.type, minutes: courses.meetingMinutes }).from(courses).where(eq(courses.id, courseId)).limit(1);
   if (!c || c.type !== "meeting") return { error: "Görüşme bulunamadı." };
   const [pe] = await db.select({ p: periods }).from(periodEnrollments).innerJoin(periods, eq(periodEnrollments.periodId, periods.id))
@@ -54,6 +56,7 @@ export async function uploadResumeFile(_prev: FormState, formData: FormData): Pr
 
 export async function deleteResumeFile(id: number) {
   const user = await requireUser();
+  if (!isId(id)) return { ok: false as const };
   const [f] = await db.select().from(resumeFiles).where(and(eq(resumeFiles.id, id), eq(resumeFiles.userId, user.id))).limit(1);
   if (!f) return { ok: false as const };
   await removeUploadedFile(f.fileUrl);
@@ -80,7 +83,7 @@ export async function uploadDocument(_prev: FormState, formData: FormData): Prom
     subject: `Yeni belge yüklendi: ${user.name}`,
     html: emailTemplate({
       title: "Yeni belge",
-      html: `<p><b>${user.name}</b> (${user.email}) bir belge yükledi.</p><p>Not: ${note}</p>`,
+      html: `<p><b>${escapeHtml(user.name)}</b> (${escapeHtml(user.email)}) bir belge yükledi.</p><p>Not: ${escapeHtml(note)}</p>`,
       buttonText: "Belgeleri gör",
       buttonUrl: siteUrl("/admin/belgeler"),
     }),
@@ -113,13 +116,13 @@ export async function recentNotifications(): Promise<{
 
 export async function markNotificationRead(id: number) {
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user || !isId(id)) return;
   await db.update(notifications).set({ read: true }).where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
 }
 
 export async function deleteNotification(id: number) {
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user || !isId(id)) return;
   await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
   revalidatePath("/panel/bildirim");
   revalidatePath("/egitmen/bildirim");
@@ -151,7 +154,7 @@ export async function removePushSubscription(endpoint: string) {
 
 export async function submitSurvey(surveyId: number, _prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const survey = await getSurveyById(surveyId);
+  const survey = isId(surveyId) ? await getSurveyById(surveyId) : null;
   if (!survey || survey.status !== "published") return { error: "Hedef testi bulunamadı." };
   if (!survey.editable && (await completedSurveyKeys(user.id)).has(survey.key)) return { error: "Bu test tek seferlik; cevaplar sonradan değiştirilemez." };
   const raw: Record<string, string | string[]> = {};
@@ -170,15 +173,26 @@ export async function submitSurvey(surveyId: number, _prev: FormState, formData:
   }
   const res = await saveSurvey(user.id, survey, raw);
   if ("error" in res && res.error) return { error: res.error };
-  revalidatePath("/panel");
-  revalidatePath("/panel/anket");
+  // Layout da yenilenir: zorunlu test tamamlandıysa panel menüleri açılır
+  revalidatePath("/panel", "layout");
   return { ok: "Cevapların kaydedildi, teşekkürler!" };
+}
+
+/**
+ * Zorunlu test kapısının istemci kontrolü: panel içi her sayfa değişiminde `RequiredSurveyGate` bir kez çağırır.
+ * Öğrencinin tamamlaması gereken zorunlu test varsa onu, yoksa null döner (eğitmen/yönetici için hep null).
+ */
+export async function requiredSurveyCheck(): Promise<{ id: number; title: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const gate = await requiredSurveyFor(user);
+  return gate ? { id: gate.id, title: gate.title } : null;
 }
 
 /** Hedef bayrağı: ana sorunun cevabını tek başına günceller (üst çubuk bayrağı + anket kartı rengi) */
 export async function setSurveyGoal(surveyId: number, value: string): Promise<{ ok?: true; error?: string }> {
   const user = await requireUser();
-  const survey = await getSurveyById(surveyId);
+  const survey = isId(surveyId) ? await getSurveyById(surveyId) : null;
   if (!survey || survey.status !== "published") return { error: "Hedef testi bulunamadı." };
   const res = await setGoalAnswer(user.id, survey, String(value));
   if ("error" in res && res.error) return { error: res.error };

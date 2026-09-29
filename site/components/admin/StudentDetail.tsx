@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { adminEnroll, adminUnenroll, adminUnenrollAll } from "@/app/actions/admin";
@@ -12,6 +13,7 @@ type E = {
 };
 
 export function StudentDetail({ userId, enrollments, courses }: { userId: number; enrollments: E[]; courses: { id: number; title: string }[] }) {
+  const fid = useFieldId();
   const [sel, setSel] = useState(courses[0]?.id ?? 0);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
@@ -37,15 +39,17 @@ export function StudentDetail({ userId, enrollments, courses }: { userId: number
                 <td className="text-xs">{fmtDate(e.enrolledAt)}</td>
                 <td className="text-xs">{e.startedAt ? fmtDateTime(e.startedAt) : "—"}</td>
                 <td className="text-xs">{e.orderId ? `Sipariş #${e.orderId}` : "Ücretsiz / elle"}</td>
-                <td><button disabled={pending} onClick={() => { if (confirm("Eğitimden çıkarılsın mı?")) run(() => adminUnenroll(userId, e.courseId)); }} className="text-sm text-red-600 hover:underline">Çıkar</button></td>
+                <td><button disabled={pending} onClick={() => { if (confirm(e.orderId ? `Eğitimden çıkarılsın mı?
+
+Bu kayıt Sipariş #${e.orderId} ile alındı. Siparişteki başka bir eğitimin kaydı sürüyorsa sipariş ödenmiş kalır; bu, siparişteki son eğitimse sipariş "İptal" olarak işaretlenir ve cirodan düşer.` : "Eğitimden çıkarılsın mı?")) run(() => adminUnenroll(userId, e.courseId)); }} className="text-sm text-red-600 hover:underline">Çıkar</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <div className="card flex flex-wrap items-end gap-2">
-        <div className="flex-1"><label className="label">Eğitime ekle</label>
-          <select value={sel} onChange={(e) => setSel(Number(e.target.value))} className="input">{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
+        <div className="flex-1"><label htmlFor={fid("a1")} className="label">Eğitime ekle</label>
+          <select id={fid("a1")} value={sel} onChange={(e) => setSel(Number(e.target.value))} className="input">{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
         </div>
         <button disabled={pending || !sel} onClick={() => run(() => adminEnroll(userId, sel))} className="btn-primary">Ekle</button>
       </div>
@@ -60,7 +64,7 @@ export function StudentDangerZone({ userId }: { userId: number }) {
   return (
     <div className="rounded-xl border border-red-200 bg-red-50 p-4">
       <p className="text-sm font-semibold text-red-700">Tehlikeli bölge</p>
-      <button disabled={pending} onClick={() => { if (confirm("Tüm eğitim kayıtları silinecek. Emin misin?")) start(async () => { await adminUnenrollAll(userId); router.refresh(); }); }} className="btn-danger btn-sm mt-2">Tüm eğitimlerden çıkar</button>
+      <button disabled={pending} onClick={() => { if (confirm("Tüm eğitim kayıtları silinecek; bu kayıtların bağlı olduğu ödenmiş siparişler \"İptal\" olarak işaretlenir ve cirodan düşer. Emin misin?")) start(async () => { const r = await adminUnenrollAll(userId); if (r.ok && r.message) alert(r.message); router.refresh(); }); }} className="btn-danger btn-sm mt-2">Tüm eğitimlerden çıkar</button>
     </div>
   );
 }

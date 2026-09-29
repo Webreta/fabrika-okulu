@@ -1,0 +1,2 @@
+# Kabuk betikleri Linux imajında çalışır: satır sonu her zaman LF
+*.sh text eol=lf

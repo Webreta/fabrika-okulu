@@ -1,23 +1,25 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useFieldId } from "@/components/useFieldId";
+import { useActionState, useState, useTransition } from "react";
 import { saveAddresses } from "@/app/actions/auth";
 import type { FormState } from "@/app/actions/auth";
 import { ADDRESS_FIELDS, type Address } from "@/lib/address";
 
 /** Tek adres bloğu; alan adları `${prefix}alan` (billing_ / shipping_) */
 export function AddressFields({ prefix, value, onChange, disabled = false, required = false }: { prefix: "billing_" | "shipping_"; value: Address; onChange?: (v: Address) => void; disabled?: boolean; required?: boolean }) {
+  const fid = useFieldId();
   // onChange verilirse kontrollü (aynala için), verilmezse defaultValue ile serbest form
   const props = (k: keyof Address) => (onChange ? { value: value[k], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange({ ...value, [k]: e.target.value }) } : { defaultValue: value[k] });
   return (
     <div className={`grid gap-3 sm:grid-cols-2 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
       {ADDRESS_FIELDS.map((f) => (
         <div key={f.key} className={f.wide ? "sm:col-span-2" : ""}>
-          <label className="label">{f.label}{f.hint && <span className="text-muted"> ({f.hint})</span>}</label>
+          <label htmlFor={fid(`${prefix}${f.key}`)} className="label">{f.label}{f.hint && <span className="text-muted"> ({f.hint})</span>}</label>
           {f.wide ? (
-            <textarea name={`${prefix}${f.key}`} rows={2} {...props(f.key)} readOnly={disabled} required={required && f.key === "address"} className="input" />
+            <textarea id={fid(`${prefix}${f.key}`)} name={`${prefix}${f.key}`} rows={2} {...props(f.key)} readOnly={disabled} required={required && f.key === "address"} className="input" />
           ) : (
-            <input name={`${prefix}${f.key}`} {...props(f.key)} readOnly={disabled} maxLength={f.maxLength} required={required && f.key === "name"} className="input" />
+            <input id={fid(`${prefix}${f.key}`)} name={`${prefix}${f.key}`} {...props(f.key)} readOnly={disabled} maxLength={f.maxLength} required={required && (f.key === "name" || f.key === "phone" || f.key === "city")} inputMode={f.key === "phone" ? "tel" : f.key === "identityNumber" || f.key === "postalCode" ? "numeric" : undefined} className="input" />
           )}
         </div>
       ))}
@@ -31,8 +33,15 @@ export function AddressesForm({ billing, shipping, shippingSame }: { billing: Ad
   const [same, setSame] = useState(shippingSame);
   const [bill, setBill] = useState<Address>(billing);
   const [ship, setShip] = useState<Address>(shipping);
+  // Form elle gönderilir: React, action ile gönderilen formu işlem bitince sıfırlar ve "aynı" kutusunun işaretini kaldırır
+  const [, startSubmit] = useTransition();
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startSubmit(() => action(fd));
+  };
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4">
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
           <h3 className="mb-4 font-bold text-navy-800">Fatura adresim</h3>

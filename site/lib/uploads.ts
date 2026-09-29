@@ -8,7 +8,8 @@ export const DOCUMENT_EXTENSIONS = new Set([
   "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv", "txt", "rtf",
   "odt", "ods", "png", "jpg", "jpeg", "webp", "zip", "rar",
 ]);
-export const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "svg", "gif"]);
+// SVG yok: içinde betik taşıyabilir ve site adresinden sunulur
+export const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
 export const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "m4v", "mov"]);
 export const AUDIO_EXTENSIONS = new Set(["mp3", "m4a", "wav", "ogg"]);
 export const FONT_EXTENSIONS = new Set(["ttf", "otf", "woff", "woff2"]);

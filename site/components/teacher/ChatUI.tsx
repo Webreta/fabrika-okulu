@@ -26,7 +26,7 @@ export function ChatUI({ threads, initialKey, isAdmin = false }: { threads: Thre
   return (
     <div className="card grid h-[70vh] grid-cols-1 overflow-hidden p-0 md:grid-cols-[300px_1fr]">
       <aside className="flex flex-col border-r border-line">
-        <div className="border-b border-line p-3"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara…" className="input" /></div>
+        <div className="border-b border-line p-3"><input aria-label="Ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara…" className="input" /></div>
         <div className="flex-1 overflow-y-auto">
           {list.length === 0 && <p className="p-4 text-sm text-muted">Soru yok.</p>}
           {list.map((x) => (
@@ -69,8 +69,8 @@ export function ChatUI({ threads, initialKey, isAdmin = false }: { threads: Thre
               ))}
             </div>
             <div className="flex gap-2 border-t border-line p-3">
-              <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Cevabını yaz… (Enter gönderir)" className="input" />
-              <button onClick={send} disabled={pending || !text.trim()} className="btn-primary"><Icon name="send" className="size-4" /></button>
+              <textarea aria-label="Cevabını yaz" rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Cevabını yaz… (Enter gönderir)" className="input" />
+              <button aria-label="Gönder" onClick={send} disabled={pending || !text.trim()} className="btn-primary"><Icon name="send" className="size-4" /></button>
             </div>
           </>
         )}

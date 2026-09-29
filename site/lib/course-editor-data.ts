@@ -60,6 +60,11 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
     closed: c.closed,
     comingSoon: c.comingSoon,
     soonShowPrice: c.soonShowPrice,
+    preorder: c.preorder,
+    opensAt: c.opensAt ?? "",
+    preorderPrice: Number(c.preorderPrice ?? 0),
+    promoCourseId: c.promoCourseId,
+    promoTitle: c.promoTitle,
     whatsappNumber: c.whatsappNumber,
     whatsappMessage: c.whatsappMessage,
     modules: c.modules.map((m) => ({

@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Ödeme tamamlanamadı", robots: { index: false } };
 
 export default function PaymentErrorPage() {
   return (
@@ -7,6 +10,7 @@ export default function PaymentErrorPage() {
       <p className="mt-2 text-muted">Kartından ücret çekilmedi. Tekrar deneyebilir ya da bizimle iletişime geçebilirsin.</p>
       <div className="mt-6 flex justify-center gap-3">
         <Link href="/sepet" className="btn-primary">Sepete dön</Link>
+        <Link href="/panel/siparis" className="btn-secondary">Siparişlerim</Link>
         <Link href="/iletisim" className="btn-secondary">İletişim</Link>
       </div>
     </section>

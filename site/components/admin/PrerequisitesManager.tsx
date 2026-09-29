@@ -122,10 +122,10 @@ export function PrerequisitesManager({ courses, initial }: { courses: CourseOpt[
         </div>
       </div>
       {msg && <Toast message={msg} ok={msg.includes("kaydedildi")} onDone={() => setMsg("")} />}
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside {...dropProps("pool")} className={`card h-fit space-y-2 transition lg:sticky lg:top-6 ${overId === "pool" && dragId !== null ? "ring-2 ring-sky-300" : ""}`}>
           <p className="font-bold text-navy-800">Bağımsız eğitimler</p>
-          <input value={q} onChange={(e) => setQ(e.target.value)} className="input" placeholder="Ara…" />
+          <input aria-label="Ara" value={q} onChange={(e) => setQ(e.target.value)} className="input" placeholder="Ara…" />
           <ul className="max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
             {pool.length === 0 && <li className="py-4 text-center text-xs text-muted">Eğitim yok</li>}
             {pool.map((c) => (

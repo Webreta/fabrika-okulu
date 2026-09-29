@@ -7,8 +7,14 @@ import { fmtDateTime } from "@/lib/format";
 import { PageTitle, Tabs, Kpi } from "@/components/panel/ui";
 import { AnnounceForm } from "@/components/teacher/AnnounceForm";
 import { MailTemplatesForm } from "@/components/admin/MailTemplatesForm";
+import { requireAdmin } from "@/lib/auth/session";
+
+// Görev/sınav puanlaması olmadığı için bu e-posta türleri hiç gönderilmez; ayar ekranında gösterilmez
+const UNUSED_MAIL_TYPES = ["assignment_graded", "quiz_graded"];
 
 export default async function NotificationsAdminPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { sekme = "gonder" } = await searchParams;
   const tabs = [["gonder", "Gönder"], ["gecmis", "Geçmiş"], ["aboneler", "Aboneler"], ["mail", "Mail Ayarları"]];
   const cs = await db.select({ id: courses.id, title: courses.title }).from(courses).where(eq(courses.status, "published")).orderBy(courses.title);
@@ -24,7 +30,7 @@ export default async function NotificationsAdminPage({ searchParams }: { searchP
       )}
       {sekme === "gecmis" && <History />}
       {sekme === "aboneler" && <Subscribers />}
-      {sekme === "mail" && <MailTemplatesForm templates={await getSetting("mailTemplates")} types={Object.entries(MAIL_TYPES).map(([k, v]) => ({ key: k, title: v.title, to: v.to }))} />}
+      {sekme === "mail" && <MailTemplatesForm templates={await getSetting("mailTemplates")} types={Object.entries(MAIL_TYPES).filter(([k]) => !UNUSED_MAIL_TYPES.includes(k)).map(([k, v]) => ({ key: k, title: v.title, to: v.to }))} />}
     </>
   );
 }

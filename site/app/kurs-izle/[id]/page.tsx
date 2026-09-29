@@ -2,13 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions } from "@/lib/player";
+import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions, courseQuizStats } from "@/lib/player";
 import { getEnrollment, studentMeeting } from "@/lib/data/student";
 import { MeetingView } from "./MeetingView";
 import { db } from "@/db";
 import { quizzes, assignments, progress, courseSuggestions } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
-import { parseVideo } from "@/lib/course-logic";
+import { parseVideo, validDuration } from "@/lib/course-logic";
 import { unreadCount } from "@/lib/notify";
 import { Icon } from "@/components/site/Icon";
 import { Curriculum } from "@/components/player/Curriculum";
@@ -19,6 +19,8 @@ import { FileStage } from "@/components/player/FileStage";
 import { logout } from "@/app/actions/auth";
 import { initials } from "@/lib/format";
 import { getSetting } from "@/lib/settings";
+import { requiredSurveyFor } from "@/lib/survey";
+import { cleanHtml } from "@/lib/sanitize";
 import { listCourseNotes } from "@/app/actions/notes";
 import { autoIssueCertificates } from "@/lib/cert-issue";
 import { themeByKey } from "@/lib/panel-themes";
@@ -35,8 +37,13 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const acc = await playerAccess(user, courseId);
   if (!acc.ok) {
     if (acc.reason === "login") redirect(`/panel/giris?r=${encodeURIComponent(`/kurs-izle/${courseId}`)}`);
+    // Erken kayıt: eğitim açılana kadar kitaplıktaki kartta açılış tarihi gösterilir
+    if (acc.reason === "notopen") redirect(`/panel/egitim?acilis=${courseId}`);
     redirect("/panel/egitim");
   }
+  // Zorunlu hedef testi tamamlanmadan eğitim izlenemez (yalnızca öğrenci)
+  const gate = acc.preview ? null : await requiredSurveyFor(user!);
+  if (gate) redirect(`/panel/anket/${gate.id}`);
   const state = await playerState(user!.id, courseId, acc.preview);
   if (!state) notFound();
   const { course, done, prog, frontier } = state;
@@ -56,11 +63,11 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   let activeIdx = -1;
   if (sp.ders) activeIdx = flat.findIndex((l) => l.id === Number(sp.ders));
   else if (sp.quiz) {
-    const [q] = await db.select({ lessonId: quizzes.lessonId }).from(quizzes).where(and(eq(quizzes.id, Number(sp.quiz)), eq(quizzes.courseId, courseId))).limit(1);
+    const [q] = await db.select({ lessonId: quizzes.lessonId }).from(quizzes).where(and(eq(quizzes.id, Number(sp.quiz)), eq(quizzes.courseId, courseId), eq(quizzes.status, "active"))).limit(1);
     activeIdx = q?.lessonId ? flat.findIndex((l) => l.id === q.lessonId) : -1;
     if (activeIdx === -1 && q) activeIdx = -2; // müfredat dışı sınav
   } else if (sp.gorev) {
-    const [a] = await db.select({ lessonId: assignments.lessonId }).from(assignments).where(and(eq(assignments.id, Number(sp.gorev)), eq(assignments.courseId, courseId))).limit(1);
+    const [a] = await db.select({ lessonId: assignments.lessonId }).from(assignments).where(and(eq(assignments.id, Number(sp.gorev)), eq(assignments.courseId, courseId), eq(assignments.status, "active"))).limit(1);
     activeIdx = a?.lessonId ? flat.findIndex((l) => l.id === a.lessonId) : -1;
     if (activeIdx === -1 && a) activeIdx = -2;
   } else if (sp.section && sp.lesson) {
@@ -69,9 +76,12 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     activeIdx = l ? flat.findIndex((x) => x.id === l.id) : -1;
   }
   if (activeIdx === -1) {
-    // kaldığın yer: ilk tamamlanmamış (dosya hariç) ya da son öğe
-    const firstUndone = flat.findIndex((l) => l.type !== "file" && !done.has(l.id));
+    // kaldığın yer: kilidin durduğu ders; her şey açıksa ilk tamamlanmamış (dosya hariç) ya da son öğe
+    const firstUndone = frontier < flat.length ? frontier : flat.findIndex((l) => l.type !== "file" && !done.has(l.id));
     activeIdx = firstUndone === -1 ? Math.max(0, flat.length - 1) : firstUndone;
+    // Adres dersi açıkça göstersin: "kaldığın yer" adresinde sınav bitince sayfa yenilenir ve öğrenci
+    // sonuç ekranını göremeden sıradaki derse geçerdi
+    if (flat[activeIdx] && !acc.preview) redirect(`/kurs-izle/${courseId}?ders=${flat[activeIdx].id}`);
   }
   // Sıralı kilit
   if (activeIdx >= 0 && activeIdx > frontier) {
@@ -120,7 +130,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
         <VideoStage
           key={active.id}
           courseId={courseId}
-          lesson={{ id: active.id, title: active.title, description: active.description, video: parseVideo(active.videoUrl) }}
+          lesson={{ id: active.id, title: active.title, description: cleanHtml(active.description), video: parseVideo(active.videoUrl) }}
           done={done.has(active.id)}
           preview={acc.preview}
           nextUrl={nextUrl}
@@ -172,27 +182,47 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     </div>
   ) : null;
 
+  // Eğitim tamamlanınca sınav özeti: kendi puanı + katılımcı ortalaması
+  const quizStats = courseComplete ? await courseQuizStats(user!.id, courseId) : [];
+  const statsCard = quizStats.length > 0 ? (
+    <div className="card">
+      <h2 className="text-lg font-bold text-navy-800">Sınav sonuçların</h2>
+      <p className="text-sm text-muted">Bu eğitimdeki sınavlarda aldığın puan ve katılımcıların ortalaması.</p>
+      <ul className="mt-3 divide-y divide-line">
+        {quizStats.map((s) => (
+          <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+            <span className="min-w-0 break-words font-semibold text-navy-800">{s.title}</span>
+            <span className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">Senin puanın: %{s.mine}</span>
+              <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">Ortalama: %{s.average} · {s.participants} kişi</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
   return (
     <div className="fo-theme min-h-screen bg-surface" data-theme={themeKey}>
       {/* Üst çubuk */}
       <header className="sticky top-0 z-40 border-b border-line bg-white">
         <div className="mx-auto grid max-w-[1310px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 lg:grid-cols-[1fr_auto_1fr]">
           <nav className="hidden items-center gap-1 md:flex">
-            {([["/panel", "Çalışma Odam", "home"], ["/panel/takvim", "Gündemim", "calendar"], ["/kesfet", "Keşfet", "compass"]] as const).map(([h, l, i]) => (
-              <Link key={h} href={h} target={h === "/kesfet" ? "_blank" : undefined} rel={h === "/kesfet" ? "noopener" : undefined} className="flex items-center gap-2 rounded-full border-2 border-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted transition hover:bg-surface">
+            {([["/panel", "Çalışma Odam", "home"], ["/panel/takvim", "Gündemim", "calendar"], ["/panel/anket", "Kariyer Hedefim", "target"]] as const).map(([h, l, i]) => (
+              <Link key={h} href={h} className="flex items-center gap-2 rounded-full border-2 border-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted transition hover:bg-surface">
                 <Icon name={i} className="size-4" />{l}
               </Link>
             ))}
           </nav>
           <Link href="/" className="justify-self-center"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={120} height={137} className="fo-logo h-12 w-auto lg:h-14" /></Link>
           <div className="flex items-center justify-end gap-1">
-            <Link href="/panel/bildirim" className="relative rounded-lg p-2 hover:bg-surface"><Icon name="bell" className="size-5 text-navy-800" />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}</Link>
-            <Link href="/panel/hesap" className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 hover:bg-surface">
+            <Link aria-label="Bildirimler" href="/panel/bildirim" className="relative rounded-lg p-2.5 hover:bg-surface md:p-2"><Icon name="bell" className="size-5 text-navy-800" />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}</Link>
+            <Link aria-label={`Hesabım (${user!.name})`} href="/panel/hesap" className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 hover:bg-surface">
               <span className="flex size-8 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-white">{initials(user!.name)}</span>
               <span className="hidden text-sm font-semibold text-navy-800 sm:inline">{user!.name.split(" ")[0]}</span>
               <Icon name="chevronDown" className="size-4 text-muted" />
             </Link>
-            <form action={logout}><button className="rounded-lg p-2 text-muted hover:bg-surface" title="Çıkış"><Icon name="logout" className="size-5" /></button></form>
+            <form action={logout}><button className="rounded-lg p-2.5 text-muted hover:bg-surface md:p-2" title="Çıkış" aria-label="Çıkış yap"><Icon name="logout" className="size-5" /></button></form>
           </div>
         </div>
       </header>
@@ -206,7 +236,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       {/* Kurs çubuğu */}
       <div className="border-b border-line bg-sky-100">
         <div className="mx-auto flex max-w-[1310px] flex-wrap items-center gap-4 px-4 py-2.5">
-          <Link href="/panel/egitim" className="flex items-center gap-1 text-sm font-semibold text-navy-800 hover:underline"><Icon name="arrowLeft" className="size-4" /> Kitaplığım</Link>
+          <Link href="/panel/egitim" className="flex min-h-10 items-center gap-1 text-sm font-semibold text-navy-800 hover:underline md:min-h-0"><Icon name="arrowLeft" className="size-4" /> Kitaplığım</Link>
           <span className="truncate font-bold text-navy-800">{course.title}</span>
           <div className="ml-auto flex items-center gap-3">
             <div className="h-2 w-32 overflow-hidden rounded-full bg-white"><div className="h-full bg-navy-800" style={{ width: `${prog.percent}%` }} /></div>
@@ -216,15 +246,15 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       </div>
 
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />
-      <div className="mx-auto grid max-w-[1310px] gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
-        <div className="min-w-0 space-y-5">{celebrationCard}{stage}</div>
+      <div className="mx-auto grid max-w-[1310px] grid-cols-1 gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
+        <div className="min-w-0 space-y-5">{celebrationCard}{statsCard}{stage}</div>
         <Curriculum
           courseId={courseId}
           modules={course.modules.map((m) => ({
             id: m.id,
             title: m.title,
             lessons: m.lessons.map((l) => ({
-              id: l.id, title: l.title, type: l.type, duration: l.duration,
+              id: l.id, title: l.title, type: l.type, duration: validDuration(l.duration),
               done: done.has(l.id), active: active?.id === l.id, locked: flat.findIndex((x) => x.id === l.id) > frontier,
             })),
           }))}
@@ -247,6 +277,10 @@ function serializeQuiz(p: NonNullable<Awaited<ReturnType<typeof quizPayload>>>) 
     questions: p.questions,
     attempts: p.attempts.map((a) => ({ id: a.id, score: a.score ? Number(a.score) : null, earned: Number(a.earnedPoints), total: a.totalPoints, status: a.status, passed: a.passed, at: a.completedAt?.toISOString() ?? a.startedAt.toISOString() })),
     canAttempt: p.canAttempt,
+    passed: p.attempts.length > 0 ? p.passed : undefined,
+    exhausted: p.exhausted,
+    left: p.left,
+    progress: p.progress,
     due: p.due?.toISOString() ?? null,
     review: p.review,
   };

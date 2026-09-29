@@ -60,13 +60,19 @@ export type PanelSettings = {
   /** İkincil menü stili: normal (ikon+metin) | icon (büyük ikon, üzerine gelince metin yana açılır) | tooltip (sabit ikon, üzerine gelince adı altında baloncukta belirir) */
   menuStyle: "normal" | "icon" | "tooltip";
   registrationOpen: boolean;
-  surveyRequired: boolean;
 };
 
 export type PaymentSettings = {
   provider: "iyzico" | "manual";
   bankInfo: string; // havale/EFT bilgileri (manual)
   currency: string;
+};
+
+/** Bakım modu (dışarıya gösterme): açıkken siteyi yalnızca giriş yapmış yöneticiler görür (lib/maintenance.ts, middleware.ts) */
+export type MaintenanceSettings = {
+  enabled: boolean;
+  title: string;
+  message: string;
 };
 
 export type SeoSettings = {
@@ -126,7 +132,6 @@ const DEFAULTS = {
     defaultTheme: "aydinlik",
     menuStyle: "icon",
     registrationOpen: true,
-    surveyRequired: false,
   } as PanelSettings,
   payment: {
     provider: "iyzico" as PaymentSettings["provider"],
@@ -134,10 +139,32 @@ const DEFAULTS = {
     currency: "TRY",
   } as PaymentSettings,
   seo: { headCode: "", metaDescription: "" } as SeoSettings,
+  maintenance: {
+    enabled: false,
+    title: "Çok yakında buradayız",
+    message: "Sitemizde çalışma yapıyoruz. Kısa süre içinde yeniden yayında olacağız.",
+  } as MaintenanceSettings,
 };
 
 export type SettingsKey = keyof typeof DEFAULTS;
 export type SettingsMap = { [K in SettingsKey]: (typeof DEFAULTS)[K] };
+
+/** Tarayıcıya asla gönderilmeyen gizli alanlar (ayar anahtarı → alan adları). Yeni gizli alan eklenince buraya yazılır. */
+export const SECRET_FIELDS: Partial<Record<SettingsKey, string[]>> = { smtp: ["pass"] };
+
+/**
+ * Ayarın istemciye (form bileşenine) gidecek kopyası: gizli alanlar boşaltılır,
+ * hangilerinin kayıtlı olduğu `saved` içinde döner. Kayıtta boş gelen gizli alan mevcut değeri korur (`saveSettings`).
+ */
+export function settingForClient<K extends SettingsKey>(key: K, value: SettingsMap[K]) {
+  const values = { ...value } as Record<string, unknown>;
+  const saved: Record<string, boolean> = {};
+  for (const f of SECRET_FIELDS[key] ?? []) {
+    saved[f] = typeof values[f] === "string" && values[f] !== "";
+    values[f] = "";
+  }
+  return { values: values as Record<string, string | number | boolean | string[]>, saved };
+}
 
 export const getSetting = cache(
   async <K extends SettingsKey>(key: K): Promise<SettingsMap[K]> => {

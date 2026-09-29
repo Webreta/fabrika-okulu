@@ -8,8 +8,11 @@ import { PageTitle, Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 import { SurveyResults } from "@/components/SurveyResults";
 import { PublishSurveyButton, DeleteSurveyButton } from "@/components/admin/SurveyAdminButtons";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function AdminSurveyPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const params = await searchParams;
 
   // Sonuç görünümü: ?sonuc=<anketId>
@@ -44,7 +47,7 @@ export default async function AdminSurveyPage({ searchParams }: { searchParams: 
             {list.map((s) => (
               <tr key={s.id}>
                 <td><p className="font-semibold text-navy-800">{s.title}</p>{s.intro && <p className="max-w-[320px] truncate text-xs text-muted">{s.intro}</p>}</td>
-                <td>{s.status === "published" ? <Chip color="green">Yayında</Chip> : <Chip color="gray">Taslak</Chip>}</td>
+                <td><span className="flex flex-wrap gap-1">{s.status === "published" ? <Chip color="green">Yayında</Chip> : <Chip color="gray">Taslak</Chip>}{s.required && <Chip color="amber">Zorunlu</Chip>}</span></td>
                 <td>{s.questions.length}</td>
                 <td>{countOf(s.key)} kişi</td>
                 <td className="text-xs">{s.publishedAt ? <span className="date-chip">{fmtDate(s.publishedAt)}</span> : "—"}</td>

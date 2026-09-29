@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { CertFields, CertField, CertRule } from "@/db/schema";
@@ -12,6 +13,7 @@ type T = { id?: number; title: string; imageUrl: string; imageWidth: number; ima
 type Block = "name" | "course" | "date" | "qr";
 
 export function CertificateDesigner({ initial, courses }: { initial: T; courses: { id: number; title: string }[] }) {
+  const fid = useFieldId();
   const [t, setT] = useState<T>(initial);
   const [sel, setSel] = useState<Block>("name");
   const [msg, setMsg] = useState("");
@@ -57,10 +59,10 @@ export function CertificateDesigner({ initial, courses }: { initial: T; courses:
       <div className="space-y-4">
         <div className="card">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2"><label className="label">Başlık</label><input value={t.title} onChange={(e) => setT({ ...t, title: e.target.value })} className="input" placeholder="Katılım Sertifikası" /></div>
-            <div><label className="label">Şablon görseli</label><label className="btn-secondary btn-sm cursor-pointer">{busy ? "…" : "Görsel yükle"}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} /></label></div>
-            <div><label className="label">Örnek ad</label><input value={t.sampleName} onChange={(e) => setT({ ...t, sampleName: e.target.value })} className="input" /></div>
-            <div><label className="label">Örnek eğitim</label><input value={t.sampleCourse} onChange={(e) => setT({ ...t, sampleCourse: e.target.value })} className="input" /></div>
+            <div className="sm:col-span-2"><label htmlFor={fid("a1")} className="label">Başlık</label><input id={fid("a1")} value={t.title} onChange={(e) => setT({ ...t, title: e.target.value })} className="input" placeholder="Katılım Sertifikası" /></div>
+            <div><label htmlFor={fid("gorsel")} className="label">Şablon görseli</label><label className="btn-secondary btn-sm cursor-pointer">{busy ? "…" : "Görsel yükle"}<input id={fid("gorsel")} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} /></label></div>
+            <div><label htmlFor={fid("a2")} className="label">Örnek ad</label><input id={fid("a2")} value={t.sampleName} onChange={(e) => setT({ ...t, sampleName: e.target.value })} className="input" /></div>
+            <div><label htmlFor={fid("a3")} className="label">Örnek eğitim</label><input id={fid("a3")} value={t.sampleCourse} onChange={(e) => setT({ ...t, sampleCourse: e.target.value })} className="input" /></div>
             <div className="text-xs text-muted self-end">Görsel: {t.imageWidth}×{t.imageHeight}px. Metinleri sürükleyerek konumlandır.</div>
           </div>
         </div>
@@ -86,27 +88,27 @@ export function CertificateDesigner({ initial, courses }: { initial: T; courses:
             <div className="space-y-3 text-sm">
               <label className="flex items-center gap-2"><input type="checkbox" checked={t.fields.qr.enabled} onChange={(e) => setQr({ enabled: e.target.checked })} /> QR kodu göster (doğrulama adresi)</label>
               <div className="grid grid-cols-3 gap-2">
-                <div><label className="label">X %</label><input type="number" value={t.fields.qr.x} onChange={(e) => setQr({ x: Number(e.target.value) })} className="input" /></div>
-                <div><label className="label">Y %</label><input type="number" value={t.fields.qr.y} onChange={(e) => setQr({ y: Number(e.target.value) })} className="input" /></div>
-                <div><label className="label">Boyut px</label><input type="number" min={40} max={600} value={t.fields.qr.size} onChange={(e) => setQr({ size: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a4")} className="label">X %</label><input id={fid("a4")} type="number" value={t.fields.qr.x} onChange={(e) => setQr({ x: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a5")} className="label">Y %</label><input id={fid("a5")} type="number" value={t.fields.qr.y} onChange={(e) => setQr({ y: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a6")} className="label">Boyut px</label><input id={fid("a6")} type="number" min={40} max={600} value={t.fields.qr.size} onChange={(e) => setQr({ size: Number(e.target.value) })} className="input" /></div>
               </div>
             </div>
           ) : f && (
             <div className="space-y-3 text-sm">
               {sel === "date" && <label className="flex items-center gap-2"><input type="checkbox" checked={t.fields.date?.enabled ?? true} onChange={(e) => setField("date", { enabled: e.target.checked } as Partial<CertField>)} /> Tarihi göster</label>}
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="label">X %</label><input type="number" step={0.5} value={f.x} onChange={(e) => setField(sel, { x: Number(e.target.value) })} className="input" /></div>
-                <div><label className="label">Y %</label><input type="number" step={0.5} value={f.y} onChange={(e) => setField(sel, { y: Number(e.target.value) })} className="input" /></div>
-                <div><label className="label">Boyut px</label><input type="number" min={8} max={200} value={f.size} onChange={(e) => setField(sel, { size: Number(e.target.value) })} className="input" /></div>
-                <div><label className="label">Renk</label><input type="color" value={f.color} onChange={(e) => setField(sel, { color: e.target.value })} className="h-10 w-full" /></div>
-                <div><label className="label">Hizalama</label><select value={f.align} onChange={(e) => setField(sel, { align: e.target.value as CertField["align"] })} className="input"><option value="left">Sol</option><option value="center">Orta</option><option value="right">Sağ</option></select></div>
-                <div><label className="label">Kalınlık</label><select value={f.weight} onChange={(e) => setField(sel, { weight: e.target.value as CertField["weight"] })} className="input"><option value="400">Normal</option><option value="600">Yarı kalın</option><option value="700">Kalın</option></select></div>
-                <div className="col-span-2"><label className="label">Font</label>
-                  <select value={f.font} onChange={(e) => setField(sel, { font: e.target.value })} className="input">
+                <div><label htmlFor={fid("a7")} className="label">X %</label><input id={fid("a7")} type="number" step={0.5} value={f.x} onChange={(e) => setField(sel, { x: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a8")} className="label">Y %</label><input id={fid("a8")} type="number" step={0.5} value={f.y} onChange={(e) => setField(sel, { y: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a9")} className="label">Boyut px</label><input id={fid("a9")} type="number" min={8} max={200} value={f.size} onChange={(e) => setField(sel, { size: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a10")} className="label">Renk</label><input id={fid("a10")} type="color" value={f.color} onChange={(e) => setField(sel, { color: e.target.value })} className="h-10 w-full" /></div>
+                <div><label htmlFor={fid("a11")} className="label">Hizalama</label><select id={fid("a11")} value={f.align} onChange={(e) => setField(sel, { align: e.target.value as CertField["align"] })} className="input"><option value="left">Sol</option><option value="center">Orta</option><option value="right">Sağ</option></select></div>
+                <div><label htmlFor={fid("a12")} className="label">Kalınlık</label><select id={fid("a12")} value={f.weight} onChange={(e) => setField(sel, { weight: e.target.value as CertField["weight"] })} className="input"><option value="400">Normal</option><option value="600">Yarı kalın</option><option value="700">Kalın</option></select></div>
+                <div className="col-span-2"><label htmlFor={fid("a13")} className="label">Font</label>
+                  <select id={fid("a13")} value={f.font} onChange={(e) => setField(sel, { font: e.target.value })} className="input">
                     {["Başlık", "Serif", "Sans", "El yazısı"].map((g) => <optgroup key={g} label={g}>{CERT_FONTS.filter((x) => x.group === g).map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}</optgroup>)}
                   </select>
                 </div>
-                <div><label className="label">Harf aralığı</label><input type="number" min={-5} max={30} step={0.5} value={f.spacing} onChange={(e) => setField(sel, { spacing: Number(e.target.value) })} className="input" /></div>
+                <div><label htmlFor={fid("a14")} className="label">Harf aralığı</label><input id={fid("a14")} type="number" min={-5} max={30} step={0.5} value={f.spacing} onChange={(e) => setField(sel, { spacing: Number(e.target.value) })} className="input" /></div>
                 <label className="flex items-center gap-2 self-end"><input type="checkbox" checked={f.caps} onChange={(e) => setField(sel, { caps: e.target.checked })} /> BÜYÜK HARF</label>
               </div>
             </div>
@@ -114,9 +116,9 @@ export function CertificateDesigner({ initial, courses }: { initial: T; courses:
         </div>
         <div className="card space-y-3 text-sm">
           <h3 className="font-bold text-navy-800">Verilme kuralı</h3>
-          <div><label className="label">Kapsam</label><select value={t.rule.scope} onChange={(e) => setT({ ...t, rule: { ...t.rule, scope: e.target.value as CertRule["scope"] } })} className="input"><option value="all">Tüm eğitimler</option><option value="course">Belirli bir eğitim</option></select></div>
-          {t.rule.scope === "course" && <div><label className="label">Eğitim</label><select value={t.rule.courseId} onChange={(e) => setT({ ...t, rule: { ...t.rule, courseId: Number(e.target.value) } })} className="input"><option value={0}>Seçiniz</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>}
-          <div><label className="label">Koşul</label><select value={t.rule.condition} onChange={(e) => setT({ ...t, rule: { ...t.rule, condition: e.target.value as CertRule["condition"] } })} className="input">{Object.entries(CERT_CONDITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+          <div><label htmlFor={fid("a15")} className="label">Kapsam</label><select id={fid("a15")} value={t.rule.scope} onChange={(e) => setT({ ...t, rule: { ...t.rule, scope: e.target.value as CertRule["scope"] } })} className="input"><option value="all">Tüm eğitimler</option><option value="course">Belirli bir eğitim</option></select></div>
+          {t.rule.scope === "course" && <div><label htmlFor={fid("a16")} className="label">Eğitim</label><select id={fid("a16")} value={t.rule.courseId} onChange={(e) => setT({ ...t, rule: { ...t.rule, courseId: Number(e.target.value) } })} className="input"><option value={0}>Seçiniz</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>}
+          <div><label htmlFor={fid("a17")} className="label">Koşul</label><select id={fid("a17")} value={t.rule.condition} onChange={(e) => setT({ ...t, rule: { ...t.rule, condition: e.target.value as CertRule["condition"] } })} className="input">{Object.entries(CERT_CONDITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
           <label className="flex items-start gap-2">
             <input type="checkbox" className="mt-0.5" checked={!!t.rule.auto} onChange={(e) => setT({ ...t, rule: { ...t.rule, auto: e.target.checked } })} />
             <span>Kursu bitirince <b>otomatik tanımla</b><br /><span className="text-xs text-muted">Öğrencinin ilerlemesi %100 olduğu anda sertifika verilir, bildirim ve e-posta gider.</span></span>

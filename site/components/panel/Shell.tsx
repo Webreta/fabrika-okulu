@@ -76,7 +76,7 @@ export function Shell({
                 {unread > 0 && <span className="absolute -right-0.5 -top-0.5 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}
               </Link>
               <div className="relative">
-                <button onClick={() => setMenu(!menu)} className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 hover:bg-surface">
+                <button onClick={() => setMenu(!menu)} aria-label={`Hesap menüsü (${user.name})`} aria-expanded={menu} className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 hover:bg-surface">
                   <span className="flex size-8 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-white">{user.initial}</span>
                   <span className="hidden text-sm font-semibold text-navy-800 sm:inline">{user.name.split(" ")[0]}</span>
                   <Icon name="chevronDown" className="size-4 text-muted" />
@@ -89,15 +89,15 @@ export function Shell({
                     </div>
                     <div className="py-1">
                       {secondary.map((n) => (
-                        <Link key={n.href} href={n.href} onClick={() => setMenu(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-navy-800 hover:bg-surface">
+                        <Link key={n.href} href={n.href} onClick={() => setMenu(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-navy-800 hover:bg-surface lg:py-2">
                           <Icon name={n.icon} className="size-4 text-muted" />{n.label}
                           {n.badge ? <span className="ml-auto rounded-full bg-sky-400 px-1.5 text-[10px] text-white">{n.badge}</span> : null}
                         </Link>
                       ))}
-                      <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-navy-800 hover:bg-surface"><Icon name="external" className="size-4 text-muted" />Anasayfa</Link>
+                      <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-navy-800 hover:bg-surface lg:py-2"><Icon name="external" className="size-4 text-muted" />Anasayfa</Link>
                     </div>
                     <form action={logout} className="border-t border-line pt-1">
-                      <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Icon name="logout" className="size-4" />Çıkış</button>
+                      <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 lg:py-2"><Icon name="logout" className="size-4" />Çıkış</button>
                     </form>
                   </div>
                 )}
@@ -148,7 +148,7 @@ export function Shell({
           <aside className="absolute left-0 top-0 h-full w-[270px] overflow-y-auto bg-white p-4 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-bold text-navy-800">Menü</span>
-              <button onClick={() => setDrawer(false)} aria-label="Kapat"><Icon name="x" className="size-5" /></button>
+              <button onClick={() => setDrawer(false)} aria-label="Kapat" className="flex size-10 items-center justify-center rounded-lg hover:bg-surface"><Icon name="x" className="size-5" /></button>
             </div>
             <nav className="space-y-1">
               {[...primary, ...secondary].map((n) => (

@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { pageMeta } from "@/lib/seo";
 import { getSetting, getRawSetting } from "@/lib/settings";
 import { DEFAULT_FAQ, DEFAULT_SHOWCASE, type FaqContent, type ShowcaseContent } from "@/lib/content-defaults";
 import { catalogCourses, listCourses } from "@/lib/data/courses";
@@ -11,6 +13,8 @@ import { MountainBackdrop } from "@/components/site/MountainBackdrop";
 import { RouteMountain, type MountainStep } from "@/components/site/RouteMountain";
 import { Icon } from "@/components/site/Icon";
 import { FaqAccordion } from "@/components/site/FaqAccordion";
+
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ path: "/" });
 
 // Anasayfa akışı: hero → vitrin → rotaları incele → merak edilenler (SSS) → footer (layout; iletişim bilgileri footer'da)
 export default async function HomePage() {
@@ -33,7 +37,7 @@ export default async function HomePage() {
       note: s.note,
       href: `/program/${s.slug}`,
       imageUrl: s.imageUrl,
-      meta: [s.comingSoon && !s.soonShowPrice ? "Yakında" : s.isFree ? "Ücretsiz" : fmtMoney(s.price), s.durationText].filter(Boolean).join(" · "),
+      meta: [s.opensAt ? "Erken kayıt" : "", s.comingSoon && !s.soonShowPrice ? "Yakında" : s.isFree ? "Ücretsiz" : fmtMoney(s.price), s.durationText].filter(Boolean).join(" · "),
       comingSoon: s.comingSoon,
       state: "open",
     }));

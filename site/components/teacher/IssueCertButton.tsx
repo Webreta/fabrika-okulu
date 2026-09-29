@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { issueCertificate, revokeCertificate } from "@/app/actions/teacher";
 import { Icon } from "@/components/site/Icon";
 
-export function IssueCertButton({ userId, courseId, eligible }: { userId: number; courseId: number; eligible: { id: number; title: string }[] }) {
+/** eligible[].note: tasarımın koşulu henüz sağlanmadıysa uyarı metni (elle verme yine de mümkündür) */
+export function IssueCertButton({ userId, courseId, eligible }: { userId: number; courseId: number; eligible: { id: number; title: string; note?: string }[] }) {
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState(eligible[0]?.id ?? 0);
   const [err, setErr] = useState("");
@@ -22,7 +23,8 @@ export function IssueCertButton({ userId, courseId, eligible }: { userId: number
             <div className="mt-3 space-y-2">
               {eligible.map((t) => (
                 <label key={t.id} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${sel === t.id ? "border-sky-400 bg-sky-50" : "border-line"}`}>
-                  <input type="radio" checked={sel === t.id} onChange={() => setSel(t.id)} /> {t.title}
+                  <input type="radio" checked={sel === t.id} onChange={() => setSel(t.id)} />
+                  <span>{t.title}{t.note && <span className="block text-xs font-semibold text-amber-700">{t.note}. Yine de verebilirsin.</span>}</span>
                 </label>
               ))}
             </div>

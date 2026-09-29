@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db } from "@/db";
@@ -22,17 +23,8 @@ export default async function CertificatePage({ params }: { params: Promise<{ to
     .where(eq(issuedCertificates.token, token))
     .limit(1);
 
-  if (!row) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface p-6 text-center">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-800">Sertifika bulunamadı</h1>
-          <p className="mt-2 text-muted">Bağlantı geçersiz ya da sertifika iptal edilmiş.</p>
-          <Link href="/" className="btn-primary mt-6">Anasayfa</Link>
-        </div>
-      </div>
-    );
-  }
+  // Olmayan ya da iptal edilmiş (silinmiş) sertifika: 404 döner; ileti not-found.tsx içinde
+  if (!row) notFound();
   const url = siteUrl(`/sertifika/${token}`);
   const qr = row.t.fields.qr.enabled ? await QRCode.toDataURL(url, { margin: 1, width: 400, errorCorrectionLevel: "M" }) : null;
   const date = fmtDate(row.ic.issuedAt, true);

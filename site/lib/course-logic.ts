@@ -23,10 +23,21 @@ export function durationText(totalSecs: number): string {
   return `${totalSecs} sn`;
 }
 
-/** "2:35" → "02:35", "12" → "12:00", "1:02:35" korunur */
+/** Geçerli ders süresi mi: "12" (dakika), "12:30" (dk:sn) ya da "1:05:00" (sa:dk:sn); yalnızca rakam */
+export function isDuration(input: string | null | undefined): boolean {
+  const t = (input || "").trim();
+  return /^\d{1,4}$/.test(t) || /^\d{1,3}:[0-5]?\d$/.test(t) || /^\d{1,2}:[0-5]?\d:[0-5]?\d$/.test(t);
+}
+
+/** Gösterim için süre: geçersiz kayıt ("abc:00" gibi eski veri) boş döner */
+export function validDuration(input: string | null | undefined): string {
+  return isDuration(input) ? normalizeDuration(input ?? "") : "";
+}
+
+/** "2:35" → "02:35", "12" → "12:00", "1:02:35" korunur; geçersiz girdi boş döner */
 export function normalizeDuration(input: string): string {
   const t = (input || "").trim();
-  if (!t) return "";
+  if (!t || !isDuration(t)) return "";
   const parts = t.split(":");
   if (parts.length === 1) return `${parts[0].padStart(2, "0")}:00`;
   if (parts.length === 2) return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
@@ -75,6 +86,30 @@ export function computeProgress(lessons: Pick<Lesson, "id" | "type">[], done: Le
   const completed = counted.filter((l) => done.has(l.id)).length;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   return { total, completed, percent };
+}
+
+export type AttemptLite = { status: string; passed: boolean | null; score: string | number | null; voided?: boolean | null };
+
+/** Tamamlanmış bir deneme geçer sayılır mı? (geçme notu 0 = otomatik geçer; eski "değerlendirme bekliyor" kayıtları geçer sayılır) */
+export function attemptPassed(a: AttemptLite, passScore: number) {
+  if (a.status === "pending_review" || passScore === 0) return true;
+  if (a.passed !== null && a.passed !== undefined) return a.passed;
+  return Number(a.score ?? 0) >= passScore;
+}
+
+/**
+ * Öğrencinin bir sınavdaki durumu (panel, oynatıcı ve sunucu işlemleri aynı kuralı kullanır):
+ *  - passed: geçerli denemelerden biri geçti → sınav dersi tamamlanmış sayılır
+ *  - canAttempt: geçmediyse ve hakkı varsa yeniden çözebilir (maxAttempts 0 = sınırsız)
+ *  - exhausted: geçemedi ve hakkı bitti → sonraki derslere devam edebilir ama sınav tamamlanmış sayılmaz
+ *    (kurs %100 olmaz, otomatik sertifika verilmez); eğitmen/yönetici yeni hak tanımlayabilir
+ * Geçersiz sayılan (voided) ve yarım kalan (in_progress) denemeler hak hesabına girmez.
+ */
+export function quizStanding(quiz: { passScore: number; maxAttempts: number }, attempts: AttemptLite[]) {
+  const finished = attempts.filter((a) => !a.voided && a.status !== "in_progress");
+  const passed = finished.some((a) => attemptPassed(a, quiz.passScore));
+  const left = passed ? 0 : quiz.maxAttempts === 0 ? null : Math.max(0, quiz.maxAttempts - finished.length);
+  return { finished: finished.length, passed, canAttempt: !passed && left !== 0, exhausted: !passed && left === 0, left };
 }
 
 /**
@@ -159,15 +194,38 @@ export function groupFromSlug(slug: string): keyof typeof GROUP_LABELS | null {
   return e ? (e[0] as keyof typeof GROUP_LABELS) : null;
 }
 
-/** Aktif fiyat: indirim geçerliyse indirimli */
+/** Erken kayıt alanları (kurs satırından) */
+export type PreorderFields = { preorder?: boolean | null; opensAt?: string | null; preorderPrice?: string | number | null };
+
+/** Açılış anı: açılış tarihinin 00:00'ı */
+export function opensAtDate(c: PreorderFields): Date | null {
+  if (!c.opensAt) return null;
+  const d = new Date(`${c.opensAt}T00:00:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Erken kayıt dönemi sürüyor mu: işaretli + açılış tarihi gelecekte.
+ * Tarih geçince eğitim kendiliğinden normal eğitime döner (içerik açılır, erken kayıt fiyatı biter).
+ */
+export function isPreorder(c: PreorderFields) {
+  const d = opensAtDate(c);
+  return !!c.preorder && !!d && d.getTime() > Date.now();
+}
+
+/** Aktif fiyat: erken kayıt dönemindeyse erken kayıt fiyatı, değilse indirim geçerliyse indirimli */
 export function effectivePrice(c: {
   isFree: boolean;
   price: string | number;
   salePrice?: string | number | null;
   saleTo?: string | null;
-}) {
+} & PreorderFields) {
   if (c.isFree) return 0;
   const price = Number(c.price) || 0;
+  if (isPreorder(c)) {
+    const early = c.preorderPrice != null ? Number(c.preorderPrice) : 0;
+    if (early > 0 && early < price) return early;
+  }
   const sale = c.salePrice != null ? Number(c.salePrice) : 0;
   if (sale > 0 && sale < price) {
     if (c.saleTo) {
@@ -184,6 +242,6 @@ export function hasActiveSale(c: {
   price: string | number;
   salePrice?: string | number | null;
   saleTo?: string | null;
-}) {
+} & PreorderFields) {
   return !c.isFree && effectivePrice(c) < (Number(c.price) || 0);
 }

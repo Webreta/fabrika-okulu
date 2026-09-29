@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { certificateTemplates, issuedCertificates, users, courses } from "@/db/schema";
 import { courseProgress } from "@/lib/data/student";
 import { notifyUser } from "@/lib/notify";
-import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
+import { sendMail, emailTemplate, siteUrl, escapeHtml } from "@/lib/mailer";
 
 /**
  * Sertifikayı fiilen tanımlar: kayıt (ad/kurs dondurulur) + öğrenciye bildirim + e-posta.
@@ -32,7 +32,7 @@ export async function grantCertificate(opts: { templateId: number; userId: numbe
     type: "certificate",
     to: s.email,
     subject: `Sertifikan hazır: ${c.title}`,
-    html: emailTemplate({ title: "Tebrikler! 🎓", html: `<p><b>${c.title}</b> programı için <b>${t.title}</b> belgen hazır.</p>`, buttonText: "Sertifikayı gör", buttonUrl: siteUrl(url) }),
+    html: emailTemplate({ title: "Tebrikler! 🎓", html: `<p><b>${escapeHtml(c.title)}</b> programı için <b>${escapeHtml(t.title)}</b> belgen hazır.</p>`, buttonText: "Sertifikayı gör", buttonUrl: siteUrl(url) }),
   });
   return { ok: true as const, url };
 }

@@ -20,11 +20,15 @@ import {
 } from "@/db/schema";
 import { durationSecs, durationText } from "@/lib/course-logic";
 import { todayISO } from "@/lib/format";
+import { heldSeatsSql } from "@/lib/orders";
 
 export type CourseWithMeta = Course & {
   instructor: Instructor | null;
   studentCount: number;
   lessonCount: number;
+  moduleCount: number;
+  /** Canlı oturum sayısı: dönem takvimindeki (schedule) oturumlar; bitmemiş dönemlerin en uzunu, yoksa tüm dönemlerin */
+  sessionCount: number;
   hasPeriods: boolean;
 };
 
@@ -34,7 +38,7 @@ export type CourseFull = Course & {
   instructor: Instructor | null;
   modules: CurriculumModule[];
   flatLessons: Lesson[];
-  periods: (Period & { enrolled: number })[];
+  periods: (Period & { enrolled: number; held: number })[];
   stats: {
     modules: number;
     videos: number;
@@ -94,15 +98,17 @@ export async function getCoursePeriods(courseId: number) {
     .select({
       p: periods,
       enrolled: sql<number>`(select count(*) from ${periodEnrollments} pe where pe.period_id = "periods"."id")`.mapWith(Number),
+      held: heldSeatsSql().mapWith(Number),
     })
     .from(periods)
     .where(eq(periods.courseId, courseId))
     .orderBy(asc(periods.startDate));
-  return rows.map((r) => ({ ...r.p, enrolled: r.enrolled }));
+  // held: bekleyen siparişlerin tuttuğu koltuk; satışta doluluk = enrolled + held (yönetim ekranları enrolled'ı gösterir)
+  return rows.map((r) => ({ ...r.p, enrolled: r.enrolled, held: r.held }));
 }
 
 /** Kayıt açık dönemler (son kayıt tarihi geçmemiş) */
-export function openPeriods(list: (Period & { enrolled: number })[]) {
+export function openPeriods<T extends Period>(list: T[]) {
   const today = todayISO();
   return list.filter((p) => {
     const deadline = p.enrollmentDeadline ?? p.startDate;
@@ -127,6 +133,8 @@ export const listCourses = cache(
         studentCount: sql<number>`(select count(*) from ${enrollments} e where e.course_id = ${courses.id} and e.status = 'active')`.mapWith(Number),
         lessonCount: sql<number>`(select count(*) from ${lessons} l where l.course_id = ${courses.id} and l.type <> 'file')`.mapWith(Number),
         periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = "courses"."id")`.mapWith(Number),
+        moduleCount: sql<number>`(select count(*) from ${modules} m where m.course_id = "courses"."id")`.mapWith(Number),
+        sessionCount: sql<number>`(select coalesce(max(jsonb_array_length(p.schedule)) filter (where p.end_date >= current_date), max(jsonb_array_length(p.schedule)), 0) from ${periods} p where p.course_id = "courses"."id" and jsonb_typeof(p.schedule) = 'array')`.mapWith(Number),
       })
       .from(courses)
       .leftJoin(instructors, eq(courses.instructorId, instructors.id))
@@ -137,6 +145,8 @@ export const listCourses = cache(
       instructor: r.instructor,
       studentCount: r.studentCount,
       lessonCount: r.lessonCount,
+      moduleCount: r.moduleCount,
+      sessionCount: r.sessionCount,
       hasPeriods: r.periodCount > 0,
     })) as CourseWithMeta[];
   }

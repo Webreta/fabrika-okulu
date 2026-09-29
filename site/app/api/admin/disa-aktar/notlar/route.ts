@@ -3,7 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notes, courses, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, todayISO } from "@/lib/format";
 import { xlsxBuffer, xlsxHeaders, type Cell } from "@/lib/xlsx";
 
 function fmtSecs(s: number) {
@@ -52,6 +52,6 @@ export async function GET(request: Request) {
     },
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   return new NextResponse(new Uint8Array(buf), { headers: xlsxHeaders(`ogrenci-notlari-${today}.xlsx`) });
 }

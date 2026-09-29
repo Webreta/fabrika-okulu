@@ -24,7 +24,7 @@ export function ResumeUploadForm({ kind, used }: { kind: ResumeKind; used: numbe
         <div className="h-2 overflow-hidden rounded-full bg-surface"><div className={`h-full rounded-full ${percent >= 90 ? "bg-red-500" : "bg-sky-500"}`} style={{ width: `${percent}%` }} /></div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input ref={fileRef} type="file" name="file" required disabled={full} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" className="input flex-1" />
+        <input aria-label="Özgeçmiş dosyası" ref={fileRef} type="file" name="file" required disabled={full} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" className="input flex-1" />
         <button disabled={pending || full} className="btn-primary shrink-0"><Icon name="upload" className="size-4" /> {pending ? "Yükleniyor…" : "Yükle"}</button>
       </div>
       {full && <p className="text-xs text-amber-700">Alan dolu. Yeni dosya için önce bir dosya sil.</p>}

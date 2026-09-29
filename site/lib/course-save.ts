@@ -2,48 +2,75 @@ import "server-only";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations, courseCategories } from "@/db/schema";
+import { courses, modules, lessons, quizzes, quizQuestions, assignments, periods, periodEnrollments, courseRelations, courseCategories, enrollments } from "@/db/schema";
 import { notifyWaitlistIfOpen, notifyComingSoonOpened } from "@/lib/waitlist";
 import { notifyFavoritesOnSale } from "@/lib/favorites";
+import { notifyPreorderOpened } from "@/lib/preorder";
+import { isPreorder } from "@/lib/course-logic";
+import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/uploads";
-import { normalizeDuration } from "@/lib/course-logic";
-import { todayISO } from "@/lib/format";
+import { normalizeDuration, isDuration } from "@/lib/course-logic";
+import { addDays, todayISO, isWaNumber } from "@/lib/format";
+import { COURSE_LIMITS, ASSIGN_NEEDS_PERIOD } from "@/lib/course-limits";
+
+// ---- Doğrulama yardımcıları ----
+// Hatalı değer sessizce düzeltilmez (eksi fiyat → 0, kontenjan 0 → 20 gibi); kullanıcıya Türkçe hata döner.
+const tr = (n: number) => n.toLocaleString("tr-TR");
+const text = (max: number) => z.string({ error: "metin olmalı" }).max(max, `en fazla ${tr(max)} karakter olabilir`);
+const num = (min: number, max: number) =>
+  z.coerce.number({ error: "sayı olmalı" }).min(min, min === 0 ? "eksi olamaz" : `en az ${tr(min)} olmalı`).max(max, `en fazla ${tr(max)} olabilir`);
+const int = (min: number, max: number) =>
+  z.coerce.number({ error: "sayı olmalı" }).int("tam sayı olmalı").min(min, min === 0 ? "eksi olamaz" : `en az ${tr(min)} olmalı`).max(max, `en fazla ${tr(max)} olabilir`);
+
+const L = COURSE_LIMITS;
+
+/** Gerçek bir takvim günü mü ("YYYY-MM-DD", 2000–2100 arası) */
+const isDay = (s: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s && s >= "2000-01-01" && s <= "2100-12-31";
+};
+/** Geçerli saat mi ("SS:DD", saniye isteğe bağlı) */
+const isTime = (s: string) => {
+  const m = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(s);
+  return !!m && Number(m[1]) <= 23 && Number(m[2]) <= 59;
+};
 
 // Editörden gelen müfredat şeması — sınav soruları da inline gelir
 const questionSchema = z.object({
   id: z.number().optional(),
   qtype: z.enum(["multiple_choice", "true_false", "open_ended"]),
-  text: z.string().trim(),
-  points: z.coerce.number().int().min(1).catch(1),
-  options: z.array(z.string()).default([]),
+  text: text(L.questionText).trim(),
+  points: int(1, 1000).default(1),
+  options: z.array(text(L.optionText)).max(12, "en fazla 12 şık olabilir").default([]),
   correct: z.union([z.number(), z.string(), z.boolean(), z.null()]).optional(),
-  explanation: z.string().default(""),
-  image: z.string().default(""),
+  explanation: text(L.explanation).default(""),
+  image: text(L.url).default(""),
 });
 
 const lessonSchema = z.object({
   id: z.number().optional(),
   type: z.enum(["video", "quiz", "assign", "file"]),
-  title: z.string().trim(),
-  videoUrl: z.string().trim().default(""),
-  duration: z.string().default(""),
+  title: text(L.lessonTitle).trim(),
+  videoUrl: text(L.url).trim().default(""),
+  duration: text(20).default(""),
   preview: z.boolean().default(false),
-  description: z.string().default(""),
-  dueDays: z.coerce.number().int().min(0).catch(0),
+  description: text(L.lessonDescription).default(""),
+  dueDays: int(0, 3650).default(0),
   // Takvimli kursta teslim mutlak tarihle girilir (YYYY-MM-DD + isteğe bağlı HH:MM)
   dueDate: z.string().default(""),
   dueTime: z.string().default(""),
-  fileUrl: z.string().default(""),
-  fileName: z.string().default(""),
-  fileMime: z.string().default(""),
-  questions: z.array(questionSchema).default([]),
-  timeLimit: z.coerce.number().int().min(0).catch(0),
-  passScore: z.coerce.number().int().min(0).max(100).catch(0),
-  maxAttempts: z.coerce.number().int().min(0).catch(1),
+  fileUrl: text(L.url).default(""),
+  fileName: text(300).default(""),
+  fileMime: text(100).default(""),
+  questions: z.array(questionSchema).max(200, "en fazla 200 soru olabilir").default([]),
+  timeLimit: int(0, 1440).default(0),
+  passScore: int(0, 100).default(0),
+  maxAttempts: int(0, 100).default(1),
   shuffleQuestions: z.boolean().default(false),
   showCorrectAnswers: z.boolean().default(true),
   isGraded: z.boolean().default(false),
-  maxScore: z.coerce.number().int().min(0).catch(100),
+  maxScore: int(0, 1000).default(100),
   allowFile: z.boolean().default(true),
   allowVoice: z.boolean().default(true),
   allowText: z.boolean().default(true),
@@ -51,73 +78,80 @@ const lessonSchema = z.object({
 
 const moduleSchema = z.object({
   id: z.number().optional(),
-  title: z.string().trim(),
-  lessons: z.array(lessonSchema).default([]),
+  title: text(L.moduleTitle).trim(),
+  lessons: z.array(lessonSchema).max(300, "en fazla 300 içerik olabilir").default([]),
 });
 
 const scheduleSchema = z.object({
-  date: z.string(),
+  date: z.string().default(""),
   time: z.string().default(""),
-  title: z.string().default(""),
-  link: z.string().default(""),
-  notes: z.string().default(""),
+  title: text(L.sessionTitle).default(""),
+  link: text(L.url).default(""),
+  notes: text(1000).default(""),
 });
 
 // İlişkili kurs önerisi (yalnızca admin kaydeder)
 const relationSchema = z.object({
-  relatedCourseId: z.coerce.number().int().min(1),
+  relatedCourseId: z.coerce.number().int().min(1, "eğitim seçilmeli"),
   trigger: z.enum(["completed", "purchased"]).default("completed"),
-  discountPercent: z.coerce.number().int().min(0).max(100).catch(0),
-  note: z.string().default(""),
+  discountPercent: int(0, 100).default(0),
+  note: text(L.note).default(""),
 });
 
 const periodSchema = z.object({
   id: z.number().optional(),
-  name: z.string().trim(),
-  startDate: z.string(),
+  name: text(L.periodName).trim(),
+  startDate: z.string().default(""),
   startTime: z.string().default(""),
-  endDate: z.string(),
-  capacity: z.coerce.number().int().min(1).catch(20),
-  description: z.string().default(""),
-  schedule: z.array(scheduleSchema).default([]),
+  endDate: z.string().default(""),
+  capacity: int(1, L.maxCapacity).default(20),
+  description: text(L.periodDescription).default(""),
+  schedule: z.array(scheduleSchema).max(200, "en fazla 200 oturum olabilir").default([]),
 });
 
 const courseObjectSchema = z.object({
   id: z.number().optional(),
-  title: z.string().trim().min(2, "Başlık gerekli."),
-  shortDescription: z.string().default(""),
-  description: z.string().default(""),
-  imageUrl: z.string().default(""),
+  title: text(L.title).trim().min(2, "gerekli (en az 2 karakter)"),
+  shortDescription: text(L.shortDescription).default(""),
+  description: text(L.description).default(""),
+  imageUrl: text(L.url).default(""),
   status: z.enum(["draft", "published"]).default("draft"),
   isFree: z.boolean().default(false),
-  price: z.coerce.number().min(0).catch(0),
-  salePrice: z.coerce.number().min(0).catch(0),
+  price: num(0, L.maxPrice).default(0),
+  salePrice: num(0, L.maxPrice).default(0),
   saleTo: z.string().default(""),
-  outcomes: z.array(z.string()).default([]),
-  requirements: z.string().default(""),
-  target: z.string().default(""),
-  previewVideo: z.string().default(""),
-  level: z.string().default("all"),
-  language: z.string().default("Türkçe"),
+  outcomes: z.array(text(L.outcome)).max(L.outcomeCount * 3, `en fazla ${L.outcomeCount} madde olabilir`).default([]),
+  requirements: text(5000).default(""),
+  target: text(L.target).default(""),
+  previewVideo: text(L.url).default(""),
+  level: text(40).default("all"),
+  language: text(40).default("Türkçe"),
   hasCertificate: z.boolean().default(false),
   lifetime: z.boolean().default(true),
-  buttonType: z.string().default("cart"),
+  buttonType: text(20).default("cart"),
   // Online görüşme ürünü: müfredat yok, koltuklar dönem olarak tutulur
   type: z.enum(["course", "meeting"]).default("course"),
-  meetingMinutes: z.coerce.number().int().min(0).catch(0),
-  meetingLink: z.string().trim().default(""),
+  meetingMinutes: int(0, 600).default(0),
+  meetingLink: text(L.url).trim().default(""),
   instructorId: z.number().nullable().optional(),
-  modules: z.array(moduleSchema).default([]),
-  periods: z.array(periodSchema).default([]),
-  relations: z.array(relationSchema).optional(),
+  modules: z.array(moduleSchema).max(100, "en fazla 100 modül olabilir").default([]),
+  periods: z.array(periodSchema).max(500, "en fazla 500 dönem olabilir").default([]),
+  relations: z.array(relationSchema).max(30, "en fazla 30 öneri olabilir").optional(),
   /** Kategori id'leri (yalnızca admin düzenler; undefined = dokunma) */
   categoryIds: z.array(z.number().int()).optional(),
   featured: z.boolean().optional(),
   closed: z.boolean().optional(),
   comingSoon: z.boolean().optional(),
   soonShowPrice: z.boolean().optional(),
-  whatsappNumber: z.string().optional(),
-  whatsappMessage: z.string().optional(),
+  /** Erken kayıt (yalnızca admin): açılış tarihine kadar satın alınır, içerik açılışta aktifleşir */
+  preorder: z.boolean().optional(),
+  opensAt: z.string().optional(),
+  preorderPrice: num(0, L.maxPrice).optional(),
+  /** Program sayfasında eğitmenden sonra gösterilen öne çıkan eğitim (yalnızca admin); null/0 = yok */
+  promoCourseId: z.number().int().nullable().optional(),
+  promoTitle: text(120).trim().optional(),
+  whatsappNumber: text(30).optional(),
+  whatsappMessage: text(500).optional(),
 });
 
 /**
@@ -126,21 +160,190 @@ const courseObjectSchema = z.object({
  * - Sınavlar her kurs tipinde anlık geri bildirimlidir: test/D-Y otomatik değerlendirilir,
  *   açık uçlu sorular yalnızca kaydedilir (puanlanmaz, eğitmen değerlendirmesi yoktur).
  *   Açık uçlu ve test/D-Y sorular aynı sınavda birlikte yer alabilir.
+ * - Dönem: ad + başlangıç + bitiş zorunlu, bitiş başlangıçtan önce olamaz, oturumlar dönem aralığında olmalı.
+ * - Fiyat: indirimli fiyat normal fiyattan düşük olmalı.
  */
 export const courseInputSchema = courseObjectSchema.superRefine((c, ctx) => {
-  const scheduled = c.periods.filter((p) => p.name && p.startDate && p.endDate).length > 0;
-  c.modules.forEach((m, mi) =>
-    m.lessons.forEach((l, li) => {
-      if (!scheduled && l.type === "assign") {
-        ctx.addIssue({ code: "custom", path: ["modules", mi, "lessons", li, "type"], message: "görev yalnızca takvimli (dönemli) eğitimlerde olabilir" });
+  const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
+
+  // ---- Fiyat
+  if (!c.isFree) {
+    if (c.salePrice > 0 && c.salePrice >= c.price) issue(["salePrice"], "normal fiyattan düşük olmalı (indirim yoksa 0 bırak)");
+    if (c.saleTo && !isDay(c.saleTo)) issue(["saleTo"], "geçerli bir tarih değil");
+  }
+  if (c.outcomes.filter((o) => o.trim()).length > L.outcomeCount) issue(["outcomes"], `en fazla ${L.outcomeCount} madde olabilir`);
+  // WhatsApp numarası (kurs özel): boş bırakılabilir (genel numara kullanılır); yazıldıysa geçerli olmalı
+  if ((c.whatsappNumber ?? "").trim() && !isWaNumber(c.whatsappNumber ?? "")) issue(["whatsappNumber"], "geçerli bir telefon numarası değil (örnek: 905321234567; yalnızca rakam, 10–15 hane)");
+
+  // ---- Dönemler / koltuklar
+  c.periods.forEach((p, pi) => {
+    const at = (...rest: (string | number)[]) => ["periods", pi, ...rest];
+    if (!p.name || !p.startDate || !p.endDate) { issue(at(), "ad, başlangıç ve bitiş tarihi zorunlu (boş olanı doldur ya da sil)"); return; }
+    const startOk = isDay(p.startDate), endOk = isDay(p.endDate);
+    if (!startOk) issue(at("startDate"), "geçerli bir tarih değil");
+    if (!endOk) issue(at("endDate"), "geçerli bir tarih değil");
+    if (startOk && endOk && p.endDate < p.startDate) issue(at("endDate"), "başlangıç tarihinden önce olamaz");
+    if (p.startTime && !isTime(p.startTime)) issue(at("startTime"), "geçerli bir saat değil (örnek: 19:30)");
+    p.schedule.forEach((s, si) => {
+      if (!s.date) {
+        // Tümüyle boş satır kaydedilmez; içi dolu ama tarihsiz satır hatadır
+        if (s.time || s.title.trim() || s.link.trim() || s.notes.trim()) issue(at("schedule", si, "date"), "gerekli (oturumu doldur ya da sil)");
+        return;
       }
-      // Sınavlarda açık uçlu + test/D-Y karışık olabilir. Açık uçlu sorular puanlanmaz,
-      // yalnızca kaydedilir; test/D-Y otomatik değerlendirilir.
-    })
-  );
+      if (!isDay(s.date)) { issue(at("schedule", si, "date"), "geçerli bir tarih değil"); return; }
+      if (startOk && endOk && p.endDate >= p.startDate && (s.date < p.startDate || s.date > p.endDate)) issue(at("schedule", si, "date"), "dönemin başlangıç–bitiş tarihleri arasında olmalı");
+      if (s.time && !isTime(s.time)) issue(at("schedule", si, "time"), "geçerli bir saat değil (örnek: 19:30)");
+    });
+  });
+
+  // ---- Müfredat (online görüşme ürününde müfredat kaydedilmez)
+  if (c.type !== "meeting") {
+    const scheduled = c.periods.length > 0;
+    c.modules.forEach((m, mi) => {
+      if (!m.title) issue(["modules", mi, "title"], "gerekli (boş modülü sil)");
+      m.lessons.forEach((l, li) => {
+        const at = (...rest: (string | number)[]) => ["modules", mi, "lessons", li, ...rest];
+        if (!scheduled && l.type === "assign") issue(at(), ASSIGN_NEEDS_PERIOD);
+        if (l.type === "video" && l.duration.trim() && !isDuration(l.duration)) issue(at("duration"), "yalnızca rakam ve iki nokta içerebilir (örnek: 12, 12:30 ya da 1:05:00)");
+        if (l.type === "quiz" || l.type === "assign") {
+          if (l.dueDate && !isDay(l.dueDate)) issue(at("dueDate"), "geçerli bir tarih değil");
+          if (l.dueTime && !isTime(l.dueTime)) issue(at("dueTime"), "geçerli bir saat değil (örnek: 19:30)");
+        }
+        if (l.type === "quiz") {
+          l.questions.forEach((q, qi) => {
+            if (!q.text || q.qtype !== "multiple_choice") return;
+            const filled = q.options.filter((o) => o.trim() !== "").length;
+            if (filled < 2) issue(at("questions", qi, "options"), "en az iki şık yazılmalı");
+            else if (!(q.options[Number(q.correct ?? 0) || 0] ?? "").trim()) issue(at("questions", qi, "correct"), "boş bir şıkkı gösteriyor; doğru şıkkı işaretle");
+          });
+        }
+      });
+    });
+  }
+
+  // ---- Erken kayıt
+  if (c.preorder) {
+    if (!isDay(c.opensAt ?? "")) issue(["Erken kayıt"], "açılış tarihi gerekli");
+    if (c.comingSoon) issue(["Erken kayıt"], "“Yakında” ile birlikte seçilemez; birini kaldır");
+    if (c.type === "meeting") issue(["Erken kayıt"], "online görüşme ürününde kullanılamaz");
+    if (!c.isFree && (c.preorderPrice ?? 0) > 0 && (c.preorderPrice ?? 0) >= c.price) issue(["Erken kayıt"], "erken kayıt fiyatı normal fiyattan düşük olmalı");
+    // Erken kayıt fiyatı indirimin önüne geçtiği için indirimli fiyattan yüksekse erken kayıt olan daha pahalıya alırdı
+    else if (!c.isFree && (c.preorderPrice ?? 0) > 0 && c.salePrice > 0 && c.salePrice < c.price && (c.preorderPrice ?? 0) > c.salePrice) issue(["Erken kayıt"], "erken kayıt fiyatı indirimli fiyattan yüksek olamaz");
+  }
 });
 
 export type CourseInput = z.infer<typeof courseObjectSchema>;
+
+// ---- Hata metni: "Form hatası (Dönem 2 › Bitiş): başlangıç tarihinden önce olamaz" ----
+const FIELD_LABELS: Record<string, string> = {
+  title: "Başlık", shortDescription: "Kısa açıklama", description: "Açıklama", imageUrl: "Görsel", price: "Fiyat", salePrice: "İndirimli fiyat",
+  saleTo: "İndirim bitiş tarihi", outcomes: "Kazanımlar", target: "Hedef kitle", previewVideo: "Önizleme videosu", language: "Dil", level: "Seviye",
+  buttonType: "Buton tipi", type: "Eğitim türü", status: "Durum", meetingMinutes: "Görüşme süresi", meetingLink: "Görüşme bağlantısı",
+  preorderPrice: "Erken kayıt fiyatı", opensAt: "Açılış tarihi", promoTitle: "Öne çıkan eğitim başlığı", whatsappNumber: "WhatsApp numarası",
+  whatsappMessage: "WhatsApp mesajı", name: "Ad", startDate: "Başlangıç", startTime: "Başlangıç saati", endDate: "Bitiş", capacity: "Kontenjan",
+  date: "Tarih", time: "Saat", link: "Bağlantı", notes: "Not", discountPercent: "İndirim yüzdesi", note: "Mesaj", relatedCourseId: "Eğitim",
+  points: "Puan", text: "Soru metni", options: "Şıklar", correct: "Doğru şık", explanation: "Açıklama", image: "Görsel", videoUrl: "Video adresi",
+  duration: "Süre", dueDays: "Süre (gün)", dueDate: "Son tarih", dueTime: "Son tarih saati", passScore: "Geçme notu", maxScore: "Maks puan",
+  timeLimit: "Süre sınırı", maxAttempts: "Deneme hakkı", fileName: "Dosya adı", requirements: "Gereksinimler", modules: "Müfredat",
+  periods: "Dönemler", relations: "Kurs önerileri", questions: "Sorular", lessons: "İçerikler", schedule: "Oturumlar",
+};
+
+/** Doğrulama hatasını kullanıcıya gösterilecek tek satıra çevirir */
+export function courseIssueMessage(issues: readonly { path: PropertyKey[]; message: string }[], meeting = false): string {
+  const first = issues[0];
+  if (!first) return "Form hatası.";
+  const parts: string[] = [];
+  const path = first.path;
+  path.forEach((seg, i) => {
+    const prev = path[i - 1];
+    const next = path[i + 1];
+    if (typeof seg === "number") {
+      if (prev === "modules") parts.push(`Modül ${seg + 1}`);
+      else if (prev === "lessons") parts.push(`İçerik ${seg + 1}`);
+      else if (prev === "questions") parts.push(`Soru ${seg + 1}`);
+      else if (prev === "periods") parts.push(`${meeting ? "Koltuk" : "Dönem"} ${seg + 1}`);
+      else if (prev === "schedule") parts.push(`Oturum ${seg + 1}`);
+      else if (prev === "relations") parts.push(`Öneri ${seg + 1}`);
+      else if (prev === "options") parts.push(`Şık ${String.fromCharCode(65 + seg)}`);
+      else if (prev === "outcomes") parts.push(`Kazanımlar › ${seg + 1}. satır`);
+    } else if (typeof next !== "number") {
+      // Dizi adları (modules, lessons…) sıra numarasıyla birlikte yazılır; tek başına kalan alan adı etiketine çevrilir
+      const key = String(seg);
+      parts.push(FIELD_LABELS[key] ?? key);
+    }
+  });
+  const msg = /^invalid/i.test(first.message) ? "geçersiz değer" : first.message;
+  const more = issues.length > 1 ? ` (${issues.length - 1} hata daha var; önce bunu düzelt)` : "";
+  return `Form hatası${parts.length ? ` (${parts.join(" › ")})` : ""}: ${msg}.${more}`;
+}
+
+// ---- Eğitmen kilidi ----
+/**
+ * Eğitmen (yönetici değil) için kilit: eğitim yayındaysa YA DA kayıtlı öğrencisi varsa müfredat, dönemler,
+ * eğitim türü ve durum (yayından kaldırma) değiştirilemez; yalnızca oturum bağlantıları güncellenir.
+ * Kayıtlı öğrenci ölçütü, "Sil" ile taslağa düşürülen eğitimin kilidinin açılmasını engeller. Yönetici kısıtlanmaz.
+ */
+export async function courseLockInfo(courseId: number) {
+  const [c] = await db.select({ status: courses.status, type: courses.type, buttonType: courses.buttonType }).from(courses).where(eq(courses.id, courseId)).limit(1);
+  if (!c) return null;
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(enrollments)
+    .where(and(eq(enrollments.courseId, courseId), eq(enrollments.status, "active")));
+  return { ...c, students: n, teacherLocked: c.status === "published" || n > 0 };
+}
+export type CourseLockInfo = NonNullable<Awaited<ReturnType<typeof courseLockInfo>>>;
+
+// Kilitli kayıtta dönemlerden yalnızca oturum bağlantıları okunur
+const periodLinksSchema = z.array(z.object({
+  id: z.number().int().optional(),
+  schedule: z.array(z.object({ link: text(L.url).default("") })).default([]),
+})).default([]);
+export type PeriodLinks = z.infer<typeof periodLinksSchema>;
+
+/**
+ * Editörden gelen ham veriyi doğrular. Kilitli alanlar istekten değil KAYITTAN alınır (elle gönderilen istekle aşılamaz):
+ * - yönetici olmayan herkes: satış düğmesi tipi (buttonType)
+ * - kilitli eğitim (bkz. courseLockInfo): müfredat, dönemler, eğitim türü; yayındaki eğitim taslağa çekilemez
+ */
+export function parseCourseInput(
+  raw: unknown,
+  opts: { isAdmin: boolean; stored: CourseLockInfo | null },
+): { ok: true; input: CourseInput; locked: boolean; links: PeriodLinks } | { ok: false; error: string } {
+  if (typeof raw !== "object" || raw === null) return { ok: false, error: "Form hatası: veri okunamadı." };
+  const locked = !opts.isAdmin && !!opts.stored?.teacherLocked;
+  let data: Record<string, unknown> = raw as Record<string, unknown>;
+  let links: PeriodLinks = [];
+  if (!opts.isAdmin) {
+    data = { ...data, buttonType: opts.stored?.buttonType ?? "cart" };
+    if (locked && opts.stored) {
+      const lp = periodLinksSchema.safeParse(data.periods ?? []);
+      if (!lp.success) return { ok: false, error: `Form hatası (Oturum bağlantısı): en fazla ${L.url} karakter olabilir.` };
+      links = lp.data;
+      data = { ...data, modules: [], periods: [], type: opts.stored.type, status: opts.stored.status === "published" ? "published" : data.status };
+    }
+  }
+  const parsed = courseInputSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: courseIssueMessage(parsed.error.issues, data.type === "meeting") };
+  return { ok: true, input: parsed.data, locked, links };
+}
+
+/**
+ * Kayıtlı veriye bakan kurallar: tümüyle geçmişte kalan dönem yalnızca YENİ eklenirken reddedilir
+ * (süren eğitimin bitmiş dönemleri kaydı engellemez).
+ */
+export async function checkCourseAgainstStored(input: CourseInput): Promise<string | null> {
+  if (input.periods.length === 0) return null;
+  const existing = input.id ? await db.select({ id: periods.id }).from(periods).where(eq(periods.courseId, input.id)) : [];
+  const known = new Set(existing.map((p) => p.id));
+  const today = todayISO();
+  const label = input.type === "meeting" ? "Koltuk" : "Dönem";
+  for (const [i, p] of input.periods.entries()) {
+    if (p.id && known.has(p.id)) continue;
+    if (p.endDate < today) return `Form hatası (${label} ${i + 1} › Bitiş): tarih geçmişte kalmış. Yeni ${label.toLowerCase()} geçmiş tarihli olamaz; tarihleri düzelt ya da sil.`;
+  }
+  return null;
+}
 
 async function uniqueSlug(title: string, id?: number) {
   const base = slugify(title) || "program";
@@ -155,17 +358,23 @@ async function uniqueSlug(title: string, id?: number) {
 
 /**
  * Kursu ve tüm alt yapısını kaydeder.
- * locked=true (yayında + admin değil): müfredat ve dönemler dokunulmaz; yalnızca gelecek dönemlerin oturum linkleri güncellenir.
+ * locked=true (eğitmen + yayında ya da kayıtlı öğrencili eğitim): müfredat ve dönemler dokunulmaz; yalnızca bitmemiş dönemlerin
+ * oturum linkleri güncellenir (opts.links; verilmezse input.periods içinden okunur). Kilitli alanların istekten değil kayıttan
+ * alınması parseCourseInput'un işidir.
  */
-export async function saveCourse(input: CourseInput, opts: { authorId: number; instructorId: number | null; locked: boolean; isAdmin: boolean }) {
+export async function saveCourse(input: CourseInput, opts: { authorId: number; instructorId: number | null; locked: boolean; isAdmin: boolean; links?: PeriodLinks }) {
   const isNew = !input.id;
-  const slug = await uniqueSlug(input.title, input.id);
+  // Adres yalnızca başlık değişince yeniden üretilir: başlığı aynı kalan eğitimin (elle verilmiş olabilen) adresi
+  // her kayıtta değişirse eski bağlantılar kırılır ve adrese bakan örnek veri betikleri ürünü yeniden oluşturur
+  const [prevSlug] = input.id ? await db.select({ title: courses.title, slug: courses.slug }).from(courses).where(eq(courses.id, input.id)).limit(1) : [];
+  const slug = prevSlug && prevSlug.slug && prevSlug.title === input.title ? prevSlug.slug : await uniqueSlug(input.title, input.id);
   const saleValid = input.salePrice > 0 && input.salePrice < input.price;
   const base = {
     title: input.title,
     slug,
     shortDescription: input.shortDescription,
-    description: input.description,
+    // Eğitmenin yazdığı HTML temizlenir (betik, olay öznitelikleri, iframe ayıklanır)
+    description: cleanHtml(input.description),
     imageUrl: input.imageUrl,
     status: input.status,
     isFree: input.isFree,
@@ -190,28 +399,38 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
     ...(opts.isAdmin && input.closed !== undefined ? { closed: input.closed } : {}),
     ...(opts.isAdmin && input.comingSoon !== undefined ? { comingSoon: input.comingSoon } : {}),
     ...(opts.isAdmin && input.soonShowPrice !== undefined ? { soonShowPrice: input.soonShowPrice } : {}),
+    ...(opts.isAdmin && input.preorder !== undefined
+      ? {
+          preorder: input.preorder,
+          opensAt: input.preorder && input.opensAt ? input.opensAt : null,
+          preorderPrice: input.preorder && !input.isFree && (input.preorderPrice ?? 0) > 0 ? (input.preorderPrice ?? 0).toFixed(2) : null,
+        }
+      : {}),
+    ...(opts.isAdmin && input.promoCourseId !== undefined ? { promoCourseId: input.promoCourseId && input.promoCourseId !== input.id ? input.promoCourseId : null, promoTitle: input.promoTitle ?? "" } : {}),
     ...(opts.isAdmin && input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber } : {}),
     ...(opts.isAdmin && input.whatsappMessage !== undefined ? { whatsappMessage: input.whatsappMessage } : {}),
   };
 
   let courseId: number;
-  let before: { isFree: boolean; price: string; salePrice: string | null; saleTo: string | null ; comingSoon: boolean } | null = null;
+  let before: { isFree: boolean; price: string; salePrice: string | null; saleTo: string | null ; comingSoon: boolean; preorder: boolean; opensAt: string | null; preorderPrice: string | null } | null = null;
   if (isNew) {
     const [c] = await db.insert(courses).values({ ...base, authorId: opts.authorId, instructorId: opts.instructorId }).returning({ id: courses.id });
     courseId = c.id;
   } else {
     courseId = input.id!;
-    const [old] = await db.select({ isFree: courses.isFree, price: courses.price, salePrice: courses.salePrice, saleTo: courses.saleTo, comingSoon: courses.comingSoon }).from(courses).where(eq(courses.id, courseId)).limit(1);
+    const [old] = await db.select({ isFree: courses.isFree, price: courses.price, salePrice: courses.salePrice, saleTo: courses.saleTo, comingSoon: courses.comingSoon, preorder: courses.preorder, opensAt: courses.opensAt, preorderPrice: courses.preorderPrice }).from(courses).where(eq(courses.id, courseId)).limit(1);
     before = old ?? null;
-    await db.update(courses).set(base).where(eq(courses.id, courseId));
+    // Açılış tarihi değiştiyse açılış bildirimi yeniden gönderilebilir olsun
+    const opensChanged = opts.isAdmin && input.preorder !== undefined && !!old && (base as { opensAt?: string | null }).opensAt !== old.opensAt;
+    await db.update(courses).set({ ...base, ...(opensChanged ? { openNotifiedAt: null } : {}) }).where(eq(courses.id, courseId));
   }
 
   let created: Created = { quizzes: [], assignments: [] };
   if (!opts.locked) {
     created = await syncCurriculum(courseId, input.type === "meeting" ? [] : input.modules, opts.authorId, input.periods.length > 0);
-    await syncPeriods(courseId, input.periods, false, opts.isAdmin);
+    await syncPeriods(courseId, input.periods, opts.isAdmin, input.type === "meeting");
   } else {
-    await syncPeriods(courseId, input.periods, true);
+    await syncPeriodLinks(courseId, opts.links ?? input.periods.map((p) => ({ id: p.id, schedule: p.schedule.map((s) => ({ link: s.link })) })));
   }
 
   // İlişkili kurs önerileri (yalnızca admin düzenler)
@@ -239,6 +458,8 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
   // "Yakında" kaldırıldıysa (eğitim açıldı) talep bırakanlara haber ver; yoksa boş yer açıldıysa bekleme listesine
   if (before?.comingSoon && opts.isAdmin && input.comingSoon === false) await notifyComingSoonOpened(courseId);
   await notifyWaitlistIfOpen(courseId);
+  // Erken kayıt dönemi yönetici eliyle bitirildiyse (kutu kaldırıldı / tarih öne çekildi) bekleyen öğrencilere "açıldı" haberi
+  if (before && isPreorder(before) && opts.isAdmin && input.preorder !== undefined && !isPreorder({ preorder: input.preorder, opensAt: input.opensAt })) await notifyPreorderOpened(courseId);
   // İndirim başladı/değiştiyse favorileyenlere haber ver (yalnızca yayındaki kurs)
   if (before && input.status === "published") await notifyFavoritesOnSale(courseId, before);
   return { courseId, slug, created };
@@ -275,7 +496,7 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
       const values = {
         courseId, moduleId, type: l.type, title: l.title || (l.type === "video" ? "Ders" : l.type === "quiz" ? "Sınav" : l.type === "assign" ? "Görev" : l.fileName || "Dosya"),
         sortOrder: li, videoUrl: l.type === "video" ? l.videoUrl : "", duration: l.type === "video" ? normalizeDuration(l.duration) : "",
-        preview: l.type === "video" ? l.preview : false, description: l.description, dueDays: isTask && !dueAt ? l.dueDays : 0,
+        preview: l.type === "video" ? l.preview : false, description: cleanHtml(l.description), dueDays: isTask && !dueAt ? l.dueDays : 0,
         fileUrl: l.type === "file" ? l.fileUrl : "", fileName: l.type === "file" ? l.fileName : "", fileMime: l.type === "file" ? l.fileMime : "",
       };
       let lessonId = l.id;
@@ -301,8 +522,11 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
         let qi = 0;
         for (const q of l.questions) {
           if (!q.text) continue;
-          const correct = q.qtype === "multiple_choice" ? [Number(q.correct ?? 0) || 0] : q.qtype === "true_false" ? (q.correct === false || q.correct === "false" ? "false" : "true") : null;
-          const options = q.qtype === "multiple_choice" ? q.options.filter((o) => o.trim() !== "") : q.qtype === "true_false" ? ["Doğru", "Yanlış"] : [];
+          // Boş şıklar kaydedilmez; doğru şık sırası kalan şıklara göre yeniden hesaplanır (yoksa başka şıkkı gösterirdi)
+          const kept = q.options.map((o, i) => ({ o, i })).filter((x) => x.o.trim() !== "");
+          const correctIdx = Math.max(0, kept.findIndex((x) => x.i === (Number(q.correct ?? 0) || 0)));
+          const correct = q.qtype === "multiple_choice" ? [correctIdx] : q.qtype === "true_false" ? (q.correct === false || q.correct === "false" ? "false" : "true") : null;
+          const options = q.qtype === "multiple_choice" ? kept.map((x) => x.o) : q.qtype === "true_false" ? ["Doğru", "Yanlış"] : [];
           const row = { quizId, type: q.qtype, text: q.text, options, correct, points: q.points, explanation: q.explanation, image: q.image ?? "", sortOrder: qi++ };
           let qid = q.id;
           if (qid) {
@@ -334,49 +558,55 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
   return created;
 }
 
-async function syncPeriods(courseId: number, list: CourseInput["periods"], lockedMode: boolean, force = false) {
+/** Kilitli kayıt: yalnızca bitmemiş dönemlerin oturum bağlantıları güncellenir; tarih, saat, başlık, kontenjan kayıttaki gibi kalır */
+async function syncPeriodLinks(courseId: number, links: PeriodLinks) {
   const existing = await db.select().from(periods).where(eq(periods.courseId, courseId));
   const today = todayISO();
+  for (const ex of existing) {
+    if (ex.endDate < today) continue;
+    const inp = links.find((l) => l.id === ex.id);
+    if (!inp) continue;
+    const merged = (ex.schedule ?? []).map((s, i) => ({ ...s, link: inp.schedule[i]?.link ?? s.link }));
+    await db.update(periods).set({ schedule: merged }).where(eq(periods.id, ex.id));
+  }
+}
+
+async function syncPeriods(courseId: number, list: CourseInput["periods"], force = false, meeting = false) {
+  const existing = await db.select().from(periods).where(eq(periods.courseId, courseId));
   const keep: number[] = [];
   for (const p of list) {
+    // Eksik dönem doğrulamada reddedilir (courseInputSchema); doğrulamasız çağrılar (örnek veri betikleri) için koruma
     if (!p.name || !p.startDate || !p.endDate) continue;
     const schedule = p.schedule.filter((s) => s.date).map((s) => ({ date: s.date, time: s.time, title: s.title, link: s.link, notes: s.notes ?? "" }));
     const ex = p.id ? existing.find((e) => e.id === p.id) : undefined;
-    if (lockedMode) {
-      // Yalnızca gelecek dönemlerin oturum linkleri
-      if (!ex || ex.endDate < today) { if (ex) keep.push(ex.id); continue; }
-      const merged = (ex.schedule ?? []).map((s, i) => ({ ...s, link: schedule[i]?.link ?? s.link }));
-      await db.update(periods).set({ schedule: merged }).where(eq(periods.id, ex.id));
-      keep.push(ex.id);
-      continue;
-    }
-    const startTime = /^\d{1,2}:\d{2}$/.test(p.startTime) ? p.startTime : null;
-    const deadline = new Date(`${p.startDate}T00:00:00`); deadline.setDate(deadline.getDate() - 1);
+    const startTime = /^\d{1,2}:\d{2}(:\d{2})?$/.test(p.startTime) ? p.startTime.slice(0, 5) : null;
     const values = {
       courseId, name: p.name, startDate: p.startDate, startTime, endDate: p.endDate, capacity: p.capacity, description: p.description, schedule,
-      enrollmentDeadline: deadline.toISOString().slice(0, 10),
+      // Son kayıt: başlangıçtan bir gün önce (gün hesabı saat diliminden bağımsız yapılır).
+      // Görüşme koltuğunda son kayıt günü yoktur: koltuk, saati gelene kadar aynı gün de satılır
+      enrollmentDeadline: meeting ? null : addDays(p.startDate, -1),
     };
     if (ex) { await db.update(periods).set(values).where(eq(periods.id, ex.id)); keep.push(ex.id); }
     else { const [c] = await db.insert(periods).values(values).returning({ id: periods.id }); keep.push(c.id); }
   }
-  if (!lockedMode) {
-    // Gönderilmeyen dönemler: kayıt yoksa sil
-    for (const e of existing) {
-      if (keep.includes(e.id)) continue;
-      const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(periodEnrollments).where(eq(periodEnrollments.periodId, e.id));
-      // Kayıtlı öğrenci varsa yalnızca yönetici silebilir (dönem kayıtları da silinir; kurs kaydı kalır)
-      if (n === 0 || force) await db.delete(periods).where(eq(periods.id, e.id));
-    }
+  // Gönderilmeyen dönemler: kayıt yoksa sil
+  for (const e of existing) {
+    if (keep.includes(e.id)) continue;
+    const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(periodEnrollments).where(eq(periodEnrollments.periodId, e.id));
+    // Kayıtlı öğrenci varsa yalnızca yönetici silebilir (dönem kayıtları da silinir; kurs kaydı kalır)
+    if (n === 0 || force) await db.delete(periods).where(eq(periods.id, e.id));
   }
 }
 
 export async function duplicateCourse(courseId: number) {
   const [c] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
   if (!c) return null;
-  const slug = await uniqueSlug(`${c.title} (Kopya)`);
+  // Başlık uzunluk sınırını aşmasın (aşarsa kopya kaydedilemezdi)
+  const title = `${c.title.slice(0, COURSE_LIMITS.title - 8)} (Kopya)`;
+  const slug = await uniqueSlug(title);
   const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = c;
   void _id; void _ca; void _ua;
-  const [n] = await db.insert(courses).values({ ...rest, slug, title: `${c.title} (Kopya)`, status: "draft", closed: false, group: c.isFree ? "ucretsiz" : "esnek", featured: false }).returning({ id: courses.id });
+  const [n] = await db.insert(courses).values({ ...rest, slug, title, status: "draft", closed: false, group: c.isFree ? "ucretsiz" : "esnek", featured: false, preorder: false, opensAt: null, preorderPrice: null, openNotifiedAt: null }).returning({ id: courses.id });
   const mods = await db.select().from(modules).where(eq(modules.courseId, courseId)).orderBy(modules.sortOrder);
   const ls = await db.select().from(lessons).where(eq(lessons.courseId, courseId)).orderBy(lessons.sortOrder);
   for (const m of mods) {

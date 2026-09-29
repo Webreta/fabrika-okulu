@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getRawSetting } from "@/lib/settings";
 import { DEFAULT_ABOUT } from "@/lib/content-defaults";
 import { PageHero } from "@/components/site/Sections";
 
-export const metadata: Metadata = { title: "Hakkımızda" };
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: "Hakkımızda", path: "/hakkimizda" });
 
 export default async function AboutPage() {
   const about = await getRawSetting("about", DEFAULT_ABOUT);

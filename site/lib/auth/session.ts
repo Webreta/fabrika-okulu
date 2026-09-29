@@ -4,12 +4,14 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
 
 const COOKIE_NAME = "fabo_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 gün
+// "Beni hatırla" işaretlenmeden açılan oturum: tarayıcı kapanınca çerez silinir, sunucuda da en çok 12 saat yaşar
+const SHORT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const RENEW_THRESHOLD_MS = 15 * 24 * 60 * 60 * 1000;
 
 export type SessionUser = {
@@ -23,8 +25,6 @@ export type SessionUser = {
   panelTheme: string;
   notifyPrefs: Record<string, boolean>;
   addresses: Addresses;
-  surveyVersion: number;
-  surveySkipped: boolean;
 };
 
 export const hashToken = (token: string) =>
@@ -32,8 +32,8 @@ export const hashToken = (token: string) =>
 
 export async function createSession(userId: number, remember = true) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await db.insert(sessions).values({ id: hashToken(token), userId, expiresAt });
+  const expiresAt = new Date(Date.now() + (remember ? SESSION_TTL_MS : SHORT_SESSION_TTL_MS));
+  await db.insert(sessions).values({ id: hashToken(token), userId, expiresAt, remember });
   const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -57,6 +57,14 @@ export async function destroyAllSessions(userId: number) {
   await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
+/** Kullanıcının bu tarayıcıdaki oturumu dışındaki tüm oturumlarını kapatır (şifre değişince diğer cihazlar çıkış yapar) */
+export async function destroyOtherSessions(userId: number) {
+  const jar = await cookies();
+  const token = jar.get(COOKIE_NAME)?.value;
+  if (!token) return destroyAllSessions(userId);
+  await db.delete(sessions).where(and(eq(sessions.userId, userId), ne(sessions.id, hashToken(token))));
+}
+
 export function displayName(u: { firstName: string; lastName: string; email: string }) {
   const n = `${u.firstName} ${u.lastName}`.trim();
   return n || u.email.split("@")[0];
@@ -72,6 +80,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     .select({
       sessionId: sessions.id,
       expiresAt: sessions.expiresAt,
+      remember: sessions.remember,
       id: users.id,
       email: users.email,
       firstName: users.firstName,
@@ -81,8 +90,6 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       panelTheme: users.panelTheme,
       notifyPrefs: users.notifyPrefs,
       addresses: users.addresses,
-      surveyVersion: users.surveyVersion,
-      surveySkipped: users.surveySkipped,
       active: users.active,
     })
     .from(sessions)
@@ -96,7 +103,8 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     await db.delete(sessions).where(eq(sessions.id, row.sessionId));
     return null;
   }
-  if (row.expiresAt.getTime() - Date.now() < RENEW_THRESHOLD_MS) {
+  // Yalnızca "beni hatırla" oturumları uzatılır; kısa oturum süresi dolunca biter
+  if (row.remember && row.expiresAt.getTime() - Date.now() < RENEW_THRESHOLD_MS) {
     await db
       .update(sessions)
       .set({ expiresAt: new Date(Date.now() + SESSION_TTL_MS) })
@@ -113,8 +121,6 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     panelTheme: row.panelTheme,
     notifyPrefs: row.notifyPrefs ?? {},
     addresses: row.addresses ?? {},
-    surveyVersion: row.surveyVersion,
-    surveySkipped: row.surveySkipped,
   };
 });
 

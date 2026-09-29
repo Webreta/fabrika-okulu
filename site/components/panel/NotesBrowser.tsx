@@ -57,12 +57,12 @@ export function NotesBrowser({ notes }: { notes: BrowserNote[] }) {
       <div className="card grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_260px_260px_auto]">
         <div className="relative">
           <Icon name="search" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Notlarda ara…" className="input pl-9" />
+          <input aria-label="Notlarda ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Notlarda ara…" className="input pl-9" />
         </div>
-        <select value={courseId} onChange={(e) => { setCourseId(e.target.value ? Number(e.target.value) : ""); setLessonId(""); }} className="input w-full truncate">
+        <select aria-label="Eğitim" value={courseId} onChange={(e) => { setCourseId(e.target.value ? Number(e.target.value) : ""); setLessonId(""); }} className="input w-full truncate">
           <option value="">Tüm kurslar</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
-        <select value={lessonId} onChange={(e) => setLessonId(e.target.value ? Number(e.target.value) : "")} className="input w-full truncate">
+        <select aria-label="Ders" value={lessonId} onChange={(e) => setLessonId(e.target.value ? Number(e.target.value) : "")} className="input w-full truncate">
           <option value="">Tüm dersler</option>{lessonsOf.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
         </select>
         <div className="flex items-center justify-end gap-2 whitespace-nowrap">

@@ -14,7 +14,7 @@ export default async function DocumentsPage() {
   return (
     <>
       <h2 className="mb-4 text-xl font-bold text-navy-800">Belge Yükle</h2>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card">
           <h2 className="mb-4 font-bold text-navy-800">Yeni belge</h2>
           <DocumentUploadForm />

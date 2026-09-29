@@ -39,8 +39,8 @@ export function WaitlistButton({ courseId, periodId, loggedIn, waitlisted, userE
       <p className="text-sm text-amber-900">{comingSoon ? "Eğitim" : meeting ? "Yeni görüşme saati" : "Yeni dönem ya da boş kontenjan"} açıldığında sana e-posta gönderelim.</p>
       {!loggedIn && (
         <div className="mt-2 grid gap-2">
-          <input name="name" placeholder="Adın (isteğe bağlı)" className="input" autoComplete="name" />
-          <input name="email" type="email" required placeholder="E-posta adresin" className="input" autoComplete="email" />
+          <input aria-label="Adın" name="name" placeholder="Adın (isteğe bağlı)" className="input" autoComplete="name" />
+          <input aria-label="E-posta adresin" name="email" type="email" required placeholder="E-posta adresin" className="input" autoComplete="email" />
         </div>
       )}
       {state.error && <p className="mt-2 text-xs text-red-600">{state.error}</p>}

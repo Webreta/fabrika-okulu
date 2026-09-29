@@ -13,61 +13,57 @@ import {
 } from "@/db/schema";
 import { requireTeacher } from "@/lib/auth/session";
 import { ownsCourse, ensureInstructorProfile, teacherCourseIds } from "@/lib/data/teacher";
-import { courseInputSchema, saveCourse, duplicateCourse as dup } from "@/lib/course-save";
+import { parseCourseInput, checkCourseAgainstStored, courseLockInfo, saveCourse, duplicateCourse as dup } from "@/lib/course-save";
 import { notifyWaitlistIfOpen } from "@/lib/waitlist";
 import { saveUploadedFile, IMAGE_EXTENSIONS, slugify } from "@/lib/uploads";
 import { notifyUser, notifyUsers, logNotification } from "@/lib/notify";
-import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
-import { courseProgress } from "@/lib/data/student";
-import { CERT_CONDITIONS } from "@/lib/certificates";
+import { sendMail, emailTemplate, siteUrl, escapeHtml } from "@/lib/mailer";
+import { safeInternalPath } from "@/lib/safe-path";
 import { grantCertificate } from "@/lib/cert-issue";
+import { todayISO } from "@/lib/format";
+import { isUniqueViolation, isNumericError } from "@/lib/db-errors";
+import { LIMITS, COUPON_MAX_AMOUNT, COUPON_MAX_DAYS } from "@/lib/limits";
 
 export type ActionResult = { ok: true; message?: string; id?: number; url?: string } | { ok: false; error: string };
 
 export async function saveCourseAction(raw: unknown): Promise<ActionResult> {
   const user = await requireTeacher();
-  const parsed = courseInputSchema.safeParse(raw);
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const where = (issue?.path ?? []).reduce<string[]>((acc, seg, i, arr) => {
-      const prev = arr[i - 1];
-      if (typeof seg === "number") {
-        if (prev === "modules") acc.push(`Modül ${seg + 1}`);
-        else if (prev === "lessons") acc.push(`Ders ${seg + 1}`);
-        else if (prev === "questions") acc.push(`Soru ${seg + 1}`);
-        else if (prev === "periods") acc.push(`Dönem ${seg + 1}`);
-        else if (prev === "schedule") acc.push(`Oturum ${seg + 1}`);
-      } else if (i === arr.length - 1) acc.push(String(seg));
-      return acc;
-    }, []).join(" › ");
-    const msg = issue?.message === "Invalid input" ? "geçersiz değer" : issue?.message ?? "hata";
-    return { ok: false, error: `Form hatası${where ? ` (${where})` : ""}: ${msg}` };
-  }
-  const input = parsed.data;
   const isAdmin = user.role === "admin";
-  let locked = false;
-  if (input.id) {
-    if (!(await ownsCourse(user, input.id))) return { ok: false, error: "Bu kursa erişim yetkin yok." };
-    const [c] = await db.select({ status: courses.status }).from(courses).where(eq(courses.id, input.id)).limit(1);
-    locked = !isAdmin && c?.status === "published";
+  // Kilit durumu doğrulamadan ÖNCE kayıttan okunur: kilitli alanlar (müfredat, dönemler, tür, durum, satış düğmesi)
+  // istekten değil kayıttan alınır, elle gönderilen istekle aşılamaz (bkz. parseCourseInput)
+  const rawId = typeof raw === "object" && raw !== null ? (raw as { id?: unknown }).id : undefined;
+  let stored: Awaited<ReturnType<typeof courseLockInfo>> = null;
+  if (rawId !== undefined && rawId !== null) {
+    const id = Number(rawId);
+    if (!Number.isInteger(id) || id <= 0) return { ok: false, error: "Kurs bulunamadı." };
+    if (!(await ownsCourse(user, id))) return { ok: false, error: "Bu kursa erişim yetkin yok." };
+    stored = await courseLockInfo(id);
+    if (!stored) return { ok: false, error: "Kurs bulunamadı." };
+  }
+  const parsed = parseCourseInput(raw, { isAdmin, stored });
+  if (!parsed.ok) return parsed;
+  const { input, locked } = parsed;
+  if (!locked) {
+    const err = await checkCourseAgainstStored(input);
+    if (err) return { ok: false, error: err };
   }
   const prof = await ensureInstructorProfile(user);
-  const r = await saveCourse(input, { authorId: user.id, instructorId: isAdmin ? (input.instructorId ?? null) : prof.id, locked, isAdmin });
+  const r = await saveCourse(input, { authorId: user.id, instructorId: isAdmin ? (input.instructorId ?? null) : prof.id, locked, isAdmin, links: parsed.links });
   // Yayındaki kursa yeni sınav/görev eklendiyse kayıtlı öğrencilere haber ver
   if (input.status === "published" && (r.created.quizzes.length || r.created.assignments.length)) {
     const studs = await db.select({ id: users.id, email: users.email }).from(enrollments).innerJoin(users, eq(enrollments.userId, users.id)).where(and(eq(enrollments.courseId, r.courseId), eq(enrollments.status, "active")));
     const ids = studs.map((s) => s.id);
     for (const q of r.created.quizzes) {
       await notifyUsers(ids, { title: "Yeni sınav", body: `${q.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?quiz=${q.id}`, tag: `qz-${q.id}` });
-      for (const st of studs) await sendMail({ type: "new_quiz", to: st.email, subject: `Yeni sınav: ${q.title}`, html: emailTemplate({ title: "Yeni sınav atandı", html: `<p><b>${input.title}</b> programına <b>${q.title}</b> sınavı eklendi.</p>`, buttonText: "Sınava git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?quiz=${q.id}`) }) });
+      for (const st of studs) await sendMail({ type: "new_quiz", to: st.email, subject: `Yeni sınav: ${q.title}`, html: emailTemplate({ title: "Yeni sınav atandı", html: `<p><b>${escapeHtml(input.title)}</b> programına <b>${escapeHtml(q.title)}</b> sınavı eklendi.</p>`, buttonText: "Sınava git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?quiz=${q.id}`) }) });
     }
     for (const a of r.created.assignments) {
       await notifyUsers(ids, { title: "Yeni görev", body: `${a.title} · ${input.title}`, url: `/kurs-izle/${r.courseId}?gorev=${a.id}`, tag: `asg-${a.id}` });
-      for (const st of studs) await sendMail({ type: "new_assignment", to: st.email, subject: `Yeni görev: ${a.title}`, html: emailTemplate({ title: "Yeni görev atandı", html: `<p><b>${input.title}</b> programına <b>${a.title}</b> görevi eklendi.</p>`, buttonText: "Göreve git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?gorev=${a.id}`) }) });
+      for (const st of studs) await sendMail({ type: "new_assignment", to: st.email, subject: `Yeni görev: ${a.title}`, html: emailTemplate({ title: "Yeni görev atandı", html: `<p><b>${escapeHtml(input.title)}</b> programına <b>${escapeHtml(a.title)}</b> görevi eklendi.</p>`, buttonText: "Göreve git", buttonUrl: siteUrl(`/kurs-izle/${r.courseId}?gorev=${a.id}`) }) });
     }
   }
   revalidatePath("/egitmen"); revalidatePath("/kesfet"); revalidatePath("/");
-  return { ok: true, id: r.courseId, url: `/program/${r.slug}`, message: locked ? "Değişiklikler kaydedildi (yayındaki müfredat korunuyor)." : "Kaydedildi." };
+  return { ok: true, id: r.courseId, url: `/program/${r.slug}`, message: locked ? "Değişiklikler kaydedildi (müfredat ve dönemler kilitli, korunuyor)." : input.status === "published" ? "Kaydedildi (yayında)." : "Taslak olarak kaydedildi." };
 }
 
 export async function duplicateCourseAction(courseId: number): Promise<ActionResult> {
@@ -139,7 +135,7 @@ export async function answerQuestion(studentId: number, courseId: number, text: 
   const url = `/kurs-izle/${courseId}`;
   await notifyUser(studentId, { title: `Sorun yanıtlandı: ${c?.title ?? ""}`, body: t.slice(0, 100), url, tag: `qa-${courseId}` });
   if (s) {
-    await sendMail({ type: "question_answered", to: s.email, subject: "Sorun cevaplandı", html: emailTemplate({ title: "Sorun cevaplandı", html: `<p><b>${c?.title}</b> programındaki sorun yanıtlandı:</p><blockquote>${t}</blockquote>`, buttonText: "Cevabı gör", buttonUrl: siteUrl(url) }) });
+    await sendMail({ type: "question_answered", to: s.email, subject: "Sorun cevaplandı", html: emailTemplate({ title: "Sorun cevaplandı", html: `<p><b>${escapeHtml(c?.title)}</b> programındaki sorun yanıtlandı:</p><blockquote style="white-space:pre-line">${escapeHtml(t)}</blockquote>`, buttonText: "Cevabı gör", buttonUrl: siteUrl(url) }) });
   }
   revalidatePath("/egitmen/sorular");
   return { ok: true };
@@ -174,11 +170,8 @@ export async function issueCertificate(templateId: number, studentId: number, co
   if (t.rule.scope === "course" && t.rule.courseId !== courseId) return { ok: false, error: "Bu tasarım bu kurs için değil." };
   const [e] = await db.select().from(enrollments).where(and(eq(enrollments.userId, studentId), eq(enrollments.courseId, courseId), eq(enrollments.status, "active"))).limit(1);
   if (!e) return { ok: false, error: "Öğrenci bu kursa kayıtlı değil." };
-  if (t.rule.condition === "started" && !e.startedAt) return { ok: false, error: "Öğrenci kursu henüz başlatmadı." };
-  if (t.rule.condition === "completed") {
-    const p = await courseProgress(studentId, courseId);
-    if (p.total === 0 || p.completed < p.total) return { ok: false, error: `Koşul sağlanmıyor: ${CERT_CONDITIONS.completed}.` };
-  }
+  // Elle verme her zaman mümkündür: tasarımın koşulu (kayıt/başlatma/bitirme) yalnızca OTOMATİK vermeyi ve ekrandaki
+  // uyarıyı belirler. Koşul sağlanmamışsa eğitmen ekranda uyarılır, kararı kendisi verir.
   const r = await grantCertificate({ templateId, userId: studentId, courseId, issuedBy: user.id });
   if (!r.ok) return r;
   revalidatePath("/egitmen/sertifika");
@@ -194,11 +187,30 @@ export async function revokeCertificate(id: number): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Duyuru bağlantısını doğrular: boş → /panel; geçersizse null */
+function announceLink(raw: string): string | null {
+  const v = (raw ?? "").trim();
+  if (!v) return "/panel";
+  if (v.length > 500) return null;
+  if (v.startsWith("/")) return safeInternalPath(v, "") || null;
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" && !!u.hostname ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Duyuru (süper eğitmen/admin): all | students | teachers | <courseId> */
 export async function announce(title: string, body: string, url: string, target: string): Promise<ActionResult> {
   const user = await requireTeacher();
   if (!user.isSuperTeacher) return { ok: false, error: "Yalnızca süper eğitmen duyuru gönderebilir." };
   if (!title.trim() || !body.trim()) return { ok: false, error: "Başlık ve metin gerekli." };
+  if (title.length > 150) return { ok: false, error: "Başlık en fazla 150 karakter olabilir." };
+  if (body.length > 1000) return { ok: false, error: "Mesaj en fazla 1.000 karakter olabilir." };
+  // Bağlantı: site içi yol ("/panel/…") ya da https:// ile başlayan adres; javascript:, http:, //site gibi değerler reddedilir
+  const link = announceLink(url);
+  if (link === null) return { ok: false, error: "Bağlantı site içi bir yol (örnek: /panel/egitim) ya da https:// ile başlayan bir adres olmalı." };
   let ids: number[] = [];
   let label = target;
   if (target === "teachers") {
@@ -217,7 +229,7 @@ export async function announce(title: string, body: string, url: string, target:
     const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, cid)).limit(1);
     label = c?.title ?? `Kurs #${cid}`;
   }
-  const n = await notifyUsers(ids, { title, body, url: url || "/panel", tag: `ann-${Date.now()}` });
+  const n = await notifyUsers(ids, { title: title.trim(), body: body.trim(), url: link, tag: `ann-${Date.now()}` });
   await logNotification({ channel: "push", title, body, target: label, sentCount: n, createdBy: user.id });
   revalidatePath("/egitmen/duyuru");
   return { ok: true, message: `${n} kişiye gönderildi.` };
@@ -240,51 +252,105 @@ export async function deleteEvent(id: number): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** Belge → kupon (süper eğitmen / admin) */
-export async function issueCoupon(input: { docId?: number; email?: string; courseId: number; type: "student" | "graduate" | "custom" | "fixed"; amount?: number; expiryDays?: number }): Promise<ActionResult> {
+/**
+ * Belge → kupon (süper eğitmen / admin).
+ * Bir belgenin tek geçerli kuponu olur: belgeye daha önce kupon verildiyse `replace` olmadan yeni kupon verilmez.
+ * `replace: true` ile eski kupon (hiç kullanılmadıysa) silinir ve yenisi verilir; eski kupon kullanıldıysa ya da
+ * bekleyen bir siparişte ayrıldıysa belgeye yeni kupon verilemez.
+ */
+export async function issueCoupon(input: { docId?: number; email?: string; courseId: number; type: "student" | "graduate" | "custom" | "fixed"; amount?: number; expiryDays?: number; replace?: boolean }): Promise<ActionResult> {
   const user = await requireTeacher();
   if (!user.isSuperTeacher) return { ok: false, error: "Yetki yok." };
+  if (!["student", "graduate", "custom", "fixed"].includes(input.type)) return { ok: false, error: "Geçersiz indirim türü." };
   let userId: number | null = null;
+  let oldCode: string | null = null;
   if (input.docId) {
     const [d] = await db.select().from(documents).where(eq(documents.id, input.docId)).limit(1);
     if (!d) return { ok: false, error: "Belge bulunamadı." };
     userId = d.userId;
+    if (d.couponCode) {
+      const [old] = await db.select({ code: coupons.code, usedCount: coupons.usedCount }).from(coupons).where(eq(coupons.code, d.couponCode)).limit(1);
+      if (old) {
+        if (old.usedCount > 0) return { ok: false, error: `Bu belgeye verilen kupon (${old.code}) kullanılmış ya da bekleyen bir siparişte ayrılmış; belgeye yeni kupon verilemez. Ek indirim gerekiyorsa "Doğrudan kupon tanımla" bölümünü kullan.` };
+        if (!input.replace) return { ok: false, error: `Bu belgeye zaten kupon verildi: ${old.code}. Yeni kupon vermek için önce eskisinin iptalini onaylaman gerekir.` };
+        oldCode = old.code;
+      }
+    }
   } else if (input.email) {
-    const [u] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.email.trim().toLowerCase())).limit(1);
+    const email = String(input.email).trim().toLowerCase();
+    if (email.length > LIMITS.email) return { ok: false, error: `E-posta en fazla ${LIMITS.email} karakter olabilir.` };
+    const [u] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
     if (!u) return { ok: false, error: "Bu e-posta ile kullanıcı yok." };
     userId = u.id;
-  }
+  } else return { ok: false, error: "E-posta gerekli." };
   if (!userId) return { ok: false, error: "Kullanıcı belirlenemedi." };
   // fixed: sabit tutar (TL); diğerleri yüzde
-  const fixedAmount = input.type === "fixed" ? Math.round(Number(input.amount ?? 0) * 100) / 100 : 0;
-  if (input.type === "fixed" && fixedAmount <= 0) return { ok: false, error: "Sabit tutar 0'dan büyük olmalı." };
-  const percent = input.type === "fixed" ? 0 : input.type === "student" ? 90 : input.type === "graduate" ? 50 : Math.max(1, Math.min(100, Number(input.amount ?? 10)));
+  const rawAmount = Number(input.amount ?? 0);
+  const fixedAmount = input.type === "fixed" ? Math.round(rawAmount * 100) / 100 : 0;
+  if (input.type === "fixed" && (!Number.isFinite(rawAmount) || fixedAmount <= 0)) return { ok: false, error: "Sabit tutar 0'dan büyük olmalı." };
+  if (fixedAmount > COUPON_MAX_AMOUNT) return { ok: false, error: `Sabit tutar en fazla ${COUPON_MAX_AMOUNT.toLocaleString("tr-TR")} TL olabilir.` };
+  if (input.type === "custom" && (!Number.isInteger(rawAmount) || rawAmount < 1 || rawAmount > 100)) return { ok: false, error: "Yüzde 1 ile 100 arasında tam sayı olmalı (ondalık yazılamaz; örneğin 12.5 yerine 12 ya da 13)." };
+  const percent = input.type === "fixed" ? 0 : input.type === "student" ? 90 : input.type === "graduate" ? 50 : rawAmount;
+  const days = input.expiryDays === undefined || input.expiryDays === null ? 0 : Number(input.expiryDays);
+  if (!Number.isInteger(days) || days < 0 || days > COUPON_MAX_DAYS) return { ok: false, error: `Geçerlilik süresi 0 ile ${COUPON_MAX_DAYS} gün arasında tam sayı olmalı (0 ya da boş = süresiz).` };
+  const courseId = Number(input.courseId ?? 0);
+  if (!Number.isInteger(courseId) || courseId < 0) return { ok: false, error: "Geçersiz eğitim seçimi." };
+  if (courseId > 0) {
+    const [c] = await db.select({ id: courses.id }).from(courses).where(eq(courses.id, courseId)).limit(1);
+    if (!c) return { ok: false, error: "Seçilen eğitim bulunamadı." };
+  }
   const label = couponLabel({ percent, amount: fixedAmount });
   const code = `FO${randomBytes(4).toString("hex").toUpperCase()}`;
-  const expiresAt = input.expiryDays && input.expiryDays > 0 ? new Date(Date.now() + input.expiryDays * 86400000) : null;
-  await db.insert(coupons).values({ code, percent, amount: fixedAmount > 0 ? String(fixedAmount) : null, userId, courseId: input.courseId > 0 ? input.courseId : null, usageLimit: 1, expiresAt });
-  if (input.docId) await db.update(documents).set({ status: "coupon_issued", couponCode: code, courseId: input.courseId }).where(eq(documents.id, input.docId));
+  const expiresAt = days > 0 ? new Date(Date.now() + days * 86400000) : null;
+  try {
+    const done = await db.transaction(async (tx) => {
+      if (oldCode) {
+        // Yalnızca hâlâ kullanılmamışsa silinir (arada kullanıldıysa işlem geri alınır)
+        const gone = await tx.delete(coupons).where(and(eq(coupons.code, oldCode), eq(coupons.usedCount, 0))).returning({ id: coupons.id });
+        if (gone.length === 0) return false;
+      }
+      await tx.insert(coupons).values({ code, percent, amount: fixedAmount > 0 ? fixedAmount.toFixed(2) : null, userId, courseId: courseId > 0 ? courseId : null, usageLimit: 1, expiresAt });
+      if (input.docId) await tx.update(documents).set({ status: "coupon_issued", couponCode: code, courseId }).where(eq(documents.id, input.docId));
+      return true;
+    });
+    if (!done) return { ok: false, error: `Eski kupon (${oldCode}) bu sırada kullanıldı; yeni kupon verilmedi.` };
+  } catch (e) {
+    if (isUniqueViolation(e)) return { ok: false, error: "Kupon kodu çakıştı; tekrar dene." };
+    if (isNumericError(e)) return { ok: false, error: "Girilen sayılardan biri çok büyük ya da geçersiz." };
+    throw e;
+  }
   const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  await notifyUser(userId, { title: "İndirim kuponun hazır", body: `${label} · ${code}`, url: "/panel/kupon", tag: `coupon-${code}` });
-  if (u) await sendMail({ type: "coupon", to: u.email, subject: "İndirim kuponun hazır", html: emailTemplate({ title: "İndirim kuponun hazır 🎁", html: `<p>${label} kuponu: <b style="font-size:20px">${code}</b></p><p>Sepette kupon alanına yaz.${expiresAt ? ` Son kullanım: ${expiresAt.toLocaleDateString("tr-TR")}` : ""}</p>`, buttonText: "Programları gör", buttonUrl: siteUrl("/kesfet") }) });
-  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler"); revalidatePath("/admin/kuponlar"); revalidatePath("/panel/kupon");
-  return { ok: true, message: `Kupon oluşturuldu: ${code}` };
+  const title = oldCode ? "İndirim kuponun yenilendi" : "İndirim kuponun hazır";
+  const oldNote = oldCode ? ` Önceki kuponun (${oldCode}) artık geçerli değil.` : "";
+  await notifyUser(userId, { title, body: `${label} · ${code}${oldNote}`, url: "/panel/kupon", tag: `coupon-${code}` });
+  if (u) await sendMail({ type: "coupon", to: u.email, subject: title, html: emailTemplate({ title: `${title} 🎁`, html: `<p>${escapeHtml(label)} kuponu: <b style="font-size:20px">${escapeHtml(code)}</b></p><p>Sepette kupon alanına yaz.${expiresAt ? ` Son kullanım: ${expiresAt.toLocaleDateString("tr-TR")}` : ""}${escapeHtml(oldNote)}</p>`, buttonText: "Programları gör", buttonUrl: siteUrl("/kesfet") }) });
+  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler"); revalidatePath("/admin/kuponlar"); revalidatePath("/panel/kupon"); revalidatePath("/panel/belge");
+  return { ok: true, message: oldCode ? `Kupon yenilendi: ${code} (eski kupon ${oldCode} iptal edildi)` : `Kupon oluşturuldu: ${code}` };
 }
 
 export async function deleteDocument(id: number): Promise<ActionResult> {
   const user = await requireTeacher();
   if (!user.isSuperTeacher) return { ok: false, error: "Yetki yok." };
-  await db.delete(documents).where(eq(documents.id, id));
-  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler");
-  return { ok: true };
+  const gone = await db.delete(documents).where(eq(documents.id, id)).returning({ id: documents.id });
+  if (gone.length === 0) return { ok: false, error: "Belge bulunamadı (silinmiş olabilir)." };
+  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler"); revalidatePath("/panel/belge");
+  return { ok: true, message: "Belge silindi." };
 }
 
+/** Belge reddi: yalnızca bekleyen belge reddedilir; öğrenciye uygulama içi bildirim gider ("Belge & kupon" tercihi) */
 export async function rejectDocument(id: number): Promise<ActionResult> {
   const user = await requireTeacher();
   if (!user.isSuperTeacher) return { ok: false, error: "Yetki yok." };
-  await db.update(documents).set({ status: "rejected" }).where(eq(documents.id, id));
-  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler");
-  return { ok: true };
+  const [d] = await db.update(documents).set({ status: "rejected" }).where(and(eq(documents.id, id), eq(documents.status, "pending"))).returning({ userId: documents.userId, fileName: documents.fileName });
+  if (!d) return { ok: false, error: "Yalnızca bekleyen belge reddedilebilir (belge silinmiş ya da sonuçlanmış olabilir)." };
+  await notifyUser(d.userId, {
+    title: "Belgen onaylanmadı",
+    body: `Yüklediğin belge${d.fileName ? ` (${d.fileName.slice(0, 80)})` : ""} indirim için uygun bulunmadı. Uygun bir belgeyle yeniden başvurabilirsin.`,
+    url: "/panel/belge",
+    tag: `coupon-red-${id}`,
+  });
+  revalidatePath("/egitmen/belgeler"); revalidatePath("/admin/belgeler"); revalidatePath("/panel/belge");
+  return { ok: true, message: "Belge reddedildi; öğrenciye bildirim gönderildi." };
 }
 
 /** Dönem oturumları güncellendi bildirimi */
@@ -293,7 +359,7 @@ export async function notifyPeriodStudents(periodId: number): Promise<ActionResu
   const [p] = await db.select().from(periods).where(eq(periods.id, periodId)).limit(1);
   if (!p || !(await ownsCourse(user, p.courseId))) return { ok: false, error: "Yetki yok." };
   const ids = (await db.select({ id: periodEnrollments.userId }).from(periodEnrollments).where(eq(periodEnrollments.periodId, periodId))).map((r) => r.id);
-  const next = (p.schedule ?? []).find((s) => s.date >= new Date().toISOString().slice(0, 10) && s.link);
+  const next = (p.schedule ?? []).find((s) => s.date >= todayISO() && s.link);
   const n = await notifyUsers(ids, { title: "Ders programı güncellendi", body: next ? `${next.date} ${next.time} ${next.title}` : p.name, url: next?.link || "/panel/takvim", tag: `period-${periodId}` });
   return { ok: true, message: `${n} öğrenciye bildirildi.` };
 }

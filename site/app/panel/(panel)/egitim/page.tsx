@@ -10,10 +10,11 @@ import { Icon } from "@/components/site/Icon";
 import { studentFavorites } from "@/lib/favorites";
 import { FavoriteButton } from "@/components/site/FavoriteButton";
 import { Price } from "@/components/site/CourseCard";
+import { fmtDay } from "@/lib/format";
 
-export default async function MyCoursesPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
+export default async function MyCoursesPage({ searchParams }: { searchParams: Promise<{ sekme?: string; acilis?: string }> }) {
   const user = (await getCurrentUser())!;
-  const { sekme } = await searchParams;
+  const { sekme, acilis } = await searchParams;
   const [all, favs] = await Promise.all([studentCourses(user.id), studentFavorites(user.id)]);
   // Yeni: satın alınmış ama hiç başlanmamış · Devam eden: başlanmış, bitmemiş · Bitmiş: %100
   // Görüşme ürününde ilerleme = katılınan oturum sayısı (lib/data/student.ts)
@@ -21,6 +22,8 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
   const ongoing = all.filter((c) => c.completed > 0 && c.percent < 100);
   const done = all.filter((c) => c.total > 0 && c.percent >= 100);
   const list = sekme === "bitmis" ? done : sekme === "devam" ? ongoing : sekme === "yeni" ? fresh : all;
+  // Açılmamış (erken kayıt) eğitimi izlemeye çalışan öğrenci buraya yönlendirilir
+  const notOpen = acilis ? all.find((c) => c.id === Number(acilis) && c.opensAt) : undefined;
 
   return (
     <>
@@ -34,6 +37,9 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
           { href: "/panel/egitim?sekme=favori", label: "Favoriler", icon: "heart", count: favs.length, active: sekme === "favori" },
         ]} />
         <div className="min-w-0 flex-1">
+      {notOpen && (
+        <p className="mb-4 flex items-start gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800"><Icon name="clock" className="mt-0.5 size-4 shrink-0" /> <span><b>{notOpen.title}</b> henüz açılmadı. Erken kaydın hazır; eğitim <b>{fmtDay(notOpen.opensAt, true)}</b> tarihinde aktifleşecek.</span></p>
+      )}
       {sekme === "favori" ? (
         favs.length === 0 ? (
           <Empty text="Henüz favori eğitimin yok. Programlardaki kalp simgesiyle ekleyebilirsin." action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
@@ -74,7 +80,9 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
             <div key={c.id} className="card flex flex-col p-0 overflow-hidden">
               <div className="relative aspect-video bg-navy-50">
                 {c.imageUrl && <Image src={c.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}
-                <span className="absolute left-3 top-3 flex gap-1.5"><Chip color={c.percent >= 100 ? "green" : c.percent > 0 ? "sky" : "gray"}>{c.percent >= 100 ? "Tamamlandı" : c.percent > 0 ? "Devam ediyor" : "Başlanmadı"}</Chip>{c.type === "meeting" && <Chip color="purple">Online görüşme</Chip>}</span>
+                {c.opensAt && <span className="absolute inset-0 bg-navy-900/45" />}
+                <span className="absolute left-3 top-3 flex gap-1.5">{c.opensAt ? <Chip color="purple">Erken kayıt</Chip> : <Chip color={c.percent >= 100 ? "green" : c.percent > 0 ? "sky" : "gray"}>{c.percent >= 100 ? "Tamamlandı" : c.percent > 0 ? "Devam ediyor" : "Başlanmadı"}</Chip>}{c.type === "meeting" && <Chip color="purple">Online görüşme</Chip>}</span>
+                {c.opensAt && <span className="absolute inset-x-3 bottom-3 flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-1.5 text-xs font-bold text-navy-800 shadow"><Icon name="clock" className="size-3.5 text-violet-600" /> {fmtDay(c.opensAt, true)} tarihinde aktifleşecek</span>}
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <h3 className="font-bold text-navy-800">{c.title}</h3>
@@ -88,6 +96,14 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
                   </>
                 ) : c.type === "meeting" ? (
                   <p className="mt-auto pt-3 text-sm text-muted">Görüşme saati seçilmemiş.</p>
+                ) : c.opensAt ? (
+                  <>
+                    <p className="mt-1 text-xs text-muted">Erken kaydın alındı. Eğitim açıldığında sana haber vereceğiz.</p>
+                    <div className="mt-auto pt-3">
+                      <p className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 px-3 py-2.5 text-sm font-semibold text-violet-800"><Icon name="lock" className="size-4" /> {fmtDay(c.opensAt, true)} tarihinde aktifleşecek</p>
+                      <Link href={`/program/${c.slug}`} className="mt-2 block text-center text-xs font-semibold text-sky-600 hover:underline">Eğitim sayfasını gör</Link>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <p className="mt-1 text-xs text-muted">{c.completed}/{c.total} ders</p>

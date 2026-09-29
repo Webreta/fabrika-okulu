@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { getRawSetting } from "@/lib/settings";
 import { DEFAULT_FAQ, type FaqContent } from "@/lib/content-defaults";
 import { PageHero } from "@/components/site/Sections";
 import { FaqAccordion } from "@/components/site/FaqAccordion";
 
-export const metadata: Metadata = { title: "Sıkça Sorulan Sorular", description: "Programlar, katılım, ödeme ve sertifika hakkında merak edilenler." };
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: "Sıkça Sorulan Sorular", description: "Programlar, katılım, ödeme ve sertifika hakkında merak edilenler.", path: "/sss" });
 
 /** S.S.S.: admin Site İçeriği → S.S.S. sekmesindeki tüm sorular (anasayfada yalnızca ilk homeLimit soru görünür) */
 export default async function FaqPage() {

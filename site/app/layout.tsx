@@ -9,11 +9,24 @@ const dancing = Dancing_Script({
   weight: ["400", "700"],
 });
 
+const DESCRIPTION = "Kariyer gelişiminde yol arkadaşın. Esnek ve takvimli online gelişim programları.";
+// Paylaşım etiketlerindeki göreli adresler (görseller) site adresine göre tamamlanır
+const SITE_URL = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+})();
+
 export const metadata: Metadata = {
+  metadataBase: SITE_URL,
   title: { default: "Fabrika Okulu", template: "%s – Fabrika Okulu" },
-  description:
-    "Kariyer gelişiminde yol arkadaşın. Esnek ve takvimli online gelişim programları.",
+  description: DESCRIPTION,
   manifest: "/manifest.webmanifest",
+  // Varsayılan paylaşım önizlemesi; site sayfaları kendi başlık/açıklama/görselini lib/seo.ts pageMeta ile üretir
+  openGraph: { type: "website", siteName: "Fabrika Okulu", locale: "tr_TR", title: "Fabrika Okulu", description: DESCRIPTION, images: [{ url: "/img/site/og.jpg", width: 1200, height: 630 }] },
+  twitter: { card: "summary_large_image", title: "Fabrika Okulu", description: DESCRIPTION, images: ["/img/site/og.jpg"] },
 };
 
 export default function RootLayout({

@@ -2,13 +2,16 @@ import Link from "next/link";
 import { and, desc, eq, sql, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, enrollments, users, questions, assignmentSubmissions, quizAttempts, documents, orders } from "@/db/schema";
-import { fmtDate, fmtMoney, fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtMoney, fmtDateTime, todayISO } from "@/lib/format";
 import { Kpi, PageTitle, Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ gun?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { gun } = await searchParams;
-  const day = gun && /^\d{4}-\d{2}-\d{2}$/.test(gun) ? gun : new Date().toISOString().slice(0, 10);
+  const day = gun && /^\d{4}-\d{2}-\d{2}$/.test(gun) ? gun : todayISO();
   const n = (q: Promise<{ n: number }[]>) => q.then((r) => r[0]?.n ?? 0);
   const count = sql<number>`count(*)`.mapWith(Number);
 
@@ -18,7 +21,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     n(db.select({ n: count }).from(enrollments).where(eq(enrollments.status, "active"))),
     n(db.select({ n: count }).from(questions).where(eq(questions.status, "pending"))),
     db.select({ e: enrollments, u: users, c: courses }).from(enrollments).innerJoin(users, eq(enrollments.userId, users.id)).innerJoin(courses, eq(enrollments.courseId, courses.id)).orderBy(desc(enrollments.enrolledAt)).limit(8),
-    db.select({ id: courses.id, title: courses.title, n: sql<number>`(select count(*) from ${enrollments} e where e.course_id = ${courses.id} and e.status='active')`.mapWith(Number) }).from(courses).orderBy(sql`3 desc`).limit(5),
+    // Popüler eğitimler: eğitim başına AKTİF kayıt sayısı (kaydı olmayan eğitim listeye girmez)
+    db.select({ id: courses.id, title: courses.title, n: count }).from(enrollments).innerJoin(courses, eq(enrollments.courseId, courses.id)).where(eq(enrollments.status, "active")).groupBy(courses.id, courses.title).orderBy(sql`count(*) desc`, courses.title).limit(5),
     n(db.select({ n: count }).from(questions).where(sql`${questions.createdAt}::date = ${day}`)),
     n(db.select({ n: count }).from(assignmentSubmissions).where(sql`${assignmentSubmissions.submittedAt}::date = ${day}`)),
     n(db.select({ n: count }).from(quizAttempts).where(sql`${quizAttempts.completedAt}::date = ${day}`)),
@@ -38,7 +42,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         <Kpi label="Toplam eğitim" value={totalCourses} icon="book" href="/admin/kurslar" />
         <Kpi label="Toplam öğrenci" value={totalStudents} icon="users" color="sky" href="/admin/ogrenciler" />
         <Kpi label="Aktif kayıt" value={activeEnroll} icon="check" color="green" />
-        <Kpi label="Bekleyen soru" value={pendingQ} icon="message" color={pendingQ ? "red" : "gray"} href="/egitmen/sorular" />
+        <Kpi label="Bekleyen soru" value={pendingQ} icon="message" color={pendingQ ? "red" : "gray"} href="/admin/sorular" />
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Kpi label="Toplam ciro" value={fmtMoney(revenue)} icon="chart" color="green" href="/admin/siparisler" />
@@ -47,11 +51,11 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         <Kpi label="Hiç başlamayan (7g+)" value={idle.length} icon="clock" color="amber" />
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="card">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-bold text-navy-800">Ne oldu?</h2>
-            <form className="flex gap-2"><input type="date" name="gun" defaultValue={day} className="input w-auto py-1 text-xs" /><button className="btn-secondary btn-sm">Göster</button></form>
+            <form className="flex gap-2"><input aria-label="Gün" type="date" name="gun" defaultValue={day} className="input w-auto py-1 text-xs" /><button className="btn-secondary btn-sm">Göster</button></form>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[["Yeni soru", todayQ], ["Görev teslimi", todaySubs], ["Sınav sonucu", todayQuiz], ["Yeni kayıt", todayEnroll]].map(([l, v]) => (
@@ -83,8 +87,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           <div className="card">
             <h2 className="mb-3 font-bold text-navy-800">Popüler eğitimler</h2>
             <ul className="space-y-2 text-sm">
+              {popular.length === 0 && <li className="text-muted">Henüz aktif kayıt yok.</li>}
               {popular.map((p) => (
-                <li key={p.id}><div className="flex justify-between"><span className="truncate">{p.title}</span><span className="text-muted">{p.n}</span></div><div className="mt-1 h-1.5 rounded-full bg-navy-100"><div className="h-full rounded-full bg-sky-400" style={{ width: `${(p.n / max) * 100}%` }} /></div></li>
+                <li key={p.id}><div className="flex justify-between gap-3"><span className="min-w-0 truncate">{p.title}</span><span className="shrink-0 text-muted">{p.n} kayıt</span></div><div className="mt-1 h-1.5 rounded-full bg-navy-100"><div className="h-full rounded-full bg-sky-400" style={{ width: `${(p.n / max) * 100}%` }} /></div></li>
               ))}
             </ul>
           </div>

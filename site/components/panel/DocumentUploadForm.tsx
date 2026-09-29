@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useState, useActionState } from "react";
 import { uploadDocument } from "@/app/actions/panel";
 import type { FormState } from "@/app/actions/auth";
@@ -11,6 +12,7 @@ const KINDS: { key: "ogrenci" | "mezun"; label: string; icon: IconName; hint: st
 ];
 
 export function DocumentUploadForm() {
+  const fid = useFieldId();
   const [state, action, pending] = useActionState<FormState, FormData>(uploadDocument, {});
   const [kind, setKind] = useState<"ogrenci" | "mezun">("ogrenci");
   const active = KINDS.find((k) => k.key === kind)!;
@@ -31,12 +33,12 @@ export function DocumentUploadForm() {
       <p className="text-sm text-muted">{active.hint}</p>
       <input type="hidden" name="kind" value={kind} />
       <div>
-        <label className="label">Belge</label>
-        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" className="input" />
+        <label htmlFor={fid("a1")} className="label">Belge</label>
+        <input id={fid("a1")} type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" className="input" />
       </div>
       <div>
-        <label className="label">Not <span className="text-muted">(isteğe bağlı)</span></label>
-        <textarea name="note" rows={2} className="input" />
+        <label htmlFor={fid("a2")} className="label">Not <span className="text-muted">(isteğe bağlı)</span></label>
+        <textarea id={fid("a2")} name="note" rows={2} className="input" />
       </div>
       {state.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
       {state.ok && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{state.ok}</p>}

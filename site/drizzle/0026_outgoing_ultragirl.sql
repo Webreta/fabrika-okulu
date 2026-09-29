@@ -1,0 +1,1 @@
+ALTER TABLE "quiz_attempts" ADD COLUMN "voided" boolean DEFAULT false NOT NULL;

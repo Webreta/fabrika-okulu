@@ -36,26 +36,31 @@ export async function ensureInstructorProfile(user: SessionUser) {
 
 export async function teacherOverview(user: SessionUser) {
   const ids = await teacherCourseIds(user);
-  if (ids.length === 0) return { ids, courses: [], studentCount: 0, pendingSubs: 0, pendingQuizzes: 0, pendingQuestions: 0 };
+  if (ids.length === 0) return { ids, courses: [], studentCount: 0, submissionCount: 0, pendingQuestions: 0 };
   const cs = await db
     .select({
       c: courses,
-      students: sql<number>`(select count(*) from ${enrollments} e where e.course_id = ${courses.id} and e.status='active')`.mapWith(Number),
-      lessonCount: sql<number>`(select count(*) from ${lessons} l where l.course_id = ${courses.id} and l.type <> 'file')`.mapWith(Number),
+      // Alt sorguda tablo adı açıkça yazılır: ${courses.id} öneksiz "id" üretir ve alt sorgunun kendi tablosuna bağlanır
+      students: sql<number>`(select count(*) from ${enrollments} e where e.course_id = "courses"."id" and e.status='active')`.mapWith(Number),
+      lessonCount: sql<number>`(select count(*) from ${lessons} l where l.course_id = "courses"."id" and l.type <> 'file')`.mapWith(Number),
       periodCount: sql<number>`(select count(*) from ${periods} p where p.course_id = "courses"."id")`.mapWith(Number),
     })
     .from(courses)
     .where(inArray(courses.id, ids))
     .orderBy(desc(courses.createdAt));
   const [sc] = await db.select({ n: sql<number>`count(distinct ${enrollments.userId})`.mapWith(Number) }).from(enrollments).where(and(inArray(enrollments.courseId, ids), eq(enrollments.status, "active")));
-  // Görev/sınav değerlendirmesi kaldırıldı; puanlama bekleyen sayaçları yok (yalnızca cevaplanmamış sorular).
+  // Görev/sınav değerlendirmesi yoktur; "bekleyen" sayaç yalnızca cevaplanmamış sorular içindir. Görevlerde toplam teslim sayılır.
+  const [subc] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(assignmentSubmissions)
+    .innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id))
+    .where(inArray(assignments.courseId, ids));
   const [pqs] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(questions).where(and(inArray(questions.courseId, ids), eq(questions.status, "pending")));
   return {
     ids,
     courses: cs.map((r) => ({ ...r.c, students: r.students, lessonCount: r.lessonCount, hasPeriods: r.periodCount > 0 })),
     studentCount: sc.n,
-    pendingSubs: 0,
-    pendingQuizzes: 0,
+    submissionCount: subc.n,
     pendingQuestions: pqs.n,
   };
 }
@@ -110,14 +115,14 @@ export async function teacherSubmissions(user: SessionUser, courseId?: number, l
   const ids = await teacherCourseIds(user);
   const scope = courseId && ids.includes(courseId) ? [courseId] : ids;
   if (scope.length === 0) return [];
-  const status = filter.status === "pending" || filter.status === "graded" ? filter.status : undefined;
   return db
     .select({ s: assignmentSubmissions, a: assignments, u: users, courseTitle: courses.title })
     .from(assignmentSubmissions)
     .innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id))
     .innerJoin(users, eq(assignmentSubmissions.userId, users.id))
     .innerJoin(courses, eq(assignments.courseId, courses.id))
-    .where(and(inArray(assignments.courseId, scope), status ? eq(assignmentSubmissions.status, status) : undefined, searchCond(filter.q, assignments.title)))
+    // Görev teslimlerinde durum süzgeci yoktur (puanlama yapılmaz); filter.status yalnızca sınav sonuçlarını süzer
+    .where(and(inArray(assignments.courseId, scope), searchCond(filter.q, assignments.title)))
     .orderBy(desc(assignmentSubmissions.submittedAt))
     .limit(limit);
 }
@@ -194,11 +199,13 @@ export async function certificateFeed(user: SessionUser, courseId?: number) {
   const issued = await db.select().from(issuedCertificates).where(inArray(issuedCertificates.courseId, scope));
   const rows = students.slice(0, 80).map((s) => {
     const level = s.total > 0 && s.completed >= s.total ? 3 : s.startedAt ? 2 : 1;
-    const eligible = templates.filter((t) => {
-      if (t.rule.scope === "course" && t.rule.courseId !== s.courseId) return false;
-      const need = t.rule.condition === "enrolled" ? 1 : t.rule.condition === "started" ? 2 : 3;
-      return level >= need;
-    });
+    // Elle verme her zaman mümkündür; koşulu henüz sağlanmayan tasarım "met: false" ile işaretlenir (ekranda uyarı çıkar)
+    const eligible = templates
+      .filter((t) => !(t.rule.scope === "course" && t.rule.courseId !== s.courseId))
+      .map((t) => {
+        const need = t.rule.condition === "enrolled" ? 1 : t.rule.condition === "started" ? 2 : 3;
+        return { ...t, met: level >= need };
+      });
     const mine = issued.filter((i) => i.userId === s.userId && i.courseId === s.courseId);
     return { ...s, level, eligible: eligible.filter((t) => !mine.some((i) => i.templateId === t.id)), issued: mine.map((i) => ({ ...i, title: templates.find((t) => t.id === i.templateId)?.title ?? "" })) };
   }).filter((r) => r.eligible.length > 0 || r.issued.length > 0);

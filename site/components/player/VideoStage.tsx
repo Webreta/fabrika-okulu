@@ -70,7 +70,7 @@ export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocke
         ) : lesson.video.type === "none" ? (
           <div className="flex aspect-video items-center justify-center text-[#fff]/60">Video eklenmemiş</div>
         ) : (
-          <iframe src={lesson.video.embed} className="aspect-video w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={lesson.title} />
+          <EmbedVideo key={lesson.id} src={lesson.video.embed} title={lesson.title} onEnded={async () => { await complete(); startCountdown(true); }} />
         )}
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-navy-900/70">
@@ -128,7 +128,7 @@ export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocke
                 {preview ? (
                   <span className="text-xs text-muted">Önizleme</span>
                 ) : lesson.video.type !== "file" && lesson.video.type !== "vimeo" && !isDone ? (
-                  <button onClick={async () => { await complete(); startCountdown(); }} className="btn-primary btn-sm"><Icon name="check" className="size-4" /> Tamamlandı olarak işaretle</button>
+                  <button onClick={async () => { await complete(); startCountdown(true); }} className="btn-primary btn-sm"><Icon name="check" className="size-4" /> Tamamlandı olarak işaretle</button>
                 ) : null}
               </div>
             </div>
@@ -141,6 +141,47 @@ export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocke
       </div>
     </div>
   );
+}
+
+/**
+ * YouTube gömülü oynatıcı: harici betik yüklemeden, oynatıcının postMessage bildirimleri dinlenir
+ * (adresteki enablejsapi=1 sayesinde). Video bitince ders tamamlanır ve sıradaki içerik sayacı başlar.
+ */
+function EmbedVideo({ src, title, onEnded }: { src: string; title: string; onEnded: () => void }) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const cb = useRef(onEnded);
+  cb.current = onEnded;
+
+  useEffect(() => {
+    const frame = ref.current;
+    if (!frame) return;
+    let origin = "";
+    try { origin = new URL(src).origin; } catch { return; }
+    let heard = false;
+    let ended = false;
+    let tries = 0;
+    // Oynatıcı hazır olana kadar "dinliyorum" iletisi yinelenir
+    const hello = () => {
+      try { frame.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), origin); } catch {}
+    };
+    const timer = setInterval(() => { if (heard || ++tries > 20) clearInterval(timer); else hello(); }, 1000);
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== origin || e.source !== frame.contentWindow) return;
+      let data: { event?: string; info?: unknown } | null = null;
+      try { data = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
+      if (!data) return;
+      heard = true;
+      const info = data.info as number | { playerState?: number } | null | undefined;
+      const state = data.event === "onStateChange" ? info : data.event === "infoDelivery" && info && typeof info === "object" ? info.playerState : undefined;
+      if (state === 1) ended = false;
+      if (state === 0 && !ended) { ended = true; cb.current(); }
+    };
+    window.addEventListener("message", onMsg);
+    frame.addEventListener("load", hello);
+    return () => { clearInterval(timer); window.removeEventListener("message", onMsg); frame.removeEventListener("load", hello); };
+  }, [src]);
+
+  return <iframe ref={ref} src={src} className="aspect-video w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={title} />;
 }
 
 function fmt(s: number) {
@@ -258,7 +299,7 @@ function FileVideo({ src, posKey, unlocked, onComplete, onEnded, timeRef, startA
           </div>
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs">
-          <button onClick={() => (playing ? v().pause() : v().play().catch(() => {}))} className="rounded p-1 hover:bg-[#fff]/20"><Icon name={playing ? "pause" : "play"} className="size-5" /></button>
+          <button aria-label={playing ? "Duraklat" : "Oynat"} onClick={() => (playing ? v().pause() : v().play().catch(() => {}))} className="rounded p-1 hover:bg-[#fff]/20"><Icon name={playing ? "pause" : "play"} className="size-5" /></button>
           <button onClick={() => seekTo(Math.max(0, t - 10))} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">−10s</button>
           <button onClick={() => seekTo(t + 10)} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">+10s</button>
           <span className="tabular-nums">{fmt(t)} / {fmt(d)}</span>
@@ -266,8 +307,8 @@ function FileVideo({ src, posKey, unlocked, onComplete, onEnded, timeRef, startA
             {[1, 1.5, 2].map((r) => (
               <button key={r} onClick={() => { v().playbackRate = r; setRate(r); }} className={`rounded px-1.5 py-0.5 ${rate === r ? "bg-sky-400 text-navy-900" : "hover:bg-[#fff]/20"}`}>{r}x</button>
             ))}
-            <button onClick={() => { v().muted = !muted; setMuted(!muted); }} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="volume" className={`size-5 ${muted ? "opacity-40" : ""}`} /></button>
-            <button onClick={() => wrap.current?.requestFullscreen?.()} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="expand" className="size-5" /></button>
+            <button aria-label={muted ? "Sesi aç" : "Sesi kapat"} onClick={() => { v().muted = !muted; setMuted(!muted); }} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="volume" className={`size-5 ${muted ? "opacity-40" : ""}`} /></button>
+            <button aria-label="Tam ekran" onClick={() => wrap.current?.requestFullscreen?.()} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="expand" className="size-5" /></button>
           </div>
         </div>
       </div>
@@ -455,7 +496,7 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
           </div>
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs">
-          <button onClick={togglePlay} className="rounded p-1 hover:bg-[#fff]/20"><Icon name={playing ? "pause" : "play"} className="size-5" /></button>
+          <button aria-label={playing ? "Duraklat" : "Oynat"} onClick={togglePlay} className="rounded p-1 hover:bg-[#fff]/20"><Icon name={playing ? "pause" : "play"} className="size-5" /></button>
           <button onClick={() => seekTo(Math.max(0, t - 10))} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">−10s</button>
           <button onClick={() => seekTo(t + 10)} className="rounded px-1.5 py-1 hover:bg-[#fff]/20">+10s</button>
           <span className="tabular-nums">{fmt(t)} / {fmt(d)}</span>
@@ -463,8 +504,8 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
             {[1, 1.5, 2].map((r) => (
               <button key={r} onClick={() => { p()?.setPlaybackRate(r).then(() => setRate(r)).catch(() => {}); }} className={`rounded px-1.5 py-0.5 ${rate === r ? "bg-sky-400 text-navy-900" : "hover:bg-[#fff]/20"}`}>{r}x</button>
             ))}
-            <button onClick={() => { const m = !muted; p()?.setMuted(m).then(() => setMuted(m)).catch(() => {}); }} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="volume" className={`size-5 ${muted ? "opacity-40" : ""}`} /></button>
-            <button onClick={() => wrap.current?.requestFullscreen?.()} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="expand" className="size-5" /></button>
+            <button aria-label={muted ? "Sesi aç" : "Sesi kapat"} onClick={() => { const m = !muted; p()?.setMuted(m).then(() => setMuted(m)).catch(() => {}); }} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="volume" className={`size-5 ${muted ? "opacity-40" : ""}`} /></button>
+            <button aria-label="Tam ekran" onClick={() => wrap.current?.requestFullscreen?.()} className="rounded p-1 hover:bg-[#fff]/20"><Icon name="expand" className="size-5" /></button>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { Chip } from "@/components/panel/ui";
 export type SubmissionRow = {
   id: number; student: string; title: string; course: string; text: string;
   files: { url: string; name: string }[]; voices: { url: string; duration?: number }[];
-  status: string; score: number | null; feedback: string; at: string; isGraded: boolean; maxScore: number;
+  at: string;
   transcript?: Record<string, string>;
 };
 
@@ -79,7 +79,7 @@ export function SubmissionCard({ row }: { row: SubmissionRow }) {
           <p className="font-semibold text-navy-800">{row.title}</p>
           <p className="text-xs text-muted">{row.student} · {row.course} · {fmtDateTime(row.at)}</p>
         </div>
-        <Chip color="sky">Gönderildi</Chip>
+        <Chip color="sky">Teslim edildi</Chip>
       </div>
       {row.text && <p className="mt-3 whitespace-pre-line rounded-lg bg-surface p-3 text-sm">{row.text}</p>}
       {row.files.length > 0 && <ul className="mt-2 space-y-1 text-sm">{row.files.map((f, i) => <li key={i}><a href={f.url} target="_blank" className="text-sky-600 underline">📎 {f.name}</a></li>)}</ul>}

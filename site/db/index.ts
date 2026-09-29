@@ -17,7 +17,8 @@ const globalForDb = globalThis as unknown as {
 
 const client =
   globalForDb.pgClient ??
-  postgres(connectionString, { max: 10, connect_timeout: 10 });
+  // TimeZone: veritabanı oturumu da Türkiye saatinde çalışır (current_date, ::date dönüşümleri, günlük rapor)
+  postgres(connectionString, { max: 10, connect_timeout: 10, connection: { TimeZone: process.env.TZ || "Europe/Istanbul" } });
 if (process.env.NODE_ENV !== "production") globalForDb.pgClient = client;
 
 export const db = drizzle(client, { schema });

@@ -17,11 +17,11 @@ export function MailTemplatesForm({ templates, types }: { templates: MailTemplat
       <div className="grid gap-3 md:grid-cols-2">
         {types.map((x) => (
           <div key={x.key} className="card flex items-start gap-3">
-            <input type="checkbox" checked={get(x.key).enabled} onChange={(e) => setT({ ...t, [x.key]: { ...get(x.key), enabled: e.target.checked } })} className="mt-1" />
+            <input aria-label={`${x.title}: e-posta açık`} type="checkbox" checked={get(x.key).enabled} onChange={(e) => setT({ ...t, [x.key]: { ...get(x.key), enabled: e.target.checked } })} className="mt-1" />
             <div className="flex-1">
               <p className="font-semibold text-navy-800">{x.title}</p>
               <p className="text-xs text-muted">Alıcı: {x.to}</p>
-              <input value={get(x.key).subject} onChange={(e) => setT({ ...t, [x.key]: { ...get(x.key), subject: e.target.value } })} placeholder="Özel konu (isteğe bağlı)" className="input mt-2 text-xs" />
+              <input aria-label="Özel konu" value={get(x.key).subject} onChange={(e) => setT({ ...t, [x.key]: { ...get(x.key), subject: e.target.value } })} placeholder="Özel konu (isteğe bağlı)" className="input mt-2 text-xs" />
             </div>
           </div>
         ))}

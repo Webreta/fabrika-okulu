@@ -7,7 +7,7 @@ import { studentRecommendations } from "@/lib/recommendations";
 import { RecoSlider } from "@/components/panel/RecoSlider";
 import { getSetting } from "@/lib/settings";
 import { themeByKey } from "@/lib/panel-themes";
-import { fmtDate, fmtTime } from "@/lib/format";
+import { fmtDate, fmtTime, numSuffix, CALENDAR_TYPES } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Progress, Kpi, Chip } from "@/components/panel/ui";
 import { ThemeButton } from "@/components/panel/ThemePicker";
@@ -15,13 +15,18 @@ import { ThemeButton } from "@/components/panel/ThemePicker";
 export default async function PanelHome({ searchParams }: { searchParams: Promise<{ sifirlandi?: string }> }) {
   const user = (await getCurrentUser())!;
   const { sifirlandi } = await searchParams;
-  const [courses, actions, pendingSurvey, panel, recos] = await Promise.all([studentCourses(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel"), studentRecommendations(user.id)]);
+  const [allCourses, actions, pendingSurvey, panel, recos] = await Promise.all([studentCourses(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel"), studentRecommendations(user.id)]);
+  // Açılışı bekleyen erken kayıtlar devam kartına ve ilerleme hesabına girmez; "Yaklaşan"da açılış günü olarak görünür
+  const courses = allCourses.filter((c) => !c.opensAt);
   const theme = themeByKey(user.panelTheme, panel.defaultTheme);
   const resume = courses.find((c) => c.percent > 0 && c.percent < 100) ?? courses.find((c) => c.percent < 100);
   const pendingTasks = actions.items.filter((i) => i.kind === "assignment" && !i.done).length;
-  const upcomingQuiz = actions.items.filter((i) => i.kind === "quiz" && !i.done).length;
+  const now = Date.now();
+  // Yaklaşan sınav: çözülmemiş ve son tarihi gelecekte olanlar (tarihi geçmiş ya da tarihsiz sınav "yaklaşan" değildir)
+  const upcomingQuiz = actions.items.filter((i) => i.kind === "quiz" && !i.done && !!i.due && i.due.getTime() > now).length;
   const completed = courses.filter((c) => c.total > 0 && c.percent >= 100).length;
-  const upcoming = actions.calendar.filter((e) => e.date.getTime() >= Date.now() - 86400000).slice(0, 6);
+  // Yaklaşan: tamamlanmamış ve zamanı geçmemiş kayıtlar (görüşme ve canlı ders bitiş saatine kadar listede kalır)
+  const upcoming = actions.calendar.filter((e) => !e.done && e.end.getTime() >= now).slice(0, 6);
   const totalLessons = courses.reduce((s, c) => s + c.total, 0);
   const doneLessons = courses.reduce((s, c) => s + c.completed, 0);
   const overall = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
@@ -92,14 +97,18 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {upcoming.map((e, i) => (
-                <div key={i} className={`card ${e.done ? "opacity-60" : ""}`}>
+                <div key={i} className="card">
                   <div className="flex items-center justify-between">
-                    <span className="date-chip">{fmtDate(e.date)} · {fmtTime(e.date)}</span>
-                    <Chip color={e.type === "session" ? "purple" : e.type === "quiz" ? "sky" : "amber"}>{e.type === "session" ? "Canlı ders" : e.type === "quiz" ? "Sınav" : "Görev"}</Chip>
+                    <span className="date-chip">{fmtDate(e.date)}{e.type !== "opening" && ` · ${fmtTime(e.date)}`}</span>
+                    <Chip color={CALENDAR_TYPES[e.type].color}>{CALENDAR_TYPES[e.type].label}</Chip>
                   </div>
                   <p className="mt-2 font-semibold text-navy-800">{e.title}</p>
                   <p className="text-xs text-muted">{e.courseTitle}</p>
-                  <Link href={e.link} target={e.external ? "_blank" : undefined} className="btn-secondary btn-sm mt-3">{e.type === "session" ? "Katıl" : "Git"}</Link>
+                  {e.type === "session" && !e.external ? (
+                    <span className="mt-3 inline-block rounded-lg bg-surface px-3 py-1.5 text-xs text-muted">Bağlantı henüz eklenmedi</span>
+                  ) : (
+                    <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm mt-3">{CALENDAR_TYPES[e.type].action}</Link>
+                  )}
                 </div>
               ))}
             </div>
@@ -122,7 +131,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
             </svg>
             <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-navy-800">%{overall}</span>
           </div>
-          <p className="mt-2 text-xs text-muted">{courses.length} eğitimden {completed}&apos;i tamamlandı · toplam {totalLessons} ders</p>
+          <p className="mt-2 text-xs text-muted">{courses.length} eğitimden {numSuffix(completed)} tamamlandı · toplam {totalLessons} ders</p>
         </div>
         <div className="rounded-2xl bg-gradient-to-br from-sky-500 to-navy-700 p-5 text-white">
           <h3 className="font-bold">Yeni bir program mı?</h3>

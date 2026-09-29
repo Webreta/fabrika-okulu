@@ -25,10 +25,10 @@ export function Chip({ color = "gray", children }: { color?: keyof typeof CHIP; 
 
 export function Kpi({ label, value, icon, color = "navy", href }: { label: string; value: React.ReactNode; icon: IconName; color?: keyof typeof CHIP; href?: string }) {
   const body = (
-    <div className="card flex items-center gap-4">
+    <div className="card flex min-w-0 items-center gap-4">
       <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${CHIP[color]}`}><Icon name={icon} className="size-5" /></span>
-      <div>
-        <p className="text-2xl font-bold text-navy-800">{value}</p>
+      <div className="min-w-0">
+        <p className="break-words text-2xl font-bold text-navy-800">{value}</p>
         <p className="text-xs text-muted">{label}</p>
       </div>
     </div>

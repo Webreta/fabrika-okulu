@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { Toast } from "@/components/Toast";
 
 import { useState, useTransition } from "react";
@@ -9,13 +10,14 @@ import { Icon } from "@/components/site/Icon";
 import type { FaqContent } from "@/lib/content-defaults";
 
 export function AboutForm({ about }: { about: { title: string; html: string } }) {
+  const fid = useFieldId();
   const [a, setA] = useState(about);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   return (
     <div className="card space-y-3">
-      <div><label className="label">Başlık</label><input value={a.title} onChange={(e) => setA({ ...a, title: e.target.value })} className="input" /></div>
-      <div><label className="label">İçerik (HTML)</label><textarea rows={12} value={a.html} onChange={(e) => setA({ ...a, html: e.target.value })} className="input font-mono text-xs" /></div>
+      <div><label htmlFor={fid("a1")} className="label">Başlık</label><input id={fid("a1")} value={a.title} onChange={(e) => setA({ ...a, title: e.target.value })} className="input" /></div>
+      <div><label htmlFor={fid("a2")} className="label">İçerik (HTML)</label><textarea id={fid("a2")} rows={12} value={a.html} onChange={(e) => setA({ ...a, html: e.target.value })} className="input font-mono text-xs" /></div>
       <div className="flex items-center gap-3"><button disabled={pending} onClick={() => start(async () => { const r = await saveRawSetting("about", a); setMsg(r.ok ? "Kaydedildi." : r.error); })} className="btn-primary">Kaydet</button>{msg && <Toast message={msg} ok={msg === "Kaydedildi."} onDone={() => setMsg("")} />}</div>
     </div>
   );
@@ -24,29 +26,33 @@ export function AboutForm({ about }: { about: { title: string; html: string } })
 type P = { id?: number; slug: string; title: string; html: string; published: boolean };
 
 export function PagesManager({ pages }: { pages: P[] }) {
+  const fid = useFieldId();
   const [edit, setEdit] = useState<P | null>(null);
   const [msg, setMsg] = useState("");
+  // Kayıt hatası pencerenin içinde gösterilir; pencere açık kalır, yazılan metin kaybolmaz
+  const [pageErr, setPageErr] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">{msg ? <span className="text-sm text-emerald-700">{msg}</span> : <span />}<button onClick={() => setEdit({ slug: "", title: "", html: "", published: true })} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Yeni sayfa</button></div>
+      <div className="flex items-center justify-between">{msg ? <span className="text-sm text-emerald-700">{msg}</span> : <span />}<button onClick={() => { setPageErr(""); setEdit({ slug: "", title: "", html: "", published: true }); }} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Yeni sayfa</button></div>
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>Başlık</th><th>Adres</th><th>Durum</th><th></th></tr></thead>
-          <tbody>{pages.map((p) => <tr key={p.id}><td className="font-semibold text-navy-800">{p.title}</td><td className="text-xs"><a href={`/${p.slug}`} target="_blank" className="text-sky-600 underline">/{p.slug}</a></td><td className="text-xs">{p.published ? "Yayında" : "Gizli"}</td><td className="flex gap-2"><button onClick={() => setEdit(p)} className="btn-secondary btn-sm">Düzenle</button><button disabled={pending} onClick={() => { if (confirm("Sayfa silinsin mi?")) start(async () => { await deletePage(p.id!); router.refresh(); }); }} className="btn-secondary btn-sm text-red-600">Sil</button></td></tr>)}</tbody>
+          <tbody>{pages.map((p) => <tr key={p.id}><td className="max-w-xs break-words font-semibold text-navy-800">{p.title}</td><td className="max-w-xs break-all text-xs"><a href={`/${p.slug}`} target="_blank" className="text-sky-600 underline">/{p.slug}</a></td><td className="text-xs">{p.published ? "Yayında" : "Gizli"}</td><td className="flex gap-2"><button onClick={() => { setPageErr(""); setEdit(p); }} className="btn-secondary btn-sm">Düzenle</button><button disabled={pending} onClick={() => { if (confirm("Sayfa silinsin mi?")) start(async () => { await deletePage(p.id!); router.refresh(); }); }} className="btn-secondary btn-sm text-red-600">Sil</button></td></tr>)}</tbody>
         </table>
       </div>
       {edit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4" onClick={() => setEdit(null)}>
           <div className="max-h-[92vh] w-full max-w-3xl space-y-3 overflow-y-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div><label className="label">Başlık</label><input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} className="input" /></div>
-              <div><label className="label">Adres (slug)</label><input value={edit.slug} onChange={(e) => setEdit({ ...edit, slug: e.target.value })} className="input" placeholder="kvkk-aydinlatma-metni" /></div>
+              <div><label htmlFor={fid("a3")} className="label">Başlık</label><input id={fid("a3")} value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} maxLength={150} className="input" /></div>
+              <div><label htmlFor={fid("a4")} className="label">Adres (slug)</label><input id={fid("a4")} value={edit.slug} onChange={(e) => setEdit({ ...edit, slug: e.target.value })} maxLength={80} className="input" placeholder="kvkk-aydinlatma-metni" /><p className="mt-1 text-xs text-muted">Küçük harf, rakam ve tire. Boş bırakılırsa başlıktan üretilir.</p></div>
             </div>
-            <div><label className="label">İçerik (HTML)</label><textarea rows={18} value={edit.html} onChange={(e) => setEdit({ ...edit, html: e.target.value })} className="input font-mono text-xs" /></div>
+            <div><label htmlFor={fid("a5")} className="label">İçerik (HTML)</label><textarea id={fid("a5")} rows={18} value={edit.html} onChange={(e) => setEdit({ ...edit, html: e.target.value })} className="input font-mono text-xs" /></div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.published} onChange={(e) => setEdit({ ...edit, published: e.target.checked })} /> Yayında</label>
-            <div className="flex justify-end gap-2"><button onClick={() => setEdit(null)} className="btn-secondary btn-sm">Vazgeç</button><button disabled={pending} onClick={() => start(async () => { const r = await savePage(edit); setMsg(r.ok ? r.message ?? "Kaydedildi" : r.error); if (r.ok) setEdit(null); router.refresh(); })} className="btn-primary btn-sm">Kaydet</button></div>
+            {pageErr && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{pageErr}</p>}
+            <div className="flex justify-end gap-2"><button onClick={() => setEdit(null)} className="btn-secondary btn-sm">Vazgeç</button><button disabled={pending} onClick={() => start(async () => { setPageErr(""); try { const r = await savePage(edit); if (r.ok) { setMsg(r.message ?? "Kaydedildi"); setEdit(null); router.refresh(); } else setPageErr(r.error); } catch { setPageErr("Sayfa kaydedilemedi. Yazdıkların duruyor; biraz sonra tekrar dene."); } })} className="btn-primary btn-sm">{pending ? "Kaydediliyor…" : "Kaydet"}</button></div>
           </div>
         </div>
       )}
@@ -56,6 +62,7 @@ export function PagesManager({ pages }: { pages: P[] }) {
 
 /** Anasayfa "Merak Edilenler": başlık, alt metin ve sıralı soru-cevap listesi */
 export function FaqForm({ faq }: { faq: FaqContent }) {
+  const fid = useFieldId();
   const [f, setF] = useState<FaqContent>(faq);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
@@ -64,9 +71,9 @@ export function FaqForm({ faq }: { faq: FaqContent }) {
   return (
     <div className="card space-y-4">
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-        <div><label className="label">Bölüm başlığı</label><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input" /></div>
-        <div><label className="label">Alt metin</label><input value={f.sub} onChange={(e) => setF({ ...f, sub: e.target.value })} className="input" /></div>
-        <div><label className="label">Anasayfada kaç soru</label><input type="number" min={1} max={50} value={f.homeLimit ?? 6} onChange={(e) => setF({ ...f, homeLimit: Math.max(1, Number(e.target.value) || 1) })} className="input w-24" title="Anasayfada ilk kaç soru görünsün; tamamı S.S.S. sayfasında" /></div>
+        <div><label htmlFor={fid("a6")} className="label">Bölüm başlığı</label><input id={fid("a6")} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input" /></div>
+        <div><label htmlFor={fid("a7")} className="label">Alt metin</label><input id={fid("a7")} value={f.sub} onChange={(e) => setF({ ...f, sub: e.target.value })} className="input" /></div>
+        <div><label htmlFor={fid("a8")} className="label">Anasayfada kaç soru</label><input id={fid("a8")} type="number" min={1} max={50} value={f.homeLimit ?? 6} onChange={(e) => setF({ ...f, homeLimit: Math.max(1, Number(e.target.value) || 1) })} className="input w-24" title="Anasayfada ilk kaç soru görünsün; tamamı S.S.S. sayfasında" /></div>
       </div>
       <div className="space-y-3">
         {f.items.map((it, i) => (
@@ -74,8 +81,8 @@ export function FaqForm({ faq }: { faq: FaqContent }) {
             <div className="flex items-start gap-2">
               <span className="mt-2 w-6 shrink-0 text-center text-sm font-bold text-muted">{i + 1}</span>
               <div className="min-w-0 flex-1 space-y-2">
-                <input value={it.q} onChange={(e) => setItem(i, { q: e.target.value })} className="input font-semibold" placeholder="Soru" />
-                <textarea rows={3} value={it.a} onChange={(e) => setItem(i, { a: e.target.value })} className="input" placeholder="Cevap" />
+                <input aria-label="Soru" value={it.q} onChange={(e) => setItem(i, { q: e.target.value })} className="input font-semibold" placeholder="Soru" />
+                <textarea aria-label="Cevap" rows={3} value={it.a} onChange={(e) => setItem(i, { a: e.target.value })} className="input" placeholder="Cevap" />
               </div>
               <div className="flex shrink-0 flex-col gap-1">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="btn-secondary btn-sm px-2" title="Yukarı"><Icon name="chevronUp" className="size-4" /></button>

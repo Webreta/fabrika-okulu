@@ -58,7 +58,7 @@ export function NotesPanel({ courseId, lessonId, lessonTitle, notes, getTime, de
           <p className="mb-2 text-xs font-semibold text-navy-800">
             {mode.seconds !== null ? <>📍 {lessonTitle} · <span className="rounded bg-navy-800 px-1.5 py-0.5 text-white">{fmtSecs(mode.seconds)}</span></> : "📝 Genel not"}
           </p>
-          <textarea autoFocus rows={3} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit(); }} placeholder="Notunu yaz… (Ctrl+Enter kaydeder)" maxLength={1000} className="input" />
+          <textarea aria-label="Notunu yaz" autoFocus rows={3} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit(); }} placeholder="Notunu yaz… (Ctrl+Enter kaydeder)" maxLength={1000} className="input" />
           <p className={`mt-1 text-right text-[11px] ${text.length >= 1000 ? "text-red-600" : "text-muted"}`}>{text.length}/1000</p>
           {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
           <div className="mt-2 flex justify-end gap-2">
@@ -94,7 +94,7 @@ export function NotesPanel({ courseId, lessonId, lessonTitle, notes, getTime, de
                 </div>
                 {editing === n.id ? (
                   <div className="mt-2">
-                    <textarea rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} maxLength={1000} className="input" /><p className="mt-1 text-right text-[11px] text-muted">{editText.length}/1000</p>
+                    <textarea aria-label="Not" rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} maxLength={1000} className="input" /><p className="mt-1 text-right text-[11px] text-muted">{editText.length}/1000</p>
                     <div className="mt-1 flex justify-end gap-2"><button onClick={() => setEditing(null)} className="btn-secondary btn-sm">Vazgeç</button><button onClick={() => start(async () => { await saveNote({ id: n.id, text: editText }); setEditing(null); router.refresh(); })} className="btn-primary btn-sm">Kaydet</button></div>
                   </div>
                 ) : (

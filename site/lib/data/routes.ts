@@ -3,7 +3,7 @@ import { cache } from "react";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { routes, routeSteps, courses, instructors } from "@/db/schema";
-import { effectivePrice, hasActiveSale } from "@/lib/course-logic";
+import { effectivePrice, hasActiveSale, isPreorder } from "@/lib/course-logic";
 
 export type RouteStepView = {
   id: number;
@@ -22,6 +22,8 @@ export type RouteStepView = {
   closed: boolean;
   /** Yakında: satış kapalı, rotada "Yakında" rozetiyle görünür */
   comingSoon: boolean;
+  /** Erken kayıt: açılış tarihi (eğitim henüz açılmadıysa) */
+  opensAt: string | null;
   soonShowPrice: boolean;
   instructor: string;
   durationText: string;
@@ -77,6 +79,7 @@ export const listRoutes = cache(async (opts: { includeInactive?: boolean } = {})
         closed: x.c.closed,
         comingSoon: x.c.comingSoon,
         soonShowPrice: x.c.soonShowPrice,
+        opensAt: isPreorder(x.c) && !x.c.comingSoon ? x.c.opensAt : null,
         instructor: x.instructorName ?? "",
         durationText: x.c.durationText,
       })),

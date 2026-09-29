@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { studentActions } from "@/lib/data/student";
-import { fmtTime } from "@/lib/format";
+import { fmtTime, CALENDAR_TYPES } from "@/lib/format";
 import { PageTitle, Empty, Chip } from "@/components/panel/ui";
 
 const MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -22,13 +22,18 @@ export default async function CalendarPage() {
         <span className="text-[11px] uppercase">{MONTHS[e.date.getMonth()]}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <Chip color={e.type === "session" || e.type === "meeting" ? "purple" : e.type === "quiz" ? "sky" : "amber"}>
-          {e.type === "session" ? "Canlı ders" : e.type === "meeting" ? "Birebir görüşme" : e.type === "quiz" ? "Sınav" : "Görev"}{e.done && e.type !== "session" ? " ✓" : ""}
+        <Chip color={CALENDAR_TYPES[e.type].color}>
+          {CALENDAR_TYPES[e.type].label}{e.done && e.type !== "session" ? " ✓" : ""}
         </Chip>
         <p className="mt-1 truncate font-semibold text-navy-800">{e.title}</p>
-        <p className="mt-1 text-xs text-muted"><span className="date-chip">{fmtTime(e.date)}</span> · {e.courseTitle}</p>
+        <p className="mt-1 text-xs text-muted">{e.type !== "opening" && <><span className="date-chip">{fmtTime(e.date)}</span> · </>}{e.courseTitle}</p>
       </div>
-      <Link href={e.link} target={e.external ? "_blank" : undefined} className="btn-secondary btn-sm self-center">{e.type === "session" ? "Katıl" : e.type === "meeting" ? "Görüşme" : "Git"}</Link>
+      {e.type === "session" && !e.external ? (
+        // Bağlantısı girilmemiş canlı ders: aynı sayfaya giden "Katıl" yerine bilgi
+        <span className="self-center rounded-lg bg-surface px-3 py-1.5 text-xs text-muted">{e.done ? "Bitti" : "Bağlantı henüz eklenmedi"}</span>
+      ) : (
+        <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm self-center">{CALENDAR_TYPES[e.type].action}</Link>
+      )}
     </div>
   );
 
@@ -41,18 +46,18 @@ export default async function CalendarPage() {
         <div className="space-y-8">
           <div>
             <h2 className="mb-3 font-bold text-navy-800">Yaklaşan</h2>
-            {upcoming.length === 0 ? <p className="text-sm text-muted">Yaklaşan etkinlik yok.</p> : <div className="grid gap-3 md:grid-cols-2">{upcoming.map((e, i) => <Card key={i} e={e} />)}</div>}
+            {upcoming.length === 0 ? <p className="text-sm text-muted">Yaklaşan etkinlik yok.</p> : <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{upcoming.map((e, i) => <Card key={i} e={e} />)}</div>}
           </div>
           {past.length > 0 && (
             <div>
               <h2 className="mb-3 font-bold text-muted">Geçmiş</h2>
-              <div className="grid gap-3 md:grid-cols-2">{past.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{past.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
             </div>
           )}
           {done.length > 0 && (
             <div>
               <h2 className="mb-3 font-bold text-muted">Tamamlanan</h2>
-              <div className="grid gap-3 md:grid-cols-2">{done.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{done.slice(-10).reverse().map((e, i) => <Card key={i} e={e} />)}</div>
             </div>
           )}
         </div>

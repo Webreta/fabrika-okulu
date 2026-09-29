@@ -13,6 +13,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // ---------- Enums ----------
@@ -58,7 +59,9 @@ export const users = pgTable("users", {
   notifyPrefs: jsonb("notify_prefs").$type<Record<string, boolean>>().notNull().default({}),
   /** Kayıtlı fatura + gönderim adresi (lib/address.ts); sipariş verirken ön tanımlı gelir ve otomatik güncellenir */
   addresses: jsonb("addresses").$type<Addresses>().notNull().default({}),
+  // Eski tek anket düzeninden kalma: surveyVersion yalnızca ilk taşımada (ensureSurveysSeeded) okunur
   surveyVersion: integer("survey_version").notNull().default(0),
+  // kullanılmıyor; kolon korunuyor
   surveySkipped: boolean("survey_skipped").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -72,6 +75,8 @@ export const sessions = pgTable("sessions", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  // "Beni hatırla" işaretlenmediyse false: oturum kısa ömürlüdür ve 30 güne uzatılmaz
+  remember: boolean("remember").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -149,6 +154,17 @@ export const courses = pgTable("courses", {
   comingSoon: boolean("coming_soon").notNull().default(false),
   /** Yakında modunda fiyat gösterilsin mi (false: fiyat yerine "Yakında") */
   soonShowPrice: boolean("soon_show_price").notNull().default(false),
+  /** Erken kayıt: eğitim henüz açık değil ama açılış tarihi belli; satın alınabilir, içerik açılış tarihinde aktifleşir (lib/course-logic.ts isPreorder) */
+  preorder: boolean("preorder").notNull().default(false),
+  /** Açılış tarihi (o günün 00:00'ında açılır); geçtiyse eğitim normal eğitimdir */
+  opensAt: date("opens_at", { mode: "string" }),
+  /** Erken kayıt fiyatı: açılışa kadar geçerli (boşsa normal fiyat/indirim) */
+  preorderPrice: numeric("preorder_price", { precision: 10, scale: 2 }),
+  /** Program sayfasında eğitmen künyesinden sonra gösterilen öne çıkan eğitim (yatay kart) ve bölüm başlığı, örn. "Bu eğitmenden mentorluk al" */
+  promoCourseId: integer("promo_course_id").references((): AnyPgColumn => courses.id, { onDelete: "set null" }),
+  promoTitle: text("promo_title").notNull().default(""),
+  /** Açılış bildirimi gönderildi mi (cron bir kez gönderir; açılış tarihi değişince sıfırlanır) */
+  openNotifiedAt: timestamp("open_notified_at", { withTimezone: true }),
   isFree: boolean("is_free").notNull().default(false),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
   salePrice: numeric("sale_price", { precision: 10, scale: 2 }),
@@ -165,6 +181,7 @@ export const courses = pgTable("courses", {
   // Kursu oluşturan eğitmen (sahiplik)
   authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
   outcomes: jsonb("outcomes").$type<string[]>().notNull().default([]),
+  // kullanılmıyor ("Gereksinimler" bölümü kaldırıldı); kolon korunuyor, editör değeri olduğu gibi geri yazar
   requirements: text("requirements").notNull().default(""),
   target: text("target").notNull().default(""),
   previewVideo: text("preview_video").notNull().default(""),
@@ -172,6 +189,7 @@ export const courses = pgTable("courses", {
   level: text("level").notNull().default("all"), // beginner|intermediate|advanced|all
   language: text("language").notNull().default("Türkçe"),
   hasCertificate: boolean("has_certificate").notNull().default(false),
+  // kullanılmıyor ("Ömür boyu erişim" etiketi kaldırıldı); kolon korunuyor
   lifetime: boolean("lifetime").notNull().default(true),
   buttonType: text("button_type").notNull().default("cart"), // cart|whatsapp|both
   whatsappNumber: text("whatsapp_number").notNull().default(""),
@@ -212,6 +230,7 @@ export const lessons = pgTable(
     // video
     videoUrl: text("video_url").notNull().default(""),
     duration: text("duration").notNull().default(""), // "mm:ss" / "hh:mm:ss"
+    // kullanılmıyor (derslerde "Önizleme" kaldırıldı); kolon korunuyor
     preview: boolean("preview").notNull().default(false),
     description: text("description").notNull().default(""),
     // quiz / assign: göreli son teslim (gün). 0 = süresiz
@@ -526,6 +545,8 @@ export const quizAttempts = pgTable(
       .default({}),
     // Değerlendirme sonrası eğitmenin/adminin öğrenciye genel cevabı
     feedback: text("feedback").notNull().default(""),
+    // Eğitmen/yönetici "yeni deneme hakkı" verdiğinde eski denemeler geçersiz sayılır: kayıt durur ama hak ve tamamlanma hesabına girmez
+    voided: boolean("voided").notNull().default(false),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     timeSpent: integer("time_spent").notNull().default(0),
@@ -665,6 +686,10 @@ export const orders = pgTable(
     note: text("note").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** Kupon kullanımı bu sipariş için sayıldı mı: sipariş oluşurken ayrılır, iptal/iade/başarısızda geri bırakılır (lib/orders.ts) */
+    couponReserved: boolean("coupon_reserved").notNull().default(false),
+    /** Kayıt + e-postalar bu sipariş için yapıldı mı: fulfillOrder'ın tekrar çağrısını etkisiz kılar; iptal/iadede sıfırlanır */
+    fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
   },
   (t) => [index("orders_user_idx").on(t.userId)]
 );
@@ -859,6 +884,8 @@ export const surveys = pgTable("surveys", {
   mode: text("mode").$type<SurveyMode>().notNull().default("flow"),
   /** true: öğrenci cevaplarını sonradan güncelleyebilir; false: tek seferlik, tamamlanınca kilitlenir */
   editable: boolean("editable").notNull().default(true),
+  /** Zorunlu: yayındayken öğrenci bu testi tamamlamadan panelde gezinemez, eğitim izleyemez (lib/survey.ts requiredSurveyFor) */
+  required: boolean("required").notNull().default(false),
   sections: jsonb("sections").$type<Record<string, string>>().notNull().default({}),
   questions: jsonb("questions").$type<SurveyQuestion[]>().notNull().default([]),
   publishedAt: timestamp("published_at", { withTimezone: true }),

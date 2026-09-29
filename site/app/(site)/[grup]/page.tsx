@@ -7,6 +7,7 @@ import { PageHero } from "@/components/site/Sections";
 import { db } from "@/db";
 import { pages } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { pageMeta } from "@/lib/seo";
 
 // /esnek-programlar, /takvimli-programlar, /ucretsiz-kaynaklar  → katalog
 // diğer slug'lar → yasal / serbest sayfalar (pages tablosu)
@@ -20,9 +21,9 @@ const GROUP_SUB: Record<string, string> = {
 export async function generateMetadata({ params }: { params: Promise<{ grup: string }> }): Promise<Metadata> {
   const { grup } = await params;
   const g = groupFromSlug(grup);
-  if (g) return { title: GROUP_LABELS[g] };
-  const [p] = await db.select({ title: pages.title }).from(pages).where(eq(pages.slug, grup)).limit(1);
-  return { title: p?.title ?? "Sayfa" };
+  if (g) return pageMeta({ title: GROUP_LABELS[g], description: GROUP_SUB[g], path: `/${grup}` });
+  const [p] = await db.select({ title: pages.title, published: pages.published }).from(pages).where(eq(pages.slug, grup)).limit(1);
+  return pageMeta({ title: p?.title ?? "Sayfa", path: p?.published ? `/${grup}` : undefined });
 }
 
 export default async function GroupOrPage({ params }: { params: Promise<{ grup: string }> }) {

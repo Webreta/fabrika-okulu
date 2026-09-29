@@ -6,8 +6,11 @@ import { orders, users, periods } from "@/db/schema";
 import { fmtDateTime, fmtMoney, ORDER_STATUS } from "@/lib/format";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { StatusButtons, PeriodSelect } from "@/components/admin/OrderActions";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { id } = await params;
   const [row] = await db.select({ o: orders, u: users }).from(orders).innerJoin(users, eq(orders.userId, users.id)).where(eq(orders.id, Number(id))).limit(1);
   if (!row) notFound();

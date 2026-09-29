@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { categoryBySlug, coursesInCategory, listCategories } from "@/lib/data/categories";
 import { CourseCard } from "@/components/site/CourseCard";
 import { PageHero } from "@/components/site/Sections";
+import { pageMeta } from "@/lib/seo";
 
 // /kategori/[slug] → admin'in tanımladığı kategorideki eğitimler (header "Eğitimler" menüsü buraya gelir)
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const k = await categoryBySlug(slug);
-  return { title: k?.name ?? "Kategori", description: k?.description || undefined };
+  return pageMeta({ title: k?.name ?? "Kategori", description: k?.description, path: k ? `/kategori/${k.slug}` : undefined });
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {

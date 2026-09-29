@@ -5,6 +5,8 @@ import { teacherOverview } from "@/lib/data/teacher";
 import { PageTitle, Chip, Empty } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 import { CourseActions } from "@/components/teacher/CourseActions";
+import { isPreorder } from "@/lib/course-logic";
+import { fmtDay } from "@/lib/format";
 
 export default async function MyCoursesPage() {
   const user = await requireTeacher();
@@ -20,7 +22,7 @@ export default async function MyCoursesPage() {
             <div key={c.id} className="card p-0 overflow-hidden">
               <div className="relative aspect-video bg-navy-50">
                 {c.imageUrl && <Image src={c.imageUrl} alt="" width={640} height={360} className="aspect-video w-full object-cover" />}
-                <span className="absolute left-3 top-3"><Chip color={c.closed ? "gray" : c.comingSoon && c.status === "published" ? "amber" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.comingSoon && c.status === "published" ? "Yakında" : `${c.hasPeriods ? "Dönemli · " : ""}${c.status === "published" ? "Yayında" : "Taslak"}`}</Chip></span>
+                <span className="absolute left-3 top-3"><Chip color={c.closed ? "gray" : c.comingSoon && c.status === "published" ? "amber" : isPreorder(c) && c.status === "published" ? "purple" : c.status === "published" ? "green" : "amber"}>{c.closed ? "Kapalı" : c.comingSoon && c.status === "published" ? "Yakında" : isPreorder(c) && c.status === "published" ? `Erken kayıt · ${fmtDay(c.opensAt)}` : `${c.hasPeriods ? "Dönemli · " : ""}${c.status === "published" ? "Yayında" : "Taslak"}`}</Chip></span>
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-navy-800">{c.title}</h3>

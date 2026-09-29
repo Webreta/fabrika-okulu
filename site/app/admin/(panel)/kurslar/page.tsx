@@ -2,14 +2,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { listCourses } from "@/lib/data/courses";
 import { fmtMoney } from "@/lib/format";
-import { hasActiveSale, effectivePrice } from "@/lib/course-logic";
+import { hasActiveSale, effectivePrice, isPreorder } from "@/lib/course-logic";
+import { fmtDay } from "@/lib/format";
 import { GROUP_LABELS } from "@/lib/course-logic";
 import { PageTitle, Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 import { CourseActions } from "@/components/teacher/CourseActions";
 import { waitlistCounts } from "@/lib/waitlist";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function AdminCoursesPage() {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const [list, demand] = await Promise.all([listCourses({ includeDrafts: true }), waitlistCounts()]);
   return (
     <>
@@ -27,9 +31,9 @@ export default async function AdminCoursesPage() {
                 <td className="text-sm">{c.studentCount}</td>
                 <td className="text-sm">{c.lessonCount}</td>
                 <td className="text-sm">{c.isFree ? <Chip color="green">Ücretsiz</Chip> : hasActiveSale(c) ? <span className="flex flex-col"><span className="text-xs text-muted line-through">{fmtMoney(c.price)}</span><span className="font-semibold text-emerald-700">{fmtMoney(effectivePrice(c))}</span></span> : fmtMoney(c.price)}</td>
-                <td><Chip color={c.closed ? "gray" : c.status !== "published" ? "amber" : c.comingSoon ? "amber" : "green"}>{c.closed ? "Kapalı" : c.status !== "published" ? "Taslak" : c.comingSoon ? "Yakında" : "Yayında"}</Chip></td>
+                <td><Chip color={c.closed ? "gray" : c.status !== "published" ? "amber" : c.comingSoon ? "amber" : isPreorder(c) ? "purple" : "green"}>{c.closed ? "Kapalı" : c.status !== "published" ? "Taslak" : c.comingSoon ? "Yakında" : isPreorder(c) ? "Erken kayıt" : "Yayında"}</Chip>{isPreorder(c) && !c.closed && <span className="mt-1 block text-[11px] text-muted">Açılış: {fmtDay(c.opensAt)}</span>}</td>
                 <td className="text-sm">{demand.get(c.id) ? <span className={`font-semibold ${c.comingSoon ? "text-amber-700" : "text-navy-800"}`}>{demand.get(c.id)} kişi</span> : <span className="text-muted">—</span>}</td>
-                <td className="w-72"><CourseActions courseId={c.id} slug={c.slug} closed={c.closed} base="/admin/kurslar" showDetail={false} /></td>
+                <td className="w-72"><CourseActions courseId={c.id} slug={c.slug} closed={c.closed} base="/admin/kurslar" /></td>
               </tr>
             ))}
           </tbody>

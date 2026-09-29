@@ -9,8 +9,11 @@ import { Icon } from "@/components/site/Icon";
 import { CertificateCanvas } from "@/components/CertificateCanvas";
 import { DeleteTemplateButton, DuplicateTemplateButton } from "@/components/admin/CertificateDesigner";
 import { RevokeCertButton } from "@/components/teacher/IssueCertButton";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function CertificatesAdminPage({ searchParams }: { searchParams: Promise<{ sekme?: string; cert?: string; s?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { sekme, cert, s } = await searchParams;
   const templates = await db.select({ t: certificateTemplates, issued: sql<number>`(select count(*) from ${issuedCertificates} i where i.template_id = "certificate_templates"."id")`.mapWith(Number), courseTitle: courses.title }).from(certificateTemplates).leftJoin(courses, sql`${courses.id} = (${certificateTemplates.rule}->>'courseId')::int`).orderBy(desc(certificateTemplates.id));
 
@@ -28,7 +31,7 @@ export default async function CertificatesAdminPage({ searchParams }: { searchPa
       <>
         <PageTitle title="Sertifikalar" />
         <Tabs items={[{ href: "/admin/sertifikalar", label: "Tasarımlar", active: false }, { href: "/admin/sertifikalar/ver", label: "Sertifika ver", active: false }, { href: "/admin/sertifikalar?sekme=verilenler", label: "Verilen sertifikalar", active: true }]} />
-        <form className="mb-4 flex flex-wrap gap-2"><input type="hidden" name="sekme" value="verilenler" /><select name="cert" defaultValue={cert ?? ""} className="input w-auto"><option value="">Tüm tasarımlar</option>{templates.map(({ t }) => <option key={t.id} value={t.id}>{t.title}</option>)}</select><input name="s" defaultValue={q} placeholder="Ad / e-posta" className="input max-w-xs" /><button className="btn-secondary">Filtrele</button></form>
+        <form className="mb-4 flex flex-wrap gap-2"><input type="hidden" name="sekme" value="verilenler" /><select aria-label="Sertifika" name="cert" defaultValue={cert ?? ""} className="input w-auto"><option value="">Tüm tasarımlar</option>{templates.map(({ t }) => <option key={t.id} value={t.id}>{t.title}</option>)}</select><input aria-label="Ad / e-posta" name="s" defaultValue={q} placeholder="Ad / e-posta" className="input max-w-xs" /><button className="btn-secondary">Filtrele</button></form>
         <div className="card overflow-x-auto p-0">
           <table className="table">
             <thead><tr><th>Öğrenci</th><th>Eğitim</th><th>Tasarım</th><th>Tarih</th><th>Bağlantı</th><th></th></tr></thead>

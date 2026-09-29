@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { publicRoutes } from "@/lib/data/routes";
 import { getCurrentUser } from "@/lib/auth/session";
 import { studentCourses } from "@/lib/data/student";
@@ -8,8 +9,16 @@ import { RouteMountain, type MountainStep } from "@/components/site/RouteMountai
 import { PageHero } from "@/components/site/Sections";
 import { Icon } from "@/components/site/Icon";
 import { fmtMoney, excerpt } from "@/lib/format";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Rotam", description: "Zirveye giden yol: adım adım sıralanmış eğitim rotaları." };
+const ROUTES_DESCRIPTION = "Zirveye giden yol: adım adım sıralanmış eğitim rotaları.";
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ rota?: string }> }): Promise<Metadata> {
+  const { rota } = await searchParams;
+  const r = rota ? (await publicRoutes()).find((x) => x.slug === rota) : null;
+  if (!r) return pageMeta({ title: "Rotam", description: ROUTES_DESCRIPTION, path: "/rotam" });
+  return pageMeta({ title: r.name, description: excerpt(r.description || ROUTES_DESCRIPTION, 160), path: `/rotam?rota=${r.slug}`, image: r.steps.find((x) => x.imageUrl)?.imageUrl });
+}
 
 type RouteView = Awaited<ReturnType<typeof publicRoutes>>[number];
 
@@ -29,7 +38,7 @@ function toSteps(r: RouteView, progress: Map<number, number>, loggedIn: boolean)
       note: s.note,
       href: p !== undefined ? `/kurs-izle/${s.courseId}` : `/program/${s.slug}`,
       imageUrl: s.imageUrl,
-      meta: [s.comingSoon && !s.soonShowPrice ? "Yakında" : s.isFree ? "Ücretsiz" : fmtMoney(s.price), s.durationText].filter(Boolean).join(" · "),
+      meta: [s.opensAt ? "Erken kayıt" : "", s.comingSoon && !s.soonShowPrice ? "Yakında" : s.isFree ? "Ücretsiz" : fmtMoney(s.price), s.durationText].filter(Boolean).join(" · "),
       comingSoon: s.comingSoon,
       state,
       percent: p,
@@ -50,6 +59,8 @@ export default async function RoutesPage({ searchParams }: { searchParams: Promi
   const mine = user ? await studentCourses(user.id) : [];
   const progress = new Map(mine.map((c) => [c.id, c.percent]));
   const selected = rota ? list.find((r) => r.slug === rota) ?? null : null;
+  // Olmayan (ya da yayından kalkmış) rota adresi tüm rotaları göstermez
+  if (rota && !selected) notFound();
 
   // ---- Grid görünümü ----
   if (!selected) {
@@ -158,7 +169,7 @@ export default async function RoutesPage({ searchParams }: { searchParams: Promi
             ) : (
               <>
                 <p className="mt-2 text-sm text-muted">Giriş yaparsan tamamladığın adımları yeşil, devam ettiğini mavi görürsün.</p>
-                <Link href={`/panel/giris?r=/rotam?rota=${selected.slug}`} className="btn-primary mt-4 w-full"><Icon name="user" className="size-4" /> Giriş yap</Link>
+                <Link href={`/panel/giris?r=${encodeURIComponent(`/rotam?rota=${selected.slug}`)}`} className="btn-primary mt-4 w-full"><Icon name="user" className="size-4" /> Giriş yap</Link>
               </>
             )}
             <ul className="mt-4 space-y-1.5 text-xs text-muted">

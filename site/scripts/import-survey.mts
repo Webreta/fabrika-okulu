@@ -13,17 +13,17 @@ const publish = process.argv.includes("--publish");
 if (!file) throw new Error("Kullanım: import-survey.mts <dosya.json> [--publish]");
 
 const raw = JSON.parse(readFileSync(file, "utf8")) as Partial<SurveyDef> & { key?: string };
-const def = normalizeSurveyDef({ title: raw.title ?? "", intro: raw.intro ?? "", mode: raw.mode, editable: raw.editable, sections: raw.sections ?? {}, questions: raw.questions ?? [] });
+const def = normalizeSurveyDef({ title: raw.title ?? "", intro: raw.intro ?? "", mode: raw.mode, editable: raw.editable, required: raw.required, sections: raw.sections ?? {}, questions: raw.questions ?? [] });
 const errors = validateSurveyDef(def);
 if (errors.length) throw new Error(errors.join(" "));
 const key = raw.key?.trim() || slugKey(def.title, 60) || "anket";
 
 const [existing] = await db.select({ id: surveys.id, status: surveys.status }).from(surveys).where(eq(surveys.key, key)).limit(1);
 if (existing) {
-  await db.update(surveys).set({ title: def.title, intro: def.intro, mode: def.mode, editable: def.editable !== false, sections: def.sections, questions: def.questions, ...(publish ? { status: "published", publishedAt: new Date() } : {}) }).where(eq(surveys.id, existing.id));
+  await db.update(surveys).set({ title: def.title, intro: def.intro, mode: def.mode, editable: def.editable !== false, required: def.required === true, sections: def.sections, questions: def.questions, ...(publish ? { status: "published", publishedAt: new Date() } : {}) }).where(eq(surveys.id, existing.id));
   console.log(`Güncellendi: #${existing.id} ${key} (${def.questions.length} soru)`);
 } else {
-  const [c] = await db.insert(surveys).values({ key, title: def.title, intro: def.intro, mode: def.mode, editable: def.editable !== false, sections: def.sections, questions: def.questions, status: publish ? "published" : "draft", publishedAt: publish ? new Date() : null }).returning({ id: surveys.id });
+  const [c] = await db.insert(surveys).values({ key, title: def.title, intro: def.intro, mode: def.mode, editable: def.editable !== false, required: def.required === true, sections: def.sections, questions: def.questions, status: publish ? "published" : "draft", publishedAt: publish ? new Date() : null }).returning({ id: surveys.id });
   console.log(`Oluşturuldu: #${c.id} ${key} (${def.questions.length} soru, ${publish ? "yayında" : "taslak"})`);
 }
 process.exit(0);

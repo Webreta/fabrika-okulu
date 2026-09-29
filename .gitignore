@@ -6,3 +6,8 @@ site/public/uploads/*
 site/private/korumali/*
 !site/private/korumali/.gitkeep
 *.tsbuildinfo
+
+# Yerel çalışma dosyaları: depo herkese açık olduğu için gönderilmez
+# (test raporu güvenlik bulgularını anlatır; görseller kullanıcının ekran görüntüleridir)
+TEST-RAPORU-*.md
+görseller/

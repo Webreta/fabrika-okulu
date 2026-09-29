@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ type Payload = {
 };
 
 export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payload; nextUrl: string | null; preview: boolean }) {
+  const fid = useFieldId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<{ url: string; name: string }[]>([]);
   const [voices, setVoices] = useState<{ url: string; duration?: number }[]>([]);
@@ -56,6 +58,12 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
           {s.text && <p className="mt-3 whitespace-pre-line text-sm">{s.text}</p>}
           {s.files.length > 0 && <ul className="mt-2 space-y-1 text-sm">{s.files.map((f, i) => <li key={i}><a href={f.url} target="_blank" className="text-sky-600 underline">📎 {f.name}</a></li>)}</ul>}
           {s.voices.map((v, i) => <audio key={i} src={v.url} controls className="mt-2 w-full" />)}
+          {(s.score !== null || s.feedback) && (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-3 text-sm">
+              <p className="font-semibold text-navy-800">Eğitmen değerlendirmesi{s.score !== null && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">{s.score}/{payload.maxScore}</span>}</p>
+              {s.feedback && <p className="mt-1 whitespace-pre-line text-muted">{s.feedback}</p>}
+            </div>
+          )}
           {nextUrl && <Link href={nextUrl} className="btn-primary mt-4">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
         </div>
       ) : preview ? (
@@ -64,16 +72,16 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
         <div className="mt-6 space-y-5">
           {payload.allowFile && (
             <div>
-              <label className="label">Dosya</label>
+              <label htmlFor={fid("dosya")} className="label">Dosya</label>
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line p-6 text-center text-sm text-muted hover:border-sky-400 hover:bg-sky-50">
                 <Icon name="upload" className="mb-2 size-6" />
                 {busy ? "Yükleniyor…" : "Dosya seç veya sürükle (PDF, DOCX, ZIP, resim · en fazla 10 MB)"}
-                <input type="file" multiple className="hidden" onChange={(e) => onFile(e.target.files)} />
+                <input id={fid("dosya")} type="file" multiple className="hidden" onChange={(e) => onFile(e.target.files)} />
               </label>
               {files.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm">
                   {files.map((f, i) => (
-                    <li key={i} className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5">📎 {f.name}<button onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-red-600"><Icon name="x" className="size-4" /></button></li>
+                    <li key={i} className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5">📎 {f.name}<button aria-label="Dosyayı kaldır" onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-red-600"><Icon name="x" className="size-4" /></button></li>
                   ))}
                 </ul>
               )}
@@ -82,8 +90,8 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
           {payload.allowVoice && <VoiceRecorder onDone={(v) => setVoices((x) => [...x, v])} voices={voices} onRemove={(i) => setVoices(voices.filter((_, j) => j !== i))} />}
           {payload.allowText && (
             <div>
-              <label className="label">Not / metin</label>
-              <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="Görevle ilgili notlarını yaz…" />
+              <label htmlFor={fid("a1")} className="label">Not / metin</label>
+              <textarea id={fid("a1")} rows={5} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="Görevle ilgili notlarını yaz…" />
             </div>
           )}
           {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
@@ -95,6 +103,7 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
 }
 
 function VoiceRecorder({ onDone, voices, onRemove }: { onDone: (v: { url: string; duration: number }) => void; voices: { url: string; duration?: number }[]; onRemove: (i: number) => void }) {
+  const vid = useFieldId()("ses");
   const rec = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const startAt = useRef(0);
@@ -142,8 +151,8 @@ function VoiceRecorder({ onDone, voices, onRemove }: { onDone: (v: { url: string
 
   return (
     <div>
-      <label className="label">Sesli not <span className="text-muted">(en fazla 3 dk)</span></label>
-      <div className="flex items-center gap-3 rounded-xl border border-line p-3">
+      <p id={vid} className="label">Sesli not <span className="text-muted">(en fazla 3 dk)</span></p>
+      <div role="group" aria-labelledby={vid} className="flex items-center gap-3 rounded-xl border border-line p-3">
         {state === "rec" ? (
           <button onClick={stopRec} className="btn-danger btn-sm"><Icon name="pause" className="size-4" /> Durdur ({secs}s)</button>
         ) : (
@@ -155,7 +164,7 @@ function VoiceRecorder({ onDone, voices, onRemove }: { onDone: (v: { url: string
       {voices.map((v, i) => (
         <div key={i} className="mt-2 flex items-center gap-2">
           <audio src={v.url} controls className="w-full" />
-          <button onClick={() => onRemove(i)} className="text-red-600"><Icon name="x" className="size-4" /></button>
+          <button aria-label="Ses kaydını kaldır" onClick={() => onRemove(i)} className="text-red-600"><Icon name="x" className="size-4" /></button>
         </div>
       ))}
     </div>

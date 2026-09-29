@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { getSetting } from "@/lib/settings";
 import { PageHero } from "@/components/site/Sections";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { ContactForm } from "./ContactForm";
+import { waLink } from "@/lib/format";
 
-export const metadata: Metadata = { title: "İletişim" };
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: "İletişim", description: "Sorularını yaz, en kısa sürede dönüş yapalım: telefon, WhatsApp, e-posta ve iletişim formu.", path: "/iletisim" });
 
 /** Kanal kartı: renkli ikon kutusu + başlık + bağlantılar */
 function Channel({ icon, tone, title, children }: { icon: IconName; tone: "sky" | "emerald" | "violet" | "amber"; title: string; children: React.ReactNode }) {
@@ -30,7 +32,7 @@ export default async function ContactPage() {
     { key: "linkedin", url: c.linkedin, icon: "linkedin" as IconName, label: "LinkedIn" },
     { key: "youtube", url: c.youtube, icon: "youtube" as IconName, label: "YouTube" },
   ].filter((s) => s.url);
-  const waHref = (p: string) => `https://wa.me/90${p.replace(/\D/g, "").replace(/^0/, "")}`;
+  const waHref = (p: string) => waLink(p);
 
   return (
     <>
@@ -48,18 +50,18 @@ export default async function ContactPage() {
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {c.phones.length > 0 && (
                 <Channel icon="phone" tone="sky" title="Telefon">
-                  {c.phones.map((p) => <a key={p} href={`tel:${p.replace(/\s/g, "")}`} className="block transition hover:text-sky-600">{p}</a>)}
+                  {c.phones.map((p) => <a key={p} href={`tel:${p.replace(/\s/g, "")}`} className="block py-2.5 transition hover:text-sky-600 md:py-0">{p}</a>)}
                 </Channel>
               )}
               {c.whatsapps.length > 0 && (
                 <Channel icon="whatsapp" tone="emerald" title="WhatsApp">
-                  {c.whatsapps.map((p) => <a key={p} href={waHref(p)} target="_blank" rel="noopener" className="block transition hover:text-emerald-600">{p}</a>)}
+                  {c.whatsapps.map((p) => <a key={p} href={waHref(p)} target="_blank" rel="noopener" className="block py-2.5 transition hover:text-emerald-600 md:py-0">{p}</a>)}
                   <a href={waHref(c.whatsapps[0])} target="_blank" rel="noopener" className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600"><Icon name="whatsapp" className="size-3.5" /> Sohbet başlat</a>
                 </Channel>
               )}
               {c.email && (
                 <Channel icon="mail" tone="violet" title="E-posta">
-                  <a href={`mailto:${c.email}`} className="block break-all transition hover:text-violet-600">{c.email}</a>
+                  <a href={`mailto:${c.email}`} className="block break-all py-2.5 transition hover:text-violet-600 md:py-0">{c.email}</a>
                 </Channel>
               )}
               {c.address && (

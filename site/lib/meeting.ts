@@ -57,9 +57,20 @@ export function meetingSessions(schedule: ScheduleItem[], minutes: number, atten
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-/** Sıradaki (katılım işaretlenmemiş) görüşme */
-export function nextSession(sessions: MeetingSession[]) {
-  return sessions.find((s) => !s.attended) ?? null;
+/**
+ * Kartta öne çıkan görüşme (katılımı işaretlenmemişler arasından):
+ * 1) şu an katılınabilen (bağlantısı açık) görüşme, 2) yoksa saati henüz geçmemiş ilk görüşme,
+ * 3) hepsi geçmişse işaretlenmemiş en eski görüşme.
+ * Kaçırılan eski bir görüşme, saati gelen görüşmenin "Katıl" düğmesini engellemez (bkz. missedSessions).
+ */
+export function nextSession(sessions: MeetingSession[], now = new Date()) {
+  const open = sessions.filter((s) => !s.attended);
+  return open.find((s) => canJoin(s, now)) ?? open.find((s) => s.end.getTime() >= now.getTime()) ?? open[0] ?? null;
+}
+
+/** Saati geçmiş ama katılımı işaretlenmemiş görüşmeler (öne çıkan hariç); kartta ikincil satır olarak gösterilir */
+export function missedSessions(sessions: MeetingSession[], current: Pick<MeetingSession, "index"> | null, now = new Date()) {
+  return sessions.filter((s) => !s.attended && s.index !== current?.index && canMarkAttended(s, now));
 }
 
 export function canJoin(s: Pick<MeetingSession, "start" | "end">, now = new Date()) {

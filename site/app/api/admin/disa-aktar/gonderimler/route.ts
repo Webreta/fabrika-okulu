@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { teacherSubmissions, teacherQuizAttempts } from "@/lib/data/teacher";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, todayISO } from "@/lib/format";
 import { xlsxBuffer, xlsxHeaders, type Cell, type Sheet } from "@/lib/xlsx";
 
-const SUB_STATUS: Record<string, string> = { pending: "Değerlendirilmedi", graded: "Değerlendirildi" };
 const ATTEMPT_STATUS: Record<string, string> = {
   in_progress: "Devam ediyor",
   completed: "Tamamlandı",
@@ -37,12 +36,8 @@ export async function GET(request: Request) {
     r.u.email,
     r.courseTitle,
     r.a.title,
-    SUB_STATUS[r.s.status] ?? r.s.status,
-    r.a.isGraded ? (r.s.score ?? "") : "Puansız",
-    r.a.isGraded ? r.a.maxScore : "",
     r.s.text ?? "",
     transcriptText(r.s.voiceTranscript),
-    r.s.feedback ?? "",
     fmtDateTime(r.s.submittedAt),
   ]);
 
@@ -52,6 +47,8 @@ export async function GET(request: Request) {
     r.courseTitle,
     r.q.title,
     ATTEMPT_STATUS[r.at.status] ?? r.at.status,
+    // Sonuç: geçersiz sayılan (yeni hak verilen) deneme ayrıca belirtilir
+    r.at.voided ? "Geçersiz (yeni hak verildi)" : r.q.passScore > 0 && r.at.passed === false ? "Kaldı" : r.q.passScore > 0 && r.at.passed ? "Geçti" : "",
     Number(r.at.earnedPoints),
     r.at.totalPoints,
     r.at.score != null ? Number(r.at.score) : "",
@@ -60,12 +57,12 @@ export async function GET(request: Request) {
 
   const gorevSheet: Sheet = {
     name: "Görev Teslimleri",
-    headers: ["Öğrenci", "E-posta", "Kurs", "Görev", "Durum", "Puan", "Maks. Puan", "Metin", "Ses dökümü", "Geri bildirim", "Tarih"],
+    headers: ["Öğrenci", "E-posta", "Kurs", "Görev", "Metin", "Ses dökümü", "Teslim tarihi"],
     rows: subRows,
   };
   const sinavSheet: Sheet = {
     name: "Sınav Sonuçları",
-    headers: ["Öğrenci", "E-posta", "Kurs", "Sınav", "Durum", "Alınan puan", "Toplam puan", "Yüzde", "Tarih"],
+    headers: ["Öğrenci", "E-posta", "Kurs", "Sınav", "Durum", "Sonuç", "Alınan puan", "Toplam puan", "Yüzde", "Tarih"],
     rows: quizRows,
   };
 
@@ -74,7 +71,7 @@ export async function GET(request: Request) {
   if (wantSinav) sheets.push(sinavSheet);
 
   const buf = xlsxBuffer(sheets);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const base = tur === "gorev" ? "gorev-teslimleri" : tur === "sinav" ? "sinav-sonuclari" : "gorevler-sinavlar";
   return new NextResponse(new Uint8Array(buf), { headers: xlsxHeaders(`${base}-${today}.xlsx`) });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useActionState, useMemo, useRef, useState } from "react";
 import type { SurveyMode, SurveyQuestion } from "@/db/schema";
 import { submitSurvey } from "@/app/actions/panel";
@@ -12,9 +13,13 @@ type SurveyLike = { id: number; title: string; intro: string; mode?: SurveyMode;
 
 function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQuestion; value: string | string[] | undefined; onChange: (v: string | string[]) => void; invalid: boolean; autoFocus?: boolean }) {
   const name = `q_${q.key}`;
+  const fid = useFieldId();
+  const choice = q.type === "radio" || q.type === "checkbox";
   return (
     <div id={`soru-${q.key}`} className={`scroll-mt-24 rounded-xl transition ${invalid ? "-mx-3 border border-red-300 bg-red-50/60 px-3 py-2" : ""}`}>
-      <label className="label">{q.label}{q.required && <span className="text-red-500"> *</span>}</label>
+      {choice
+        ? <p id={fid("baslik")} className="label">{q.label}{q.required && <span className="text-red-500"> *</span>}</p>
+        : <label htmlFor={fid("alan")} className="label">{q.label}{q.required && <span className="text-red-500"> *</span>}</label>}
       {q.help && <p className="mb-1 text-xs text-muted">{q.help}</p>}
       {q.links && q.links.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -26,7 +31,7 @@ function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQu
         </div>
       )}
       {q.type === "radio" && (
-        <div className="space-y-1.5">
+        <div role="radiogroup" aria-labelledby={fid("baslik")} className="space-y-1.5">
           {q.options?.map((o) => (
             <label key={o.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${value === o.value ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"}`} style={q.goal && value === o.value ? { borderColor: goalColor(o.color).hex, background: goalColor(o.color).soft } : undefined}>
               <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} />
@@ -37,7 +42,7 @@ function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQu
         </div>
       )}
       {q.type === "checkbox" && (
-        <div className="space-y-1.5">
+        <div role="group" aria-labelledby={fid("baslik")} className="space-y-1.5">
           {q.options?.map((o) => {
             const arr = toArr(value);
             const on = arr.includes(o.value);
@@ -49,9 +54,9 @@ function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQu
           })}
         </div>
       )}
-      {q.type === "text" && <input name={name} autoFocus={autoFocus} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
-      {q.type === "date" && <input type="date" name={name} autoFocus={autoFocus} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
-      {q.type === "textarea" && <textarea name={name} autoFocus={autoFocus} rows={4} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
+      {q.type === "text" && <input id={fid("alan")} name={name} autoFocus={autoFocus} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
+      {q.type === "date" && <input id={fid("alan")} type="date" name={name} autoFocus={autoFocus} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
+      {q.type === "textarea" && <textarea id={fid("alan")} name={name} autoFocus={autoFocus} rows={4} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className="input" />}
       {invalid && <p className="mt-1 text-xs font-semibold text-red-600">Bu soru zorunlu.</p>}
     </div>
   );
@@ -136,7 +141,14 @@ export function SurveyForm({ schema, answers, onDone, preview = false, skipIntro
   // ---- Akış modu: tek sayfa
   const groups = groupBySection(schema.sections, schema.questions);
   return (
-    <form action={action} onSubmit={guard} className="space-y-8" noValidate>
+    <form
+      action={action}
+      onSubmit={guard}
+      // Metin kutusunda Enter formu göndermez (tek seferlik test yanlışlıkla kilitlenmesin); kayıt yalnızca "Kaydet" ile
+      onKeyDown={(e) => { if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault(); }}
+      className="space-y-8"
+      noValidate
+    >
       {groups.map((g) => {
         const qs = g.questions.filter((q) => isVisible(q, a));
         if (!qs.length) return null;
@@ -168,6 +180,8 @@ function StepsForm({ schema, a, set, action, guard, pending, preview, feedback, 
   const [dir, setDir] = useState<"next" | "prev">("next");
   const [shake, setShake] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  // Form yalnızca "Testi tamamla" düğmesine bilerek basılınca gönderilir (Enter ya da "Devam" tıklaması göndermez)
+  const submitIntent = useRef(false);
 
   // Mevcut soru cevap değişince gizlenmişse (nadiren, kendi koşulu başka sorudaysa) en yakın görünene kay
   let idx = list.findIndex((q) => q.key === currentKey);
@@ -199,8 +213,18 @@ function StepsForm({ schema, a, set, action, guard, pending, preview, feedback, 
   return (
     <form
       action={action}
-      onSubmit={(e) => { if (!isLast) { e.preventDefault(); next(); return; } guard(e); }}
-      onKeyDown={(e) => { if (e.key === "Enter" && !(e.target instanceof HTMLTextAreaElement) && !isLast) { e.preventDefault(); next(); } }}
+      onSubmit={(e) => {
+        const intended = submitIntent.current;
+        submitIntent.current = false;
+        if (!isLast || !intended) { e.preventDefault(); if (!isLast) next(); return; }
+        guard(e);
+      }}
+      onKeyDown={(e) => {
+        // Enter: metin kutusunda sonraki soruya geçer, son soruda hiçbir şey yapmaz. Düğmeler ve çok satırlı alan kendi davranışını korur.
+        if (e.key !== "Enter" || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLButtonElement) return;
+        e.preventDefault();
+        if (!isLast) next();
+      }}
       className="mx-auto max-w-xl"
       noValidate
     >
@@ -232,11 +256,12 @@ function StepsForm({ schema, a, set, action, guard, pending, preview, feedback, 
           {!q.required && !answered && !isLast && <button type="button" onClick={skip} className="text-sm text-muted hover:underline">Bu soruyu atla</button>}
           <div className="ml-auto flex items-center gap-2">
             {isLast ? (
-              <button disabled={pending || !canContinue} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+              // key: "Devam" ile aynı DOM düğmesi yeniden kullanılmasın; yoksa "Devam" tıklaması bitmeden düğme gönder düğmesine dönüşüp formu gönderir
+              <button key="tamamla" type="submit" onClick={() => { submitIntent.current = true; }} disabled={pending || (q.required && !canContinue)} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
                 {pending ? "Kaydediliyor…" : preview ? "Tamamla (önizleme)" : "Testi tamamla"} <Icon name="check" className="size-4" />
               </button>
             ) : (
-              <button type="button" onClick={next} aria-disabled={!canContinue} className={`btn-primary ${canContinue ? "" : "cursor-not-allowed opacity-50"}`}>
+              <button key="devam" type="button" onClick={next} aria-disabled={!canContinue} className={`btn-primary ${canContinue ? "" : "cursor-not-allowed opacity-50"}`}>
                 Devam <Icon name="arrowRight" className="size-4" />
               </button>
             )}

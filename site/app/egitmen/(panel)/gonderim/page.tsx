@@ -16,7 +16,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageTitle title="Görevler & Sınavlar" sub="Görev teslimleri ve sınav sonuçları" />
-      <div className="mb-6 grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/egitmen/sorular"><Kpi label="Bekleyen soru" value={ov.pendingQuestions} icon="message" color={ov.pendingQuestions ? "red" : "green"} /></Link>
         <a href="#gorev"><Kpi label="Görev teslimi" value={subs.length} icon="task" color="amber" /></a>
         <a href="#sinav"><Kpi label="Sınav sonucu" value={attempts.length} icon="quiz" color="sky" /></a>
@@ -25,8 +25,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
         base="/egitmen/gonderim"
         courses={ov.courses.map((c) => ({ id: c.id, title: c.title }))}
         statuses={[
-          { value: "pending", label: "Görev: puanlanmadı" }, { value: "graded", label: "Görev: puanlandı" },
-          { value: "pending_review", label: "Sınav: değerlendirme bekliyor" }, { value: "passed", label: "Sınav: geçti" }, { value: "failed", label: "Sınav: kaldı" },
+          { value: "passed", label: "Sınav: geçti" }, { value: "failed", label: "Sınav: kaldı" },
         ]}
         initial={{ course: courseId ? String(courseId) : "", q: search, durum }}
       />
@@ -35,7 +34,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
           <h2 className="mb-3 font-bold text-navy-800">Görev teslimleri</h2>
           <div className="space-y-3">
             {subs.length === 0 ? <p className="card text-sm text-muted">{filtered ? "Filtreye uyan gönderim yok." : "Henüz gönderim yok."}</p> : subs.map((r) => (
-              <SubmissionCard key={r.s.id} row={{ id: r.s.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.a.title, course: r.courseTitle, text: r.s.text, files: r.s.files, voices: r.s.voices, status: r.s.status, score: r.s.score, feedback: r.s.feedback, at: r.s.submittedAt.toISOString(), isGraded: r.a.isGraded, maxScore: r.a.maxScore, transcript: r.s.voiceTranscript }} />
+              <SubmissionCard key={r.s.id} row={{ id: r.s.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.a.title, course: r.courseTitle, text: r.s.text, files: r.s.files, voices: r.s.voices, at: r.s.submittedAt.toISOString(), transcript: r.s.voiceTranscript }} />
             ))}
           </div>
         </div>
@@ -43,7 +42,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
           <h2 className="mb-3 font-bold text-navy-800">Sınav sonuçları</h2>
           <div className="space-y-3">
             {attempts.length === 0 ? <p className="card text-sm text-muted">{filtered ? "Filtreye uyan sonuç yok." : "Henüz sonuç yok."}</p> : attempts.map((r) => (
-              <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString() }} />
+              <QuizAttemptRow key={r.at.id} row={{ id: r.at.id, student: `${r.u.firstName} ${r.u.lastName}`.trim(), title: r.q.title, course: r.courseTitle, status: r.at.status, earned: Number(r.at.earnedPoints), total: r.at.totalPoints, score: r.at.score ? Number(r.at.score) : null, at: (r.at.completedAt ?? r.at.startedAt).toISOString(), passed: r.at.passed, voided: r.at.voided, passScore: r.q.passScore }} />
             ))}
           </div>
         </div>

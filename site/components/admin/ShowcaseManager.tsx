@@ -1,5 +1,6 @@
 "use client";
 
+import { useFieldId } from "@/components/useFieldId";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -16,6 +17,7 @@ const GROUP: Record<string, string> = { takvimli: "Takvimli", esnek: "Esnek", uc
  * Seçim boşsa vitrin otomatik dolar: "Öne çıkan" işaretli kurslar önce, sonra sıra numarası; "otomatik kart sayısı" kadar.
  */
 export function ShowcaseManager({ initial, courses }: { initial: ShowcaseContent; courses: CourseOpt[] }) {
+  const fid = useFieldId();
   const [f, setF] = useState<ShowcaseContent>(initial);
   const [q, setQ] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -32,24 +34,24 @@ export function ShowcaseManager({ initial, courses }: { initial: ShowcaseContent
   return (
     <div className="space-y-4">
       <div className="card grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-        <div><label className="label">Bölüm başlığı</label><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input" placeholder="Vitrin" /></div>
-        <div><label className="label">Alt metin</label><input value={f.sub} onChange={(e) => setF({ ...f, sub: e.target.value })} className="input" placeholder="İsteğe bağlı" /></div>
+        <div><label htmlFor={fid("a1")} className="label">Bölüm başlığı</label><input id={fid("a1")} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input" placeholder="Gündemdeki Eğitimler" /></div>
+        <div><label htmlFor={fid("a2")} className="label">Alt metin</label><input id={fid("a2")} value={f.sub} onChange={(e) => setF({ ...f, sub: e.target.value })} className="input" placeholder="İsteğe bağlı" /></div>
         <div>
-          <label className="label">Dizilim</label>
-          <div className="flex overflow-hidden rounded-lg border border-line">
+          <p id={fid("dizilim")} className="label">Dizilim</p>
+          <div role="group" aria-labelledby={fid("dizilim")} className="flex overflow-hidden rounded-lg border border-line">
             {([2, 3] as const).map((n) => (
               <button key={n} type="button" onClick={() => setF({ ...f, columns: n })} className={`px-4 py-2 text-sm font-semibold ${f.columns === n ? "bg-navy-800 text-white" : "bg-white text-navy-800 hover:bg-surface"}`}>{n}&apos;li</button>
             ))}
           </div>
         </div>
-        <div><label className="label">Otomatik kart sayısı</label><input type="number" min={1} max={24} value={f.limit} onChange={(e) => setF({ ...f, limit: Math.max(1, Number(e.target.value) || 1) })} className="input w-24" title="Elle seçim yoksa kaç kart gösterilsin" /></div>
+        <div><label htmlFor={fid("a3")} className="label">Otomatik kart sayısı</label><input id={fid("a3")} type="number" min={1} max={24} value={f.limit} onChange={(e) => setF({ ...f, limit: Math.max(1, Number(e.target.value) || 1) })} className="input w-24" title="Elle seçim yoksa kaç kart gösterilsin" /></div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="card h-fit space-y-2 lg:sticky lg:top-6">
           <p className="font-bold text-navy-800">Eğitimler</p>
           <p className="text-xs text-muted">Vitrine eklemek için tıkla. Yalnızca yayındaki eğitimler sitede görünür.</p>
-          <input value={q} onChange={(e) => setQ(e.target.value)} className="input" placeholder="Ara…" />
+          <input aria-label="Ara" value={q} onChange={(e) => setQ(e.target.value)} className="input" placeholder="Ara…" />
           <ul className="max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
             {available.length === 0 && <li className="py-4 text-center text-xs text-muted">Eğitim yok</li>}
             {available.map((c) => (
@@ -103,7 +105,7 @@ export function ShowcaseManager({ initial, courses }: { initial: ShowcaseContent
           </div>
           <div className="flex items-center justify-end gap-3">
             {msg && <Toast message={msg} ok={msg === "Kaydedildi."} onDone={() => setMsg("")} />}
-            <button disabled={pending} onClick={() => start(async () => { const r = await saveRawSetting("showcase", { ...f, title: f.title.trim() || "Vitrin", sub: f.sub.trim() }); setMsg(r.ok ? "Kaydedildi." : r.error); router.refresh(); })} className="btn-primary">{pending ? "…" : "Kaydet"}</button>
+            <button disabled={pending} onClick={() => start(async () => { const r = await saveRawSetting("showcase", { ...f, title: f.title.trim() || "Gündemdeki Eğitimler", sub: f.sub.trim() }); setMsg(r.ok ? "Kaydedildi." : r.error); router.refresh(); })} className="btn-primary">{pending ? "…" : "Kaydet"}</button>
           </div>
         </div>
       </div>

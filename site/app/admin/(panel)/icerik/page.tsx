@@ -2,15 +2,20 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { pages } from "@/db/schema";
 import { getSetting, getRawSetting } from "@/lib/settings";
-import { DEFAULT_ABOUT, DEFAULT_FAQ, type FaqContent } from "@/lib/content-defaults";
+import { DEFAULT_ABOUT, DEFAULT_FAQ, DEFAULT_FOOTER, type FaqContent, type FooterContent } from "@/lib/content-defaults";
 import { PageTitle, Tabs } from "@/components/panel/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { AboutForm, FaqForm, PagesManager } from "@/components/admin/ContentForms";
+import { FooterForm } from "@/components/admin/FooterForm";
+import { requireAdmin } from "@/lib/auth/session";
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
+  // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
+  await requireAdmin();
   const { sekme = "anasayfa" } = await searchParams;
-  const tabs = [["anasayfa", "Anasayfa"], ["hakkimizda", "Hakkımızda"], ["merak", "S.S.S."], ["iletisim", "İletişim"], ["sayfalar", "Yasal Sayfalar"]];
-  const [general, contact, about, faq, pageList] = await Promise.all([getSetting("general"), getSetting("contact"), getRawSetting("about", DEFAULT_ABOUT), getRawSetting<FaqContent>("faq", DEFAULT_FAQ), db.select().from(pages).orderBy(asc(pages.title))]);
+  const tabs = [["anasayfa", "Anasayfa"], ["hakkimizda", "Hakkımızda"], ["merak", "S.S.S."], ["iletisim", "İletişim"], ["footer", "Footer"], ["sayfalar", "Yasal Sayfalar"]];
+  const [general, contact, about, faq, pageList, footerRaw] = await Promise.all([getSetting("general"), getSetting("contact"), getRawSetting("about", DEFAULT_ABOUT), getRawSetting<FaqContent>("faq", DEFAULT_FAQ), db.select().from(pages).orderBy(asc(pages.title)), getRawSetting<Partial<FooterContent> | null>("footer", null)]);
+  const footer: FooterContent = { ...DEFAULT_FOOTER, text: general.footerText, ...(footerRaw ?? {}) };
   return (
     <>
       <PageTitle title="Site İçeriği" />
@@ -22,7 +27,6 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
           { key: "heroText", label: "Hero metni", type: "textarea", rows: 3 },
           { key: "introTitle", label: "Tanıtım başlığı", type: "text" }, { key: "introText", label: "Tanıtım metni", type: "textarea", rows: 3 },
           { key: "esnekText", label: "Esnek programlar açıklaması", type: "textarea", rows: 2 }, { key: "takvimliText", label: "Takvimli programlar açıklaması", type: "textarea", rows: 2 },
-          { key: "footerText", label: "Footer metni", type: "textarea", rows: 2 },
         ]} />
       )}
       {sekme === "hakkimizda" && <AboutForm about={about} />}
@@ -37,6 +41,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
           { key: "mapEmbed", label: "Harita embed (iframe)", type: "textarea", rows: 3 },
         ]} />
       )}
+      {sekme === "footer" && <FooterForm footer={footer} auto={{ phone: contact.phones?.[0] ?? "", whatsapp: contact.whatsapps?.[0] ?? "", email: contact.email ?? "" }} />}
       {sekme === "sayfalar" && <PagesManager pages={pageList.map((p) => ({ id: p.id, slug: p.slug, title: p.title, html: p.html, published: p.published }))} />}
     </>
   );

@@ -1,18 +1,31 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { quizAttemptDetail } from "@/app/actions/teacher";
+import { grantQuizAttempt } from "@/app/actions/quiz-admin";
 import { fmtDateTime } from "@/lib/format";
 import { Chip } from "@/components/panel/ui";
 import { Icon } from "@/components/site/Icon";
 
-export type AttemptRow = { id: number; student: string; title: string; course: string; status: string; earned: number; total: number; score: number | null; at: string };
+export type AttemptRow = { id: number; student: string; title: string; course: string; status: string; earned: number; total: number; score: number | null; at: string; passed?: boolean | null; voided?: boolean; passScore?: number };
 type Detail = NonNullable<Awaited<ReturnType<typeof quizAttemptDetail>>>;
 
 export function QuizAttemptRow({ row }: { row: AttemptRow }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
   const open = () => start(async () => { setDetail(await quizAttemptDetail(row.id)); });
+  // Geçme notunun altında kalan deneme: yeni deneme hakkı verilebilir
+  const failed = !row.voided && (row.passScore ?? 0) > 0 && row.passed === false;
+  const grant = () => {
+    if (!confirm(`${row.student} için "${row.title}" sınavında yeni deneme hakkı verilsin mi?\n\nEski sonuç listede "Geçersiz" olarak kalır; öğrenci sınavı baştan çözer.`)) return;
+    start(async () => {
+      const r = await grantQuizAttempt(row.id);
+      alert(r.ok ? (r.message ?? "Yeni deneme hakkı verildi.") : r.error);
+      if (r.ok) router.refresh();
+    });
+  };
   return (
     <div className="card flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -20,7 +33,9 @@ export function QuizAttemptRow({ row }: { row: AttemptRow }) {
         <p className="text-xs text-muted">{row.student} · {row.course} · {fmtDateTime(row.at)}</p>
       </div>
       <div className="flex items-center gap-2">
-        <Chip color="green">{row.total > 0 ? `${row.earned}/${row.total} · %${row.score}` : "Yanıtlandı"}</Chip>
+        {row.voided ? <Chip color="gray">Geçersiz (yeni hak verildi)</Chip> : failed ? <Chip color="red">Kaldı · geçme notu %{row.passScore}</Chip> : null}
+        <Chip color={failed ? "red" : row.voided ? "gray" : "green"}>{row.total > 0 ? `${row.earned}/${row.total} · %${row.score}` : "Yanıtlandı"}</Chip>
+        {failed && <button onClick={grant} disabled={pending} className="btn-secondary btn-sm">Yeni deneme hakkı ver</button>}
         <button onClick={open} disabled={pending} className="btn-secondary btn-sm">{pending ? "…" : "İncele"}</button>
       </div>
       {detail && (
@@ -28,7 +43,7 @@ export function QuizAttemptRow({ row }: { row: AttemptRow }) {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div><h3 className="text-lg font-bold text-navy-800">{detail.title}</h3><p className="text-sm text-muted">{detail.student}{detail.score !== null && ` · %${detail.score}`}</p></div>
-              <button onClick={() => setDetail(null)}><Icon name="x" className="size-5" /></button>
+              <button aria-label="Kapat" onClick={() => setDetail(null)}><Icon name="x" className="size-5" /></button>
             </div>
             <ol className="mt-4 space-y-3">
               {detail.questions.map((q, i) => (

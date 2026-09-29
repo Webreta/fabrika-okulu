@@ -15,6 +15,10 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Tüm tarih/saat kuralları (son teslim, indirim bitişi, erken kayıt açılışı, görüşme saati, hatırlatmalar) sunucunun yerel saatine göre
+# hesaplanır; saat dilimi tanımlı değilse sunucu UTC çalışır ve her şey 3 saat kayar.
+ENV TZ=Europe/Istanbul
+RUN apk add --no-cache tzdata
 
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public

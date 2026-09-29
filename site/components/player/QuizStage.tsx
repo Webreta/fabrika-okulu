@@ -14,6 +14,14 @@ type Payload = {
   questions: Q[];
   attempts: { id: number; score: number | null; earned: number; total: number; status: string; passed: boolean | null; at: string }[];
   canAttempt: boolean;
+  /** Geçerli denemelerden biri geçti */
+  passed?: boolean;
+  /** Geçemedi ve deneme hakkı bitti */
+  exhausted?: boolean;
+  /** Kalan deneme hakkı (null = sınırsız) */
+  left?: number | null;
+  /** Yarım kalan denemede kontrol edilip kilitlenmiş cevaplar */
+  progress?: Record<string, Feedback & { answer: number | string }>;
   due: string | null;
   review?: ReviewItem[];
 };
@@ -25,12 +33,40 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  // Kontrol edilmiş (kilitli) cevaplar: sunucuda kayıtlıdır, sayfa yenilense de değiştirilemez
+  const [locked, setLocked] = useState<Record<string, Feedback>>({});
+  const [err, setErr] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
   const [qs] = useState(() => payload.shuffle ? [...payload.questions].sort(() => Math.random() - 0.5) : payload.questions);
   const q = qs[idx];
   const last = payload.attempts[payload.attempts.length - 1];
+  const saved = payload.progress ?? {};
+  const resuming = Object.keys(saved).length > 0;
+
+  // Başla / devam et: yarım kalan denemedeki kilitli cevaplar yüklenir, ilk cevaplanmamış sorudan sürer
+  const begin = () => {
+    const a: Record<string, number | string> = {};
+    const l: Record<string, Feedback> = {};
+    for (const [k, v] of Object.entries(saved)) {
+      a[k] = v.answer;
+      l[k] = { correct: v.correct, correctAnswer: v.correctAnswer, explanation: v.explanation };
+    }
+    const first = qs.findIndex((x) => !l[String(x.id)]);
+    setAnswers(a);
+    setLocked(l);
+    setIdx(first === -1 ? Math.max(0, qs.length - 1) : first);
+    setErr("");
+    setStarted(true);
+  };
+  const retry = () => {
+    setResult(null);
+    setAnswers({});
+    setLocked({});
+    setIdx(0);
+    setErr("");
+    setStarted(true);
+  };
 
   const finish = () =>
     start(async () => {
@@ -49,6 +85,14 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
             <p className="text-6xl font-bold text-navy-800">{result.correct}<span className="text-2xl text-muted">/{result.count}</span></p>
             <h2 className="mt-2 text-xl font-bold text-navy-800">Tamamlandı 🎉</h2>
             <p className="text-muted">Test soruların: {result.correct}/{result.count} doğru · Puan: %{result.score}{payload.passScore > 0 && (result.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)}</p>
+            {!result.passed && (
+              <p className="mx-auto mt-3 max-w-xl rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Geçme notunun altında kaldın; bu sınav tamamlanmış sayılmadı.{" "}
+                {result.canRetry
+                  ? `Yeniden çözebilirsin${result.left ? ` (kalan hak: ${result.left})` : ""}.`
+                  : "Deneme hakkın bitti. Sonraki içeriklere devam edebilirsin; yeni hak için eğitmenine yazabilirsin."}
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -58,7 +102,8 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           </>
         )}
         <div className="mt-5 flex justify-center gap-2">
-          {nextUrl && result.ok && <Link href={nextUrl} className="btn-primary">Sıradaki içeriğe geç <Icon name="arrowRight" className="size-4" /></Link>}
+          {result.ok && !result.passed && result.canRetry && <button onClick={retry} className="btn-primary">Tekrar çöz</button>}
+          {nextUrl && result.ok && (result.passed || !result.canRetry) && <Link href={nextUrl} className="btn-primary">Sıradaki içeriğe geç <Icon name="arrowRight" className="size-4" /></Link>}
           <Link href={`/kurs-izle/${courseId}`} className="btn-secondary">Kursa dön</Link>
         </div>
       </div>
@@ -77,8 +122,16 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           {payload.due && <p className="relative mt-3 text-sm text-[#fff]/80">Son tarih: <span className="font-semibold">{fmtDateTime(payload.due)}</span></p>}
           {last && (
             <div className="relative mt-4 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-3 text-sm">
-              <span className="font-semibold">Sonucun:</span> {last.total > 0 ? `${last.earned}/${last.total} puan · %${last.score}` : "Yanıtların kaydedildi"} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
+              <span className="font-semibold">Sonucun:</span> {last.total > 0 ? `${last.earned}/${last.total} puan · %${last.score}` : "Yanıtların kaydedildi"}{payload.passScore > 0 && last.total > 0 && (last.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
             </div>
+          )}
+          {last && !payload.passed && (
+            <p className="relative mt-3 rounded-xl border border-amber-200/50 bg-amber-400/15 p-3 text-sm">
+              Geçme notunun altında kaldın; bu sınav tamamlanmış sayılmadı.{" "}
+              {payload.canAttempt
+                ? `Yeniden çözebilirsin${payload.left ? ` (kalan hak: ${payload.left})` : ""}.`
+                : "Deneme hakkın bitti. Sonraki içeriklere devam edebilirsin; yeni hak için eğitmenine yazabilirsin."}
+            </p>
           )}
           {(payload.review?.length ?? 0) > 0 && (
             <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-4 text-sm">
@@ -102,11 +155,12 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           )}
           <div className="relative mt-6 flex flex-wrap items-center gap-3">
             {payload.canAttempt && !preview && qs.length > 0 ? (
-              <button onClick={() => setStarted(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> Sınava başla</button>
+              <button onClick={begin} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> {resuming ? "Sınava devam et" : last ? "Tekrar çöz" : "Sınava başla"}</button>
             ) : (
-              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : "Bu sınavı tamamladın. Cevaplarını yukarıda görebilirsin."}</span>
+              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : payload.passed === false ? "Cevaplarını yukarıda görebilirsin." : "Bu sınavı tamamladın. Cevaplarını yukarıda görebilirsin."}</span>
             )}
-            {nextUrl && last && <Link href={nextUrl} className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
+            {resuming && payload.canAttempt && !preview && <span className="text-xs text-[#fff]/70">Kontrol ettiğin cevaplar kayıtlı; kaldığın sorudan devam edersin.</span>}
+            {nextUrl && last && (payload.passed !== false || !payload.canAttempt) && <Link href={nextUrl} className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
           </div>
         </div>
       </div>
@@ -114,14 +168,19 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
   }
 
   const a = answers[String(q.id)];
-  // Anlık mod: cevabı kontrol et → doğru/yanlış + açıklama → sonraki soru
+  const feedback: Feedback | null = locked[String(q.id)] ?? null;
+  // Anlık mod: cevabı kontrol et → doğru/yanlış + açıklama → sonraki soru. Kontrol edilen cevap sunucuda kilitlenir.
   const checkAnswer = () =>
     start(async () => {
+      setErr("");
       const r = await answerQuizQuestion(payload.id, q.id, a!);
-      if (r.ok) setFeedback({ correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation });
+      if (!r.ok) { setErr(r.error); return; }
+      // Soru daha önce cevaplandıysa (başka sekme/yenileme) sunucudaki ilk cevap geçerlidir
+      setAnswers((x) => ({ ...x, [String(q.id)]: r.answer }));
+      setLocked((x) => ({ ...x, [String(q.id)]: { correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation } }));
     });
   const goNext = () => {
-    setFeedback(null);
+    setErr("");
     if (idx < qs.length - 1) setIdx(idx + 1);
     else finish();
   };
@@ -150,7 +209,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
         {q.type === "true_false" && ["true", "false"].map((v) => (
           <button key={v} disabled={instant && !!feedback} onClick={() => setAnswers({ ...answers, [q.id]: v })} className={`w-full rounded-xl border px-4 py-3 text-left text-sm ${optionCls(a === v, instant && !!feedback && feedback!.correctAnswer === v)}`}>{v === "true" ? "Doğru" : "Yanlış"}</button>
         ))}
-        {q.type === "open_ended" && <textarea rows={5} value={(a as string) ?? ""} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className="input" placeholder="Cevabını yaz…" />}
+        {q.type === "open_ended" && <textarea aria-label="Cevabını yaz" rows={5} value={(a as string) ?? ""} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className="input" placeholder="Cevabını yaz…" />}
       </div>
       {instant && feedback && (
         <div className={`mt-4 rounded-xl p-4 text-sm ${feedback.correct ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
@@ -162,6 +221,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           {feedback.explanation && <p className="mt-1">{feedback.explanation}</p>}
         </div>
       )}
+      {err && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{err}</p>}
       <div className="mt-6 flex items-center justify-between">
         {instant ? <span /> : <button onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0} className="btn-secondary btn-sm">Önceki</button>}
         <Link href={`/kurs-izle/${courseId}`} className="text-sm text-muted hover:underline">Çık</Link>

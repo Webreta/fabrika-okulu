@@ -11,8 +11,13 @@ export function PublishSurveyButton({ id, published }: { id: number; published: 
     <button
       disabled={pending}
       onClick={() => {
-        if (!published && !confirm("Anket yayınlansın mı? Tüm öğrencilere bildirim gider ve girişte popup gösterilir.")) return;
-        start(async () => { await publishSurvey(id, !published); router.refresh(); });
+        if (!published && !confirm("Anket yayınlansın mı? Testi tamamlamamış ve daha önce bildirim almamış öğrencilere bildirim gider; girişte pencere gösterilir.")) return;
+        start(async () => {
+          const r = await publishSurvey(id, !published);
+          if (!r.ok) alert(r.error);
+          else if (r.message) alert(r.message);
+          router.refresh();
+        });
       }}
       className={published ? "btn-secondary btn-sm" : "btn-primary btn-sm"}
     >

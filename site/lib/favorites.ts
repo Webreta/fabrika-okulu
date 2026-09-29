@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { courses, enrollments, favorites, users } from "@/db/schema";
 import { listCourses } from "@/lib/data/courses";
 import { effectivePrice, hasActiveSale } from "@/lib/course-logic";
-import { sendMail, emailTemplate, siteUrl } from "@/lib/mailer";
+import { sendMail, emailTemplate, siteUrl, escapeHtml } from "@/lib/mailer";
 import { notifyUser } from "@/lib/notify";
 import { fmtMoney } from "@/lib/format";
 
@@ -88,7 +88,7 @@ export async function notifyFavoritesOnSale(courseId: number, before: { isFree: 
       subject: `${c.title} indirimde: ${fmtMoney(eff)}`,
       html: emailTemplate({
         title: `Favori eğitiminde %${percent} indirim`,
-        html: `<p>Merhaba ${f.firstName || ""},</p><p>Favorilerine eklediğin <b>${c.title}</b> eğitimi indirime girdi: <s>${fmtMoney(c.price)}</s> <b>${fmtMoney(eff)}</b>.${until}</p>`,
+        html: `<p>Merhaba ${escapeHtml(f.firstName || "")},</p><p>Favorilerine eklediğin <b>${escapeHtml(c.title)}</b> eğitimi indirime girdi: <s>${fmtMoney(c.price)}</s> <b>${fmtMoney(eff)}</b>.${until}</p>`,
         buttonText: "Eğitime git",
         buttonUrl: siteUrl(url),
       }),

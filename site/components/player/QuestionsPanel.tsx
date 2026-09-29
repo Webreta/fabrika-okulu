@@ -61,7 +61,7 @@ export function QuestionsPanel({ courseId, lessonId, lessonTitle, items }: { cou
       </div>
       {err && <p className="px-4 text-xs text-red-600">{err}</p>}
       <div className="flex gap-2 border-t border-line p-3">
-        <textarea
+        <textarea aria-label="Bu dersle ilgili sorunu yaz"
           rows={2}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -69,7 +69,7 @@ export function QuestionsPanel({ courseId, lessonId, lessonTitle, items }: { cou
           placeholder="Bu dersle ilgili sorunu yaz… (Enter gönderir)"
           className="input"
         />
-        <button onClick={send} disabled={pending || text.trim().length < 3} className="btn-primary"><Icon name="send" className="size-4" /></button>
+        <button aria-label="Gönder" onClick={send} disabled={pending || text.trim().length < 3} className="btn-primary"><Icon name="send" className="size-4" /></button>
       </div>
     </div>
   );

@@ -9,14 +9,16 @@ export default async function ActionsPage() {
   const user = (await getCurrentUser())!;
   const { items } = await studentActions(user.id);
   const pending = items.filter((i) => !i.done);
-  const nearest = pending.find((i) => i.due);
+  // En yakın tarih: yalnızca GELECEKTEKİ tarihler (liste tarihe göre sıralıdır; geçmiş tarihli bekleyenler kartında kırmızı görünür)
+  const now = Date.now();
+  const nearest = pending.find((i) => i.due && i.due.getTime() > now);
 
   return (
     <>
       <PageTitle title="Aksiyonlarım" />
       {nearest && nearest.due && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Icon name="alert" className="size-5" /> En yakın son tarih: <b>{nearest.title}</b> — {fmtDateTime(nearest.due)}
+          <Icon name="alert" className="size-5" /> {nearest.kind === "meeting" ? "Sıradaki görüşme" : "En yakın son tarih"}: <b>{nearest.title}</b> — {fmtDateTime(nearest.due)}
         </div>
       )}
       {items.length === 0 ? (
@@ -31,9 +33,7 @@ export default async function ActionsPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Chip color={i.kind === "quiz" ? "sky" : i.kind === "meeting" ? "purple" : "amber"}>{i.kind === "quiz" ? "Sınav" : i.kind === "meeting" ? "Görüşme" : "Görev"}</Chip>
-                  {i.kind === "assignment" && i.status === "graded" ? (
-                    <Chip color="green">Puan: {i.score}/100</Chip>
-                  ) : i.kind === "quiz" && i.best !== null ? (
+                  {i.kind === "quiz" && i.best !== null ? (
                     <Chip color="sky">%{Math.round(i.best)}</Chip>
                   ) : (
                     <Chip color={i.done ? "green" : "amber"}>{i.done ? (i.status === "submitted" ? "Teslim edildi" : i.status === "attended" ? "Katıldım" : "Tamamlandı") : "Bekliyor"}</Chip>
