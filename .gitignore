@@ -7,9 +7,7 @@ site/private/korumali/*
 !site/private/korumali/.gitkeep
 *.tsbuildinfo
 
-# Yerel çalışma dosyaları: depo herkese açık olduğu için gönderilmez
-# (test raporu güvenlik bulgularını anlatır; görseller kullanıcının ekran görüntüleridir)
-TEST-RAPORU-*.md
+# Ekran görüntüleri depoya gönderilmez
 görseller/
 
 # Canlıya veri aktarım paketi (veritabanı dökümü ve yüklenen dosyalar): kişisel veri ve ayar içerir
