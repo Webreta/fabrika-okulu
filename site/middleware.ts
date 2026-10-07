@@ -17,8 +17,11 @@ const PRIVATE_UPLOADS = /^\/uploads\/(belgeler|ozgecmis|gorev|ses)\/(.+)$/i;
  *  - bakım sayfası ve durum ucu
  *  - yönetici girişi (yönetici siteyi açabilsin)
  *  - zamanlanmış işler ve kart ödemesi dönüşü (banka/iyzico dönüşünde oturum çerezi gelmez)
+ *  - yüklenen dosyalar (/uploads): next/image optimize edici görseli sunucunun kendi içinden ÇEREZSİZ çeker;
+ *    bakım modunda 503 alınca yönetici panelindeki ve katalogdaki tüm görseller kırılıyordu ("received null").
+ *    Kişisel dosyalar (belgeler/ozgecmis/gorev/ses) yine aşağıdaki oturum + sahiplik denetiminden geçer.
  */
-const MAINTENANCE_OPEN = [/^\/bakim\/?$/, /^\/api\/bakim\/?$/, /^\/admin\/giris(\/|$)/, /^\/api\/cron\/?$/, /^\/api\/odeme\/callback\/?$/];
+const MAINTENANCE_OPEN = [/^\/bakim\/?$/, /^\/api\/bakim\/?$/, /^\/admin\/giris(\/|$)/, /^\/api\/cron\/?$/, /^\/api\/odeme\/callback\/?$/, /^\/uploads\//];
 
 const MODE_TTL = 5_000; // bakım modu açık mı: en çok 5 sn eski bilgi
 const ADMIN_TTL = 30_000; // oturum yönetici mi: en çok 30 sn eski bilgi
