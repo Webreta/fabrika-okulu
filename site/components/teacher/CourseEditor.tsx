@@ -8,7 +8,7 @@ import type { CourseInput } from "@/lib/course-save";
 import { generateSlots } from "@/lib/meeting";
 import { saveCourseAction, uploadCourseImage, uploadProtectedFile, notifyPeriodStudents } from "@/app/actions/teacher";
 import { Icon } from "@/components/site/Icon";
-import { todayISO } from "@/lib/format";
+import { todayISO, addDays } from "@/lib/format";
 import { COURSE_LIMITS as L } from "@/lib/course-limits";
 
 type Module = CourseInput["modules"][number];
@@ -22,6 +22,8 @@ const newLesson = (type: Lesson["type"]): Lesson => ({
   shuffleQuestions: false, showCorrectAnswers: true, isGraded: false, maxScore: 100, allowFile: true, allowVoice: true, allowText: true,
 });
 const newQuestion = (): Question => ({ qtype: "multiple_choice", text: "", points: 1, options: ["", "", "", ""], correct: 0, explanation: "", image: "" });
+/** İki "YYYY-MM-DD" günü arasındaki gün sayısı (saat diliminden bağımsız) */
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 const newPeriod = (): Period => ({ name: "", startDate: "", startTime: "", endDate: "", capacity: 20, description: "", schedule: [] });
 
 // Görev yalnızca dönemli eğitimde olabilir: "Standart" (dönemsiz) şablonda görev yoktur;
@@ -128,6 +130,17 @@ export function CourseEditor({
   };
 
   const addPeriod = (p: Period = newPeriod()) => setC((x) => ({ ...x, periods: [...x.periods, p] }));
+  // Dönemi kopyalar: yeni dönem eskisinin bittiği günün ertesinde başlar, aynı uzunlukta sürer, oturum tarihleri aynı
+  // kadar kayar (bağlantı/başlık/saat korunur). Adındaki sayı artar ("1. Dönem" → "2. Dönem"), yoksa "(kopya)" eklenir.
+  const copyPeriod = (pi: number) => setC((x) => {
+    const p = x.periods[pi];
+    if (!p) return x;
+    const shift = p.startDate && p.endDate && p.endDate >= p.startDate ? dayDiff(p.startDate, p.endDate) + 1 : 0;
+    const move = (d: string) => (shift && d ? addDays(d, shift) : d);
+    const name = /\d+/.test(p.name) ? p.name.replace(/\d+/, (n) => String(Number(n) + 1)) : p.name ? `${p.name} (kopya)` : "";
+    const copy: Period = { ...p, id: undefined, name, startDate: move(p.startDate), endDate: move(p.endDate), schedule: p.schedule.map((s) => ({ ...s, date: move(s.date) })) };
+    return { ...x, periods: [...x.periods.slice(0, pi + 1), copy, ...x.periods.slice(pi + 1)] };
+  });
   const goToPeriods = () => document.getElementById("donemler")?.scrollIntoView({ behavior: "smooth", block: "start" });
   // Görev içeren şablon dönemsiz kaydedilemez: doldurulacak bir başlangıç dönemiyle birlikte eklenir
   const applyTemplate = (k: string) => {
@@ -411,6 +424,7 @@ export function CourseEditor({
                   <span className="text-sm font-bold text-muted">Dönem {pi + 1}{enrolled > 0 && ` · ${enrolled} kayıtlı`}{passed && " · Bitti"}</span>
                   <div className="flex items-center gap-2">
                     {p.id && enrolled > 0 && !passed && <NotifyPeriodButton periodId={p.id} />}
+                    {!locked && <button onClick={() => copyPeriod(pi)} className="btn-secondary btn-sm" title="Bu dönemin kopyasını, bitişinin ertesi gününden başlayacak şekilde ekler"><Icon name="copy" className="size-3.5" /> Kopyala</button>}
                     {!locked && (enrolled === 0 || isAdmin) && (
                       <button onClick={() => { if (enrolled > 0 && !confirm(`Bu dönemde ${enrolled} kayıtlı öğrenci var. Dönem silinsin mi? (Öğrencilerin kurs erişimi kalır, dönem kaydı düşer.)`)) return; set("periods", c.periods.filter((_, j) => j !== pi)); }} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Dönemi sil"><Icon name="trash" className="size-4" /></button>
                     )}
