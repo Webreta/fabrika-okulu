@@ -21,6 +21,7 @@ import {
 import { durationSecs, durationText } from "@/lib/course-logic";
 import { todayISO } from "@/lib/format";
 import { heldSeatsSql } from "@/lib/orders";
+import { notArchived } from "@/lib/data/course-filters";
 
 export type CourseWithMeta = Course & {
   instructor: Instructor | null;
@@ -53,7 +54,8 @@ export type CourseFull = Course & {
 
 /** Kurs sayfası + editör için tam yapı */
 export const getCourseFull = cache(async (idOrSlug: number | string): Promise<CourseFull | null> => {
-  const where = typeof idOrSlug === "number" ? eq(courses.id, idOrSlug) : eq(courses.slug, idOrSlug);
+  // Adresle (site) arşivdeki eğitim açılmaz; kimlikle (editör/yönetici detayı) açılabilir
+  const where = typeof idOrSlug === "number" ? eq(courses.id, idOrSlug) : and(eq(courses.slug, idOrSlug), notArchived);
   const rows = await db.select().from(courses).where(where).limit(1);
   const course = rows[0];
   if (!course) return null;
@@ -119,7 +121,8 @@ export function openPeriods<T extends Period>(list: T[]) {
 /** Katalog listesi */
 export const listCourses = cache(
   async (opts: { group?: "takvimli" | "esnek" | "ucretsiz"; includeDrafts?: boolean; ids?: number[] } = {}) => {
-    const conds = [];
+    // Arşivdeki eğitimler hiçbir listede yer almaz (yalnızca /admin/kurslar/arsiv)
+    const conds = [notArchived];
     if (!opts.includeDrafts) conds.push(eq(courses.status, "published"));
     if (opts.group) conds.push(eq(courses.group, opts.group));
     if (opts.ids) {

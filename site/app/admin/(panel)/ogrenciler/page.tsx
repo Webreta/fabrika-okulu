@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import {
   users, enrollments, courses, assignments, assignmentSubmissions, quizzes, quizAttempts,
   questions, notes, issuedCertificates, certificateTemplates, orders, resumeFiles,
@@ -42,7 +43,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
       db.select().from(orders).where(eq(orders.userId, uid)).orderBy(desc(orders.createdAt)),
       db.select().from(resumeFiles).where(eq(resumeFiles.userId, uid)).orderBy(desc(resumeFiles.createdAt)),
     ]);
-    const all = await db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
+    const all = await db.select({ id: courses.id, title: courses.title }).from(courses).where(notArchived).orderBy(courses.title);
     const prog = await Promise.all(list.map(({ c }) => courseProgress(uid, c.id)));
 
     const stats: [string, number][] = [
@@ -230,7 +231,7 @@ export default async function AdminStudentsPage({ searchParams }: { searchParams
 
   const q = s?.trim() ?? "";
   const kursId = Number(kurs) || 0;
-  const allCourses = await db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
+  const allCourses = await db.select({ id: courses.id, title: courses.title }).from(courses).where(notArchived).orderBy(courses.title);
   const rows = await db
     .select({
       u: users,

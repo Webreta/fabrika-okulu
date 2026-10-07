@@ -190,6 +190,13 @@
       "when": 1790696482030,
       "tag": "0026_outgoing_ultragirl",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791378071745,
+      "tag": "0027_cynical_chat",
+      "breakpoints": true
     }
   ]
 }

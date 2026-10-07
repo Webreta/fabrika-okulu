@@ -39,6 +39,8 @@ export async function saveCourseAction(raw: unknown): Promise<ActionResult> {
     if (!(await ownsCourse(user, id))) return { ok: false, error: "Bu kursa erişim yetkin yok." };
     stored = await courseLockInfo(id);
     if (!stored) return { ok: false, error: "Kurs bulunamadı." };
+    // Arşivdeki eğitim kaydedilirse sessizce arşivden çıkardı; önce Kurslar → Arşiv'den geri alınmalı
+    if (stored.status === "archived") return { ok: false, error: "Bu eğitim arşivde. Düzenlemek için önce Yönetim → Kurslar → Arşiv sayfasından geri al." };
   }
   const parsed = parseCourseInput(raw, { isAdmin, stored });
   if (!parsed.ok) return parsed;
@@ -84,9 +86,10 @@ export async function deleteCourseAction(courseId: number): Promise<ActionResult
     revalidatePath("/egitmen");
     return { ok: true, message: "Kayıtlı öğrenci olduğu için kurs silinmedi; taslağa alınıp kapatıldı." };
   }
-  await db.delete(courses).where(eq(courses.id, courseId));
-  revalidatePath("/egitmen"); revalidatePath("/kesfet");
-  return { ok: true, message: "Kurs silindi." };
+  // Kalıcı silme yok: eğitim arşive taşınır (Yönetim → Kurslar → Arşiv'den geri alınır ya da kalıcı silinir)
+  await db.update(courses).set({ status: "archived", closed: true, deletedAt: new Date(), deletedBy: user.id }).where(eq(courses.id, courseId));
+  revalidatePath("/egitmen"); revalidatePath("/kesfet"); revalidatePath("/admin/kurslar");
+  return { ok: true, message: "Eğitim arşive taşındı. Yönetici, Kurslar → Arşiv sayfasından geri alabilir ya da kalıcı silebilir." };
 }
 
 export async function toggleCourseClosed(courseId: number, closed: boolean): Promise<ActionResult> {

@@ -1,5 +1,6 @@
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { courses } from "@/db/schema";
 import { listPrerequisites } from "@/lib/prerequisites";
 import { PageTitle } from "@/components/panel/ui";
@@ -11,7 +12,7 @@ export default async function PrerequisitesPage() {
   await requireAdmin();
   const [links, list] = await Promise.all([
     listPrerequisites(),
-    db.select({ id: courses.id, title: courses.title, imageUrl: courses.imageUrl, group: courses.group, status: courses.status }).from(courses).orderBy(asc(courses.title)),
+    db.select({ id: courses.id, title: courses.title, imageUrl: courses.imageUrl, group: courses.group, status: courses.status }).from(courses).where(notArchived).orderBy(asc(courses.title)),
   ]);
   return (
     <>

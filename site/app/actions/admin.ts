@@ -454,3 +454,29 @@ export async function markSectionSeen(section: string): Promise<ActionResult> {
   await markSeen(admin.id, section as SeenSection);
   return { ok: true };
 }
+
+// ---------- Eğitim arşivi ----------
+
+/** Arşivdeki eğitimi geri alır: taslağa döner (yayına almak yöneticinin kararı), kapalı işareti kalkar */
+export async function restoreCourse(courseId: number): Promise<ActionResult> {
+  await requireAdmin();
+  const [c] = await db.select({ id: courseTable.id, status: courseTable.status }).from(courseTable).where(eq(courseTable.id, courseId)).limit(1);
+  if (!c) return { ok: false, error: "Eğitim bulunamadı." };
+  if (c.status !== "archived") return { ok: false, error: "Bu eğitim arşivde değil." };
+  await db.update(courseTable).set({ status: "draft", closed: false, deletedAt: null, deletedBy: null }).where(eq(courseTable.id, courseId));
+  revalidatePath("/admin/kurslar"); revalidatePath("/egitmen");
+  return { ok: true, message: "Eğitim geri alındı; taslak olarak Kurslar listesinde." };
+}
+
+/** Arşivdeki eğitimi kalıcı siler (modüller, dersler, dönemler, sınavlar birlikte gider; geri dönüş yok) */
+export async function purgeCourse(courseId: number): Promise<ActionResult> {
+  await requireAdmin();
+  const [c] = await db.select({ id: courseTable.id, status: courseTable.status }).from(courseTable).where(eq(courseTable.id, courseId)).limit(1);
+  if (!c) return { ok: false, error: "Eğitim bulunamadı." };
+  if (c.status !== "archived") return { ok: false, error: "Yalnızca arşivdeki eğitim kalıcı silinebilir; önce arşive taşı." };
+  const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(enrollments).where(and(eq(enrollments.courseId, courseId), eq(enrollments.status, "active")));
+  if (n > 0) return { ok: false, error: "Aktif kayıtlı öğrencisi olan eğitim kalıcı silinemez." };
+  await db.delete(courseTable).where(eq(courseTable.id, courseId));
+  revalidatePath("/admin/kurslar");
+  return { ok: true, message: "Eğitim kalıcı olarak silindi." };
+}

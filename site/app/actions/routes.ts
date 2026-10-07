@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { routes, routeSteps, courses } from "@/db/schema";
 import { isUniqueViolation, isForeignKeyViolation } from "@/lib/db-errors";
 import { LIMITS, tooLong, firstError } from "@/lib/limits";
@@ -44,7 +45,7 @@ export async function saveRoute(input: RouteInput): Promise<ActionResult> {
   const uniq = steps.filter((s) => (seen.has(s.courseId) ? false : (seen.add(s.courseId), true)));
   // Silinmiş eğitim adım olarak gelirse kayıt çökmesin
   if (uniq.length) {
-    const found = await db.select({ id: courses.id }).from(courses).where(inArray(courses.id, uniq.map((s) => s.courseId)));
+    const found = await db.select({ id: courses.id }).from(courses).where(and(notArchived, inArray(courses.id, uniq.map((s) => s.courseId))));
     if (found.length !== uniq.length) return { ok: false, error: "Adımlardaki eğitimlerden biri artık yok. Sayfayı yenileyip adımları kontrol et." };
   }
 

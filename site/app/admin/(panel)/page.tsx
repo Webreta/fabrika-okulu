@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq, sql, isNull } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { courses, enrollments, users, questions, assignmentSubmissions, quizAttempts, documents, orders } from "@/db/schema";
 import { fmtDate, fmtMoney, fmtDateTime, todayISO } from "@/lib/format";
 import { Kpi, PageTitle, Chip } from "@/components/panel/ui";
@@ -16,7 +17,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const count = sql<number>`count(*)`.mapWith(Number);
 
   const [totalCourses, totalStudents, activeEnroll, pendingQ, recent, popular, todayQ, todaySubs, todayQuiz, todayEnroll, overdueQ, idle, pendingDocs, revenue, pendingOrders] = await Promise.all([
-    n(db.select({ n: count }).from(courses)),
+    n(db.select({ n: count }).from(courses).where(notArchived)),
     n(db.select({ n: sql<number>`count(distinct ${enrollments.userId})`.mapWith(Number) }).from(enrollments)),
     n(db.select({ n: count }).from(enrollments).where(eq(enrollments.status, "active"))),
     n(db.select({ n: count }).from(questions).where(eq(questions.status, "pending"))),

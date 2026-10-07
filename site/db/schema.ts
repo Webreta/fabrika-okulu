@@ -19,7 +19,8 @@ import {
 // ---------- Enums ----------
 
 export const roleEnum = pgEnum("role", ["admin", "teacher", "student"]);
-export const courseStatusEnum = pgEnum("course_status", ["draft", "published"]);
+// archived: arşiv (silinen eğitimler; yönetici geri alır ya da kalıcı siler, lib/data/course-filters.ts notArchived)
+export const courseStatusEnum = pgEnum("course_status", ["draft", "published", "archived"]);
 export const courseGroupEnum = pgEnum("course_group", ["takvimli", "esnek", "ucretsiz"]);
 export const lessonTypeEnum = pgEnum("lesson_type", ["video", "quiz", "assign", "file"]);
 export const questionTypeEnum = pgEnum("question_type", [
@@ -150,6 +151,9 @@ export const courses = pgTable("courses", {
   imageUrl: text("image_url").notNull().default(""),
   status: courseStatusEnum("status").notNull().default("draft"),
   closed: boolean("closed").notNull().default(false),
+  /** Arşive taşınma anı ve taşıyan kullanıcı (status = archived iken dolu; geri alınınca boşalır) */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedBy: integer("deleted_by").references(() => users.id, { onDelete: "set null" }),
   /** Yakında: yayında görünür (katalog, vitrin, kategori) ama satış kapalı; "açılınca haber ver" ile talep toplanır */
   comingSoon: boolean("coming_soon").notNull().default(false),
   /** Yakında modunda fiyat gösterilsin mi (false: fiyat yerine "Yakında") */

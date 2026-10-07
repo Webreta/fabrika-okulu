@@ -1,5 +1,6 @@
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { courses } from "@/db/schema";
 import { PageTitle } from "@/components/panel/ui";
 import { RoutesManager } from "@/components/admin/RoutesManager";
@@ -12,7 +13,7 @@ export default async function RoutesPage() {
   await requireAdmin();
   const [rs, list] = await Promise.all([
     listRoutes({ includeInactive: true }),
-    db.select().from(courses).orderBy(asc(courses.title)),
+    db.select().from(courses).where(notArchived).orderBy(asc(courses.title)),
   ]);
   return (
     <>

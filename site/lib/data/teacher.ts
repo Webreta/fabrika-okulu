@@ -7,17 +7,18 @@ import {
 import type { SessionUser } from "@/lib/auth/session";
 import { doneLessonIds } from "@/lib/data/student";
 import { computeProgress } from "@/lib/course-logic";
+import { notArchived } from "@/lib/data/course-filters";
 
 /** Eğitmenin sahip olduğu kurs id'leri: authorId = kullanıcı VEYA instructorId = kullanıcının eğitmen profili. Admin → hepsi */
 export async function teacherCourseIds(user: SessionUser): Promise<number[]> {
   if (user.role === "admin") {
-    return (await db.select({ id: courses.id }).from(courses)).map((r) => r.id);
+    return (await db.select({ id: courses.id }).from(courses).where(notArchived)).map((r) => r.id);
   }
   const [prof] = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.userId, user.id)).limit(1);
   const rows = await db
     .select({ id: courses.id })
     .from(courses)
-    .where(prof ? sql`${courses.authorId} = ${user.id} or ${courses.instructorId} = ${prof.id}` : eq(courses.authorId, user.id));
+    .where(and(notArchived, prof ? sql`${courses.authorId} = ${user.id} or ${courses.instructorId} = ${prof.id}` : eq(courses.authorId, user.id)));
   return rows.map((r) => r.id);
 }
 

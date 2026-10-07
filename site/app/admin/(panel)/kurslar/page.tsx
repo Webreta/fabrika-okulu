@@ -10,14 +10,21 @@ import { Icon } from "@/components/site/Icon";
 import { CourseActions } from "@/components/teacher/CourseActions";
 import { waitlistCounts } from "@/lib/waitlist";
 import { requireAdmin } from "@/lib/auth/session";
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { courses } from "@/db/schema";
 
 export default async function AdminCoursesPage() {
   // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
   await requireAdmin();
-  const [list, demand] = await Promise.all([listCourses({ includeDrafts: true }), waitlistCounts()]);
+  const [list, demand, [{ archived }]] = await Promise.all([
+    listCourses({ includeDrafts: true }),
+    waitlistCounts(),
+    db.select({ archived: sql<number>`count(*)`.mapWith(Number) }).from(courses).where(eq(courses.status, "archived")),
+  ]);
   return (
     <>
-      <PageTitle title="Kurslar" sub={`${list.length} eğitim`} action={<Link href="/admin/kurslar/editor/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni eğitim</Link>} />
+      <PageTitle title="Kurslar" sub={`${list.length} eğitim`} action={<div className="flex gap-2"><Link href="/admin/kurslar/arsiv" className="btn-secondary"><Icon name="trash" className="size-4" /> Arşiv{archived > 0 && <span className="ml-1 rounded-full bg-red-100 px-1.5 text-xs font-semibold text-red-700">{archived}</span>}</Link><Link href="/admin/kurslar/editor/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni eğitim</Link></div>} />
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>Eğitim</th><th>Eğitmen</th><th>Grup</th><th>Öğrenci</th><th>Ders</th><th>Fiyat</th><th>Durum</th><th title="Açılınca / kontenjan açılınca haber ver diyenler">Talep</th><th></th></tr></thead>

@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import {
   assignments, assignmentSubmissions, enrollments, periodEnrollments, periods, courses, users, sentKeys, questions, quizAttempts,
 } from "@/db/schema";
@@ -199,7 +200,7 @@ export async function runDaily() {
     const teachers = await db.select().from(users).where(eq(users.role, "teacher"));
     for (const t of teachers) {
       const [prof] = await db.select({ id: instructors.id }).from(instructors).where(eq(instructors.userId, t.id)).limit(1);
-      const cs = await db.select({ id: courses.id }).from(courses).where(prof ? sql`${courses.authorId} = ${t.id} or ${courses.instructorId} = ${prof.id}` : eq(courses.authorId, t.id));
+      const cs = await db.select({ id: courses.id }).from(courses).where(and(notArchived, prof ? sql`${courses.authorId} = ${t.id} or ${courses.instructorId} = ${prof.id}` : eq(courses.authorId, t.id)));
       const ids = cs.map((c) => c.id);
       if (!ids.length) continue;
       const [nq] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(questions).where(and(inArray(questions.courseId, ids), sql`${questions.createdAt}::date = ${yISO}`));

@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { courses } from "@/db/schema";
 import { asc } from "drizzle-orm";
 import { PageTitle } from "@/components/panel/ui";
@@ -14,7 +15,7 @@ export default async function CategoriesPage() {
   const [cats, map, list, catalog] = await Promise.all([
     listCategories(),
     categoryCourseMap(),
-    db.select({ id: courses.id, title: courses.title, group: courses.group, status: courses.status }).from(courses).orderBy(asc(courses.title)),
+    db.select({ id: courses.id, title: courses.title, group: courses.group, status: courses.status }).from(courses).where(notArchived).orderBy(asc(courses.title)),
     getRawSetting<CatalogContent>("catalog", DEFAULT_CATALOG).then((v) => ({ ...DEFAULT_CATALOG, ...v })),
   ]);
   return (

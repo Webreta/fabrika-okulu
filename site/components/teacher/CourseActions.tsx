@@ -28,7 +28,7 @@ export function CourseActions({ courseId, slug, closed, base = "/egitmen", showD
             <p className="font-semibold text-navy-800">{confirm === "dup" ? "Eğitimi çoğalt?" : confirm === "del" ? "Eğitimi sil?" : confirm === "close" ? "Eğitimi kapat?" : "Eğitimi yeniden aç?"}</p>
             <p className="mt-1 text-sm text-muted">
               {confirm === "dup" ? "Taslak kopya oluşturulur (dönemler kopyalanmaz)."
-                : confirm === "del" ? "Kayıtlı öğrenci varsa silinmez, kapatılıp taslağa alınır."
+                : confirm === "del" ? "Eğitim arşive taşınır; yönetici Kurslar → Arşiv'den geri alabilir ya da kalıcı silebilir. Kayıtlı öğrenci varsa silinmez, kapatılıp taslağa alınır."
                 : confirm === "close" ? "Eğitim yeni satışa ve kayda kapanır; katalogda ve eğitim sayfasında satın alınamaz. Kayıtlı öğrenciler eğitime erişmeye devam eder."
                 : "Eğitim yeniden satışa açılır. Boş yeri olan dönem varsa bekleme listesindekilere haber gider."}
             </p>

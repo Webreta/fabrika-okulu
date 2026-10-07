@@ -38,7 +38,8 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
     shortDescription: c.shortDescription,
     description: c.description,
     imageUrl: c.imageUrl,
-    status: c.status,
+    // Arşivdeki eğitim editörde taslak görünür; kaydetme sunucuda reddedilir (checkCourseAgainstStored), önce geri alınır
+    status: c.status === "published" ? "published" : "draft",
     isFree: c.isFree,
     price: Number(c.price),
     salePrice: Number(c.salePrice ?? 0),
@@ -141,7 +142,8 @@ export async function listInstructors() {
 /** İlişkili kurs seçimi için kısa kurs listesi (admin) */
 export async function listCoursesBrief() {
   const { courses } = await import("@/db/schema");
-  return db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
+  const { notArchived } = await import("@/lib/data/course-filters");
+  return db.select({ id: courses.id, title: courses.title }).from(courses).where(notArchived).orderBy(courses.title);
 }
 
 export const EMPTY_COURSE: CourseInput = {

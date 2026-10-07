@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { notes, courses, users } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
 import { PageTitle, Chip, Kpi } from "@/components/panel/ui";
@@ -27,7 +28,7 @@ export default async function AdminNotesPage({ searchParams }: { searchParams: P
       ))
       .orderBy(desc(notes.createdAt))
       .limit(300),
-    db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title),
+    db.select({ id: courses.id, title: courses.title }).from(courses).where(notArchived).orderBy(courses.title),
     db.select({ n: sql<number>`count(*)`.mapWith(Number), u: sql<number>`count(distinct ${notes.userId})`.mapWith(Number) }).from(notes),
   ]);
   return (

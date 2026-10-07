@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
+import { notArchived } from "@/lib/data/course-filters";
 import { certificateTemplates, courses } from "@/db/schema";
 import { DEFAULT_CERT_FIELDS, DEFAULT_CERT_RULE } from "@/lib/certificates";
 import { PageTitle } from "@/components/panel/ui";
@@ -11,7 +12,7 @@ export default async function CertificateEditPage({ params }: { params: Promise<
   // Sayfa kendi yetkisini denetler: layout'taki yönlendirme, sayfa verisinin yanıt gövdesine yazılmasını engellemez
   await requireAdmin();
   const { id } = await params;
-  const cs = await db.select({ id: courses.id, title: courses.title }).from(courses).orderBy(courses.title);
+  const cs = await db.select({ id: courses.id, title: courses.title }).from(courses).where(notArchived).orderBy(courses.title);
   if (id === "yeni") {
     return (
       <>
