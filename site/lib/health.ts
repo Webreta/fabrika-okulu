@@ -1,4 +1,6 @@
 import "server-only";
+import { mkdir, writeFile, unlink } from "fs/promises";
+import path from "path";
 import { eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -156,6 +158,28 @@ async function serverItems(): Promise<HealthItem[]> {
     });
   } else {
     items.push({ key: "site-url", group: "sunucu", level: "ok", title: "Site adresi", text: site });
+  }
+
+  // Yükleme klasörleri gerçekten yazılabilir mi (canlıda volume root sahipliğiyle bağlanınca tüm yüklemeler düşüyordu)
+  for (const [key, rel, what] of [
+    ["yukleme", path.join("public", "uploads"), "Kurs görselleri, logo, görev ve belge yüklemeleri"],
+    ["korumali", path.join("private", "korumali"), "Korumalı ders dosyaları (PDF/resim)"],
+  ] as const) {
+    const dir = path.join(process.cwd(), rel);
+    const probe = path.join(dir, `.saglik-${process.pid}-${Date.now().toString(36)}`);
+    try {
+      await mkdir(dir, { recursive: true });
+      await writeFile(probe, "ok");
+      await unlink(probe);
+      items.push({ key, group: "sunucu", level: "ok", title: `Yükleme klasörü yazılabilir (${rel})`, text: `${what} diske kaydedilebiliyor.` });
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException)?.code ?? "hata";
+      items.push({
+        key, group: "sunucu", level: "warn", title: `Yükleme klasörüne yazılamıyor (${rel})`,
+        text: `${what} kaydedilemez; kullanıcılar "Dosya sunucuya kaydedilemedi" hatası alır (${code}).`,
+        todo: "Sunucuyu yeniden başlat (açılış betiği klasör sahipliğini düzeltir). Sürerse Easypanel'de volume'un bağlı olduğu klasörün izinlerini kontrol et.",
+      });
+    }
   }
 
   const payment = await getSetting("payment");

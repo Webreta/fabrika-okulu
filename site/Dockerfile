@@ -18,7 +18,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Tüm tarih/saat kuralları (son teslim, indirim bitişi, erken kayıt açılışı, görüşme saati, hatırlatmalar) sunucunun yerel saatine göre
 # hesaplanır; saat dilimi tanımlı değilse sunucu UTC çalışır ve her şey 3 saat kayar.
 ENV TZ=Europe/Istanbul
-RUN apk add --no-cache tzdata
+# su-exec: konteyner root açılır, scripts/start.sh volume sahipliğini düzeltip sunucuyu nextjs kullanıcısına düşürür
+RUN apk add --no-cache tzdata su-exec
 
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public
@@ -43,7 +44,8 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 
 RUN mkdir -p /app/public/uploads /app/private/korumali && chown -R nextjs:nodejs /app/public/uploads /app/private
-USER nextjs
+# USER nextjs YOK: konteyner root açılır; scripts/start.sh bağlanan volume'ların sahipliğini düzeltir ve
+# sunucuyu su-exec ile nextjs kullanıcısına düşürür (volume root sahipliğiyle bağlanınca yüklemeler EACCES veriyordu).
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
 CMD ["sh", "scripts/start.sh"]

@@ -32,6 +32,21 @@ export function slugify(text: string, max = 80) {
     .slice(0, max);
 }
 
+/**
+ * Diske yazma hatasını kullanıcıya gösterilecek Türkçe iletiye çevirir; gerçek hata sunucu kaydına yazılır.
+ * Canlıda en sık neden: volume kök (root) sahipliğiyle bağlanmış, uygulama "nextjs" kullanıcısıyla yazamıyor
+ * (scripts/start.sh açılışta sahipliği düzeltir; Sistem sağlığı sekmesi de bunu denetler).
+ */
+export function diskWriteError(e: unknown, dir: string): string {
+  const code = (e as NodeJS.ErrnoException)?.code;
+  console.error(`[yükleme] diske yazılamadı (${dir}):`, e);
+  if (code === "EACCES" || code === "EPERM" || code === "EROFS") {
+    return "Dosya sunucuya kaydedilemedi: yükleme klasörüne yazma izni yok. Yönetim → Ayarlar → Sistem sağlığı sekmesine bak.";
+  }
+  if (code === "ENOSPC") return "Dosya sunucuya kaydedilemedi: sunucuda boş disk alanı kalmadı.";
+  return "Dosya sunucuya kaydedilemedi. Lütfen tekrar dene; sorun sürerse yöneticiye bildir.";
+}
+
 export type UploadResult =
   | { ok: true; publicPath: string | null; name?: string; size?: number; mime?: string }
   | { ok: false; error: string };
@@ -55,10 +70,14 @@ export async function saveUploadedFile(
   }
   const safeSub = subdir.replace(/[^a-z0-9/_-]/gi, "");
   const dir = path.join(process.cwd(), "public", "uploads", safeSub);
-  await mkdir(dir, { recursive: true });
   const base = slugify(value.name.replace(/\.[^.]+$/, ""), 60) || "dosya";
   const fileName = `${base}-${Date.now().toString(36)}.${ext}`;
-  await writeFile(path.join(dir, fileName), Buffer.from(await value.arrayBuffer()));
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, fileName), Buffer.from(await value.arrayBuffer()));
+  } catch (e) {
+    return { ok: false, error: diskWriteError(e, dir) };
+  }
   return {
     ok: true,
     publicPath: `/uploads/${safeSub}/${fileName}`,

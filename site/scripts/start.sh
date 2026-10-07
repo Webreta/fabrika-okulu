@@ -4,6 +4,21 @@
 set -e
 # Saat dilimi ortamda tanımlı değilse Türkiye saati (tarih/saat kuralları yerel saate göre çalışır)
 export TZ="${TZ:-Europe/Istanbul}"
+# Yükleme klasörleri (Easypanel volume'ları) konteynere root sahipliğiyle bağlanır; sunucu "nextjs" kullanıcısıyla
+# çalıştığı için görsel/dosya yüklemeleri "EACCES" ile düşerdi. Konteyner root açılır, sahiplik burada düzeltilir,
+# sunucu aşağıda su-exec ile nextjs kullanıcısına düşürülür. (Dockerfile'daki chown derleme anında çalışır, volume'u etkilemez.)
+APP_USER="nextjs:nodejs"
+for d in /app/public/uploads /app/private/korumali; do
+  mkdir -p "$d" 2>/dev/null || true
+  chown -R "$APP_USER" "$d" 2>/dev/null || echo "Uyarı: $d sahipliği düzeltilemedi (root değil mi?)"
+done
+if command -v su-exec >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+  if su-exec "$APP_USER" sh -c 'touch /app/public/uploads/.yazma-testi && rm -f /app/public/uploads/.yazma-testi'; then
+    echo "Yükleme klasörü yazılabilir."
+  else
+    echo "UYARI: /app/public/uploads nextjs kullanıcısıyla yazılamıyor; görsel/dosya yüklemeleri çalışmaz."
+  fi
+fi
 node scripts/migrate.mjs
 # Canlıda örnek veri ve bilinen parolalı test hesabı ÜRETİLMEZ: örnek veri betikleri (seed-*.mts) yalnızca
 # geliştirme ortamında elle çalıştırılır.
@@ -29,4 +44,8 @@ fi
     sleep 900
   done
 ) &
+# Sunucu düşük yetkili kullanıcıyla çalışır (konteyner root açıldı; su-exec yoksa yerel/elle çalıştırmada olduğu gibi devam eder)
+if command -v su-exec >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+  exec su-exec "$APP_USER" node server.js
+fi
 exec node server.js

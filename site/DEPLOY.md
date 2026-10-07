@@ -65,6 +65,11 @@ VAPID_SUBJECT=mailto:info@uretmer.com.tr
 
 Bu iki mount yoksa her deploy'da yüklenen dosyalar silinir.
 
+Volume'lar konteynere root sahipliğiyle bağlanır; açılış betiği (`scripts/start.sh`) her açılışta sahipliği
+uygulama kullanıcısına (`nextjs`) çevirir ve logda "Yükleme klasörü yazılabilir." yazar. Yüklemeler
+"Dosya sunucuya kaydedilemedi" hatası veriyorsa Yönetim → Ayarlar → Sistem sağlığı sekmesindeki
+"Yükleme klasörü" satırına ve uygulama loglarına bak.
+
 ## 5. Alan adı
 
 App → Domains'den `fabrikaokulu.com.tr` (ve istenirse `www.fabrikaokulu.com.tr`) ekle; Let's Encrypt otomatik.

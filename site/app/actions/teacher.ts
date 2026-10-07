@@ -15,7 +15,7 @@ import { requireTeacher } from "@/lib/auth/session";
 import { ownsCourse, ensureInstructorProfile, teacherCourseIds } from "@/lib/data/teacher";
 import { parseCourseInput, checkCourseAgainstStored, courseLockInfo, saveCourse, duplicateCourse as dup } from "@/lib/course-save";
 import { notifyWaitlistIfOpen } from "@/lib/waitlist";
-import { saveUploadedFile, IMAGE_EXTENSIONS, slugify } from "@/lib/uploads";
+import { saveUploadedFile, diskWriteError, IMAGE_EXTENSIONS, slugify } from "@/lib/uploads";
 import { notifyUser, notifyUsers, logNotification } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl, escapeHtml } from "@/lib/mailer";
 import { safeInternalPath } from "@/lib/safe-path";
@@ -114,9 +114,13 @@ export async function uploadProtectedFile(formData: FormData) {
   if (!["pdf", "jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return { ok: false as const, error: "Yalnızca PDF ve resim." };
   if (f.size > 50 * 1024 * 1024) return { ok: false as const, error: "En fazla 50 MB." };
   const dir = path.join(process.cwd(), "private", "korumali");
-  await mkdir(dir, { recursive: true });
   const key = `${randomBytes(16).toString("hex")}.${ext}`;
-  await writeFile(path.join(dir, key), Buffer.from(await f.arrayBuffer()));
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, key), Buffer.from(await f.arrayBuffer()));
+  } catch (e) {
+    return { ok: false as const, error: diskWriteError(e, dir) };
+  }
   return { ok: true as const, fileUrl: key, fileName: f.name, fileMime: f.type || (ext === "pdf" ? "application/pdf" : `image/${ext}`) };
 }
 
