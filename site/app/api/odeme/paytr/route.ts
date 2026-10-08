@@ -15,7 +15,7 @@ import { siteUrl } from "@/lib/mailer";
 //  - yanıt her durumda düz metin "OK" (aksi hâlde PayTR bildirimi tekrar eder); zaten ödenmiş sipariş için de "OK"
 export async function POST(request: Request) {
   const form = await request.formData();
-  const n = verifyNotification(form);
+  const n = await verifyNotification(form);
   if (!n) return new NextResponse("PAYTR notification failed: bad hash", { status: 400 });
 
   const orderId = orderIdFromMerchantOid(n.merchantOid);

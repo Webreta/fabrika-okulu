@@ -66,6 +66,11 @@ export type PaymentSettings = {
   provider: "iyzico" | "paytr" | "manual";
   bankInfo: string; // havale/EFT bilgileri (manual)
   currency: string;
+  /** PayTR mağaza bilgileri (panelden girilir; boşsa PAYTR_* ortam değişkenleri kullanılır). key/salt gizli alan. */
+  paytrMerchantId: string;
+  paytrKey: string;
+  paytrSalt: string;
+  paytrTestMode: boolean;
 };
 
 /** Bakım modu (dışarıya gösterme): açıkken siteyi yalnızca giriş yapmış yöneticiler görür (lib/maintenance.ts, middleware.ts) */
@@ -137,6 +142,10 @@ const DEFAULTS = {
     provider: "iyzico" as PaymentSettings["provider"],
     bankInfo: "",
     currency: "TRY",
+    paytrMerchantId: "",
+    paytrKey: "",
+    paytrSalt: "",
+    paytrTestMode: true,
   } as PaymentSettings,
   seo: { headCode: "", metaDescription: "" } as SeoSettings,
   maintenance: {
@@ -150,7 +159,7 @@ export type SettingsKey = keyof typeof DEFAULTS;
 export type SettingsMap = { [K in SettingsKey]: (typeof DEFAULTS)[K] };
 
 /** Tarayıcıya asla gönderilmeyen gizli alanlar (ayar anahtarı → alan adları). Yeni gizli alan eklenince buraya yazılır. */
-export const SECRET_FIELDS: Partial<Record<SettingsKey, string[]>> = { smtp: ["pass"] };
+export const SECRET_FIELDS: Partial<Record<SettingsKey, string[]>> = { smtp: ["pass"], payment: ["paytrKey", "paytrSalt"] };
 
 /**
  * Ayarın istemciye (form bileşenine) gidecek kopyası: gizli alanlar boşaltılır,

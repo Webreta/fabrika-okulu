@@ -18,7 +18,7 @@ export default async function CheckoutPage() {
   // Satın alınamayan satır varsa (dönem doldu/kapandı, eğitim satıştan kalktı…) neden sepette satırın altında yazar
   if (t.blocked) redirect("/sepet?hata=satir");
   const payment = await getSetting("payment");
-  const mode = resolvePaymentMode(payment, t.total);
+  const mode = await resolvePaymentMode(payment, t.total);
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12">

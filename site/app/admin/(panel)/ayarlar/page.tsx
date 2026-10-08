@@ -1,7 +1,7 @@
 import { getSetting, settingForClient } from "@/lib/settings";
 import { PANEL_THEMES } from "@/lib/panel-themes";
 import { iyzicoEnabled } from "@/lib/iyzico";
-import { paytrEnabled, paytrTestMode } from "@/lib/paytr";
+import { paytrConfig } from "@/lib/paytr";
 import { siteUrl } from "@/lib/mailer";
 import { PageTitle, Tabs } from "@/components/panel/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
@@ -20,6 +20,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const [smtpFull, payment, panel, seo] = await Promise.all([getSetting("smtp"), getSetting("payment"), getSetting("panel"), getSetting("seo")]);
   // SMTP şifresi tarayıcıya gönderilmez (yalnızca "kayıtlı" bilgisi gider)
   const smtp = settingForClient("smtp", smtpFull);
+  // PayTR key/salt gizli alan: tarayıcıya gitmez, boş kaydedilirse mevcut değer korunur
+  const paymentForm = settingForClient("payment", payment);
+  const paytr = await paytrConfig();
   // Güvenlik kontrolü yalnızca kendi sekmesinde çalışır (parola karşılaştırmaları birkaç saniye sürer)
   const health = sekme === "saglik" ? await systemHealth(admin.id) : [];
   return (
@@ -41,15 +44,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       )}
       {sekme === "odeme" && (
         <div className="space-y-4">
-          <div className={`rounded-lg px-4 py-3 text-sm ${paytrEnabled() ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
-            PayTR: {paytrEnabled() ? `anahtarlar tanımlı ✓${paytrTestMode() ? " · TEST MODU açık (gerçek çekim yapılmaz)" : ""}` : "PAYTR_MERCHANT_ID / PAYTR_MERCHANT_KEY / PAYTR_MERCHANT_SALT tanımlı değil — seçilirse havale/EFT moduna düşer."}
-            <span className="block text-xs opacity-80">PayTR mağaza panelinde Bildirim URL: <b>{siteUrl("/api/odeme/paytr")}</b> · Anahtarlar ortam değişkeninde tutulur (Easypanel → Environment); PAYTR_TEST_MODE=1 ile test, canlıda 0.</span>
+          <div className={`rounded-lg px-4 py-3 text-sm ${paytr.enabled ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+            PayTR: {paytr.enabled ? `mağaza bilgileri tanımlı ✓ (${paytr.source === "panel" ? "panelden" : "ortam değişkeninden"})${paytr.testMode === "1" ? " · TEST MODU açık, gerçek çekim yapılmaz" : ""}` : "mağaza bilgileri girilmedi — PayTR seçilirse ödemeler havale/EFT moduna düşer."}
+            <span className="block text-xs opacity-80">PayTR mağaza paneli → Ayarlar → Bildirim URL alanına şunu yaz: <b>{siteUrl("/api/odeme/paytr")}</b></span>
           </div>
           <div className={`rounded-lg px-4 py-3 text-sm ${iyzicoEnabled() ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
             iyzico: {iyzicoEnabled() ? "API anahtarları tanımlı ✓" : "IYZICO_API_KEY / IYZICO_SECRET_KEY tanımlı değil — seçilirse havale/EFT moduna düşer."}
           </div>
-          <SettingsForm settingKey="payment" title="Ödeme" values={payment as unknown as Record<string, string>} fields={[
+          <SettingsForm settingKey="payment" title="Ödeme" values={paymentForm.values} saved={paymentForm.saved} fields={[
             { key: "provider", label: "Ödeme yöntemi", type: "select", options: [{ value: "paytr", label: "PayTR (kredi kartı)" }, { value: "iyzico", label: "iyzico (kredi kartı)" }, { value: "manual", label: "Havale / EFT (elle onay)" }] },
+            { key: "paytrMerchantId", label: "PayTR Mağaza No (merchant_id)", type: "text", hint: "PayTR mağaza paneli → Bilgi sayfasında" },
+            { key: "paytrKey", label: "PayTR Mağaza Parola (merchant_key)", type: "password" },
+            { key: "paytrSalt", label: "PayTR Mağaza Gizli Anahtar (merchant_salt)", type: "password" },
+            { key: "paytrTestMode", label: "PayTR test modu (gerçek çekim yapılmaz; canlıya geçerken kaldır)", type: "checkbox" },
             { key: "bankInfo", label: "Havale / EFT bilgileri", type: "textarea", rows: 4, placeholder: "Banka: …\nIBAN: TR…\nAlıcı: …" },
           ]} />
         </div>

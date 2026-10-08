@@ -184,11 +184,11 @@ async function serverItems(): Promise<HealthItem[]> {
   }
 
   const payment = await getSetting("payment");
-  if (cardProviderMissingKeys(payment)) {
-    const env = payment.provider === "paytr" ? "PAYTR_MERCHANT_ID, PAYTR_MERCHANT_KEY ve PAYTR_MERCHANT_SALT" : "IYZICO_API_KEY ve IYZICO_SECRET_KEY";
-    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "Kartlı ödeme anahtarları eksik", text: `Ödeme yöntemi ${PROVIDER_LABELS[payment.provider]} seçili ama anahtarları tanımlı değil; ödemeler havale/EFT'ye düşer.`, todo: `${env} ortam değişkenlerini tanımla ya da ödeme yöntemini havale yap.` });
-  } else if (payment.provider === "paytr" && paytrTestMode()) {
-    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "PayTR test modunda", text: "PAYTR_TEST_MODE=1: ödemeler test modunda alınır, gerçek çekim yapılmaz.", todo: "Canlıya geçerken PAYTR_TEST_MODE'u 0 yap (ya da sil) ve PayTR panelinde Bildirim URL'nin /api/odeme/paytr olduğunu doğrula." });
+  if (await cardProviderMissingKeys(payment)) {
+    const todo = payment.provider === "paytr" ? "Ayarlar → Ödeme'ye PayTR Mağaza No, Mağaza Parola (key) ve Mağaza Gizli Anahtar (salt) gir ya da ödeme yöntemini havale yap." : "IYZICO_API_KEY ve IYZICO_SECRET_KEY ortam değişkenlerini tanımla ya da ödeme yöntemini havale yap.";
+    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "Kartlı ödeme bilgileri eksik", text: `Ödeme yöntemi ${PROVIDER_LABELS[payment.provider]} seçili ama mağaza bilgileri tanımlı değil; ödemeler havale/EFT'ye düşer.`, todo });
+  } else if (payment.provider === "paytr" && (await paytrTestMode())) {
+    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "PayTR test modunda", text: "Ödemeler test modunda alınır, gerçek çekim yapılmaz.", todo: "Canlıya geçerken Ayarlar → Ödeme'de \"Test modu\" kutusunu kaldır ve PayTR panelinde Bildirim URL'nin /api/odeme/paytr olduğunu doğrula." });
   } else {
     items.push({ key: "odeme", group: "sunucu", level: "ok", title: "Ödeme", text: payment.provider === "manual" ? "Havale / EFT (elle onay) modunda." : `${PROVIDER_LABELS[payment.provider]} anahtarları tanımlı.` });
   }

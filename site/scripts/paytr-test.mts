@@ -19,7 +19,11 @@ let fails = 0;
 const check = (name: string, ok: boolean, extra = "") => { console.log(`${ok ? "OK  " : "FAIL"} ${name}${extra ? " — " + extra : ""}`); if (!ok) fails++; };
 
 // ---- 1) Saf kurallar
-check("anahtarlar tanımlıysa etkin", paytrEnabled());
+// Panelde PayTR bilgisi kayıtlıysa o öncelikli; bu testte ortam değişkenleri geçerli olsun diye geçici olarak boşaltılır
+import { getSetting, setSetting } from "../lib/settings";
+const paymentBefore = await getSetting("payment");
+await setSetting("payment", { paytrMerchantId: "", paytrKey: "", paytrSalt: "" });
+check("anahtarlar tanımlıysa etkin (ortam değişkeni)", await paytrEnabled());
 check("kuruş dönüşümü", toKurus(100.5) === 10050 && toKurus(1250) === 125000 && toKurus(0.1 + 0.2) === 30);
 const oid = newMerchantOid(42);
 check("sipariş no yalnızca harf/rakam ve geri çözülür", /^[A-Z0-9]+$/.test(oid) && orderIdFromMerchantOid(oid) === 42 && orderIdFromMerchantOid("abc") === null);
@@ -31,7 +35,7 @@ const ref = (p: { merchantId: string; key: string; salt: string; userIp: string;
 const sample = { merchantId: "123456", key: "testkey", salt: "testsalt", userIp: "1.2.3.4", merchantOid: oid, email: "a@b.c", amount: 10050, basket: "W10=", noInstallment: "0", maxInstallment: "0", currency: "TL", testMode: "1" };
 check("token imzası referans hesapla aynı", tokenHash(sample) === ref(sample));
 check("bildirim imzası: oid+salt+status+total", callbackHash({ key: "testkey", salt: "testsalt", merchantOid: oid, status: "success", totalAmount: "10050" }) === createHmac("sha256", "testkey").update(`${oid}testsaltsuccess10050`).digest("base64"));
-check("ödeme yolu: paytr seçili + anahtar var → paytr; 0 TL → free; manual → manual", resolvePaymentMode({ provider: "paytr" }, 100) === "paytr" && resolvePaymentMode({ provider: "paytr" }, 0) === "free" && resolvePaymentMode({ provider: "manual" }, 100) === "manual");
+check("ödeme yolu: paytr seçili + anahtar var → paytr; 0 TL → free; manual → manual", (await resolvePaymentMode({ provider: "paytr" }, 100)) === "paytr" && (await resolvePaymentMode({ provider: "paytr" }, 0)) === "free" && (await resolvePaymentMode({ provider: "manual" }, 100)) === "manual");
 
 // ---- 2) Bildirim ucu
 const [admin] = await db.select().from(users).where(eq(users.role, "admin")).limit(1);
@@ -62,7 +66,7 @@ try {
   const a = await mkOrder("100.50");
   const r1 = await notify({ merchant_oid: a.oid, status: "success", total_amount: "10050", hash: "yanlis" });
   check("sahte imza reddedilir (400), sipariş değişmez", r1.status === 400 && (await orderRow(a.id)).status === "pending");
-  check("verifyNotification sahte imzada null", verifyNotification((() => { const f = new FormData(); f.set("merchant_oid", a.oid); f.set("status", "success"); f.set("total_amount", "10050"); f.set("hash", "x"); return f; })()) === null);
+  check("verifyNotification sahte imzada null", (await verifyNotification((() => { const f = new FormData(); f.set("merchant_oid", a.oid); f.set("status", "success"); f.set("total_amount", "10050"); f.set("hash", "x"); return f; })())) === null);
   // tutar uyuşmazlığı
   const r2 = await notify(signed(a.oid, "success", "9999"));
   const a2 = await orderRow(a.id);
@@ -88,6 +92,7 @@ try {
 } finally {
   for (const id of orderIds) await db.delete(orders).where(eq(orders.id, id));
   if (userId) await db.delete(users).where(eq(users.id, userId));
+  await setSetting("payment", { paytrMerchantId: paymentBefore.paytrMerchantId, paytrKey: paymentBefore.paytrKey, paytrSalt: paymentBefore.paytrSalt });
 }
 console.log(fails ? `\n${fails} kontrol BAŞARISIZ` : "\nTüm kontroller geçti");
 process.exit(fails ? 1 : 0);

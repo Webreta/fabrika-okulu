@@ -1,32 +1,40 @@
 import "server-only";
 import { createHmac } from "crypto";
+import { getSetting } from "@/lib/settings";
 
 /**
  * PayTR iFrame API — ham REST çağrısı (SDK yok).
  *  1) get-token: sipariş bilgileri + HMAC imzası → iframe token'ı (https://www.paytr.com/odeme/guvenli/<token>)
  *  2) Bildirim URL (PayTR mağaza panelinde tanımlanır): POST /api/odeme/paytr → imza doğrulanır, sipariş ödendi/başarısız olur,
  *     yanıt düz metin "OK" (aksi hâlde PayTR bildirimi yineler)
- * Anahtarlar ortam değişkeninde: PAYTR_MERCHANT_ID, PAYTR_MERCHANT_KEY, PAYTR_MERCHANT_SALT, PAYTR_TEST_MODE (1 = test).
- * Tutarlar PayTR'ye KURUŞ olarak gider (100,50 TL → 10050).
+ * Mağaza bilgileri Yönetim → Ayarlar → Ödeme'den girilir (payment.paytrMerchantId / paytrKey / paytrSalt / paytrTestMode;
+ * key ve salt gizli alandır, tarayıcıya gönderilmez). Panelde boşsa PAYTR_MERCHANT_ID / PAYTR_MERCHANT_KEY / PAYTR_MERCHANT_SALT /
+ * PAYTR_TEST_MODE ortam değişkenleri kullanılır. Tutarlar PayTR'ye KURUŞ olarak gider (100,50 TL → 10050).
  */
 
 const API_URL = "https://www.paytr.com/odeme/api/get-token";
 export const PAYTR_IFRAME_BASE = "https://www.paytr.com/odeme/guvenli/";
 
-function cfg() {
+export type PaytrConfig = { merchantId: string; key: string; salt: string; testMode: "0" | "1"; enabled: boolean; source: "panel" | "env" | "none" };
+
+export async function paytrConfig(): Promise<PaytrConfig> {
+  const s = await getSetting("payment");
+  const fromPanel = { merchantId: (s.paytrMerchantId || "").trim(), key: (s.paytrKey || "").trim(), salt: (s.paytrSalt || "").trim() };
+  if (fromPanel.merchantId && fromPanel.key && fromPanel.salt) return { ...fromPanel, testMode: s.paytrTestMode ? "1" : "0", enabled: true, source: "panel" };
   const merchantId = (process.env.PAYTR_MERCHANT_ID || "").trim();
   const key = (process.env.PAYTR_MERCHANT_KEY || "").trim();
   const salt = (process.env.PAYTR_MERCHANT_SALT || "").trim();
   const testMode = ["1", "true", "on"].includes((process.env.PAYTR_TEST_MODE || "").trim().toLowerCase()) ? "1" : "0";
-  return { merchantId, key, salt, testMode, enabled: !!(merchantId && key && salt) };
+  const enabled = !!(merchantId && key && salt);
+  return { merchantId, key, salt, testMode, enabled, source: enabled ? "env" : "none" };
 }
 
-export function paytrEnabled() {
-  return cfg().enabled;
+export async function paytrEnabled() {
+  return (await paytrConfig()).enabled;
 }
 
-export function paytrTestMode() {
-  return cfg().testMode === "1";
+export async function paytrTestMode() {
+  return (await paytrConfig()).testMode === "1";
 }
 
 /** TL → kuruş (tam sayı) */
@@ -73,8 +81,8 @@ export async function initPaytr(opts: {
   failUrl: string;
   maxInstallment?: number;
 }): Promise<PaytrInit> {
-  const c = cfg();
-  if (!c.enabled) return { status: "failure", reason: "PayTR anahtarları tanımlı değil" };
+  const c = await paytrConfig();
+  if (!c.enabled) return { status: "failure", reason: "PayTR mağaza bilgileri tanımlı değil (Yönetim → Ayarlar → Ödeme)" };
   const amount = toKurus(opts.amountTl);
   // Sepet: [[ad, birim fiyat (TL, metin), adet], …] → JSON → base64; kalem toplamı ödenecek tutara eşit olmalı
   const basket = Buffer.from(JSON.stringify(opts.items.map((i) => [i.name.slice(0, 100), i.price.toFixed(2), 1]))).toString("base64");
@@ -124,8 +132,8 @@ export type PaytrNotification = {
 };
 
 /** Bildirim gövdesini doğrular; imza tutmuyorsa null */
-export function verifyNotification(form: FormData): PaytrNotification | null {
-  const c = cfg();
+export async function verifyNotification(form: FormData): Promise<PaytrNotification | null> {
+  const c = await paytrConfig();
   if (!c.enabled) return null;
   const merchantOid = String(form.get("merchant_oid") ?? "");
   const status = String(form.get("status") ?? "");

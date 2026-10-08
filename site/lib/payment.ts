@@ -9,16 +9,16 @@ export type PaymentMode = "free" | "manual" | "iyzico" | "paytr";
  * Ödeme yolu: 0 TL → free; seçili kart sağlayıcısının anahtarları yoksa havale/EFT'ye düşer.
  * Ödeme sayfası, ödeme başlatma ve sağlık kontrolü aynı kuralı kullanır.
  */
-export function resolvePaymentMode(setting: Pick<PaymentSettings, "provider">, total: number): PaymentMode {
+export async function resolvePaymentMode(setting: Pick<PaymentSettings, "provider">, total: number): Promise<PaymentMode> {
   if (total === 0) return "free";
-  if (setting.provider === "paytr") return paytrEnabled() ? "paytr" : "manual";
+  if (setting.provider === "paytr") return (await paytrEnabled()) ? "paytr" : "manual";
   if (setting.provider === "iyzico") return iyzicoEnabled() ? "iyzico" : "manual";
   return "manual";
 }
 
 /** Kart sağlayıcısı seçili ama anahtarları eksik mi (sağlık kontrolü / ayarlar sayfası) */
-export function cardProviderMissingKeys(setting: Pick<PaymentSettings, "provider">) {
-  if (setting.provider === "paytr") return !paytrEnabled();
+export async function cardProviderMissingKeys(setting: Pick<PaymentSettings, "provider">) {
+  if (setting.provider === "paytr") return !(await paytrEnabled());
   if (setting.provider === "iyzico") return !iyzicoEnabled();
   return false;
 }

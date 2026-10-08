@@ -158,7 +158,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   await db.update(users).set({ addresses: { billing: billingAddr, shipping: shippingAddr } }).where(eq(users.id, user.id));
 
   const payment = await getSetting("payment");
-  const provider = resolvePaymentMode(payment, t.total);
+  const provider = await resolvePaymentMode(payment, t.total);
 
   // Aynı eğitim için eski bekleyen sipariş varsa yenisi onun yerine geçer (mükerrer sipariş ve çift kupon kullanımı olmasın)
   await supersedePendingOrders(user.id, t.lines.map((l) => l.courseId));
