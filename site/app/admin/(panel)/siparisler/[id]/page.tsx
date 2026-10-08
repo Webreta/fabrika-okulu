@@ -46,7 +46,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <h2 className="mb-2 font-bold text-navy-800">Fatura bilgileri</h2>
             {o.billing ? <p className="whitespace-pre-line">{o.billing.name}{o.billing.phone && `\n${o.billing.phone}`}{o.billing.identityNumber && `\nTC: ${o.billing.identityNumber}`}{o.billing.address && `\n${o.billing.address}`}{o.billing.city && ` / ${o.billing.city}`}</p> : <p className="text-muted">—</p>}
             {o.note && <p className="mt-2 text-xs text-muted">Not: {o.note}</p>}
-            {o.providerPaymentId && <p className="mt-2 text-xs text-muted">iyzico ödeme no: {o.providerPaymentId}</p>}
+            {o.providerPaymentId && <p className="mt-2 text-xs text-muted">{o.provider === "paytr" ? "PayTR sipariş no" : "iyzico ödeme no"}: {o.providerPaymentId}</p>}
           </div>
         </div>
         <aside className="space-y-4">

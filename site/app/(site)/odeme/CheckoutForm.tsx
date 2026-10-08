@@ -6,7 +6,7 @@ import { AddressFields } from "@/components/panel/AddressForm";
 import Link from "next/link";
 import { startCheckout, type CheckoutState } from "@/app/actions/cart";
 
-export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing: Address; shipping: Address; shippingSame: boolean }; mode: "free" | "manual" | "iyzico"; bankInfo: string }) {
+export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing: Address; shipping: Address; shippingSame: boolean }; mode: "free" | "manual" | "iyzico" | "paytr"; bankInfo: string }) {
   const [state, action, pending] = useActionState<CheckoutState, FormData>(startCheckout, {});
   const [same, setSame] = useState(defaults.shippingSame);
   // Alanlar kontrollü: form hata ile dönünce (ör. sözleşme işaretlenmedi) yazılanlar silinmez
@@ -35,11 +35,30 @@ export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing
     });
   }, [state.formHtml]);
 
+  // PayTR: güvenli ödeme sayfası iframe içinde; yüksekliği PayTR'nin iframeResizer betiği ayarlar
+  useEffect(() => {
+    if (!state.iframeUrl) return;
+    const s = document.createElement("script");
+    s.src = "https://www.paytr.com/js/iframeResizer.min.js";
+    s.onload = () => { (window as unknown as { iFrameResize?: (o: object, sel: string) => void }).iFrameResize?.({}, "#paytriframe"); };
+    document.body.appendChild(s);
+    return () => { s.remove(); };
+  }, [state.iframeUrl]);
+
   if (state.formHtml) {
     return (
       <div className="card">
         <h2 className="mb-3 font-bold text-navy-800">Kart bilgileri</h2>
         <div id="iyzipay-checkout-form" className="responsive" ref={holder} />
+      </div>
+    );
+  }
+  if (state.iframeUrl) {
+    return (
+      <div className="card">
+        <h2 className="mb-3 font-bold text-navy-800">Kart bilgileri</h2>
+        <iframe src={state.iframeUrl} id="paytriframe" title="PayTR güvenli ödeme" frameBorder={0} scrolling="no" style={{ width: "100%", minHeight: 520 }} />
+        <p className="mt-2 text-xs text-muted">Ödeme PayTR güvenli sayfasında alınır; kart bilgilerin sitemizde saklanmaz.</p>
       </div>
     );
   }

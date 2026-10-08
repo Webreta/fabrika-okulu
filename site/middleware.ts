@@ -21,7 +21,7 @@ const PRIVATE_UPLOADS = /^\/uploads\/(belgeler|ozgecmis|gorev|ses)\/(.+)$/i;
  *    bakım modunda 503 alınca yönetici panelindeki ve katalogdaki tüm görseller kırılıyordu ("received null").
  *    Kişisel dosyalar (belgeler/ozgecmis/gorev/ses) yine aşağıdaki oturum + sahiplik denetiminden geçer.
  */
-const MAINTENANCE_OPEN = [/^\/bakim\/?$/, /^\/api\/bakim\/?$/, /^\/admin\/giris(\/|$)/, /^\/api\/cron\/?$/, /^\/api\/odeme\/callback\/?$/, /^\/uploads\//];
+const MAINTENANCE_OPEN = [/^\/bakim\/?$/, /^\/api\/bakim\/?$/, /^\/admin\/giris(\/|$)/, /^\/api\/cron\/?$/, /^\/api\/odeme\/callback\/?$/, /^\/api\/odeme\/paytr\/?$/, /^\/uploads\//];
 
 const MODE_TTL = 5_000; // bakım modu açık mı: en çok 5 sn eski bilgi
 const ADMIN_TTL = 30_000; // oturum yönetici mi: en çok 30 sn eski bilgi

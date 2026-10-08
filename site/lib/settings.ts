@@ -63,7 +63,7 @@ export type PanelSettings = {
 };
 
 export type PaymentSettings = {
-  provider: "iyzico" | "manual";
+  provider: "iyzico" | "paytr" | "manual";
   bankInfo: string; // havale/EFT bilgileri (manual)
   currency: string;
 };

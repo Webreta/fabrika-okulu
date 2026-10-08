@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { cartTotals } from "@/lib/cart-totals";
 import { getSetting } from "@/lib/settings";
-import { iyzicoEnabled } from "@/lib/iyzico";
+import { resolvePaymentMode } from "@/lib/payment";
 import { fmtMoney, fmtDay } from "@/lib/format";
 import { CheckoutForm } from "./CheckoutForm";
 import { normalizeAddress, isAddressFilled } from "@/lib/address";
@@ -18,7 +18,7 @@ export default async function CheckoutPage() {
   // Satın alınamayan satır varsa (dönem doldu/kapandı, eğitim satıştan kalktı…) neden sepette satırın altında yazar
   if (t.blocked) redirect("/sepet?hata=satir");
   const payment = await getSetting("payment");
-  const mode = t.total === 0 ? "free" : payment.provider === "manual" || !iyzicoEnabled() ? "manual" : "iyzico";
+  const mode = resolvePaymentMode(payment, t.total);
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12">

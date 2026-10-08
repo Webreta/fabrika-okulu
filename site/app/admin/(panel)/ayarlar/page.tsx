@@ -1,6 +1,8 @@
 import { getSetting, settingForClient } from "@/lib/settings";
 import { PANEL_THEMES } from "@/lib/panel-themes";
 import { iyzicoEnabled } from "@/lib/iyzico";
+import { paytrEnabled, paytrTestMode } from "@/lib/paytr";
+import { siteUrl } from "@/lib/mailer";
 import { PageTitle, Tabs } from "@/components/panel/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { SmtpTest } from "@/components/admin/SmtpTest";
@@ -39,11 +41,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       )}
       {sekme === "odeme" && (
         <div className="space-y-4">
+          <div className={`rounded-lg px-4 py-3 text-sm ${paytrEnabled() ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+            PayTR: {paytrEnabled() ? `anahtarlar tanımlı ✓${paytrTestMode() ? " · TEST MODU açık (gerçek çekim yapılmaz)" : ""}` : "PAYTR_MERCHANT_ID / PAYTR_MERCHANT_KEY / PAYTR_MERCHANT_SALT tanımlı değil — seçilirse havale/EFT moduna düşer."}
+            <span className="block text-xs opacity-80">PayTR mağaza panelinde Bildirim URL: <b>{siteUrl("/api/odeme/paytr")}</b> · Anahtarlar ortam değişkeninde tutulur (Easypanel → Environment); PAYTR_TEST_MODE=1 ile test, canlıda 0.</span>
+          </div>
           <div className={`rounded-lg px-4 py-3 text-sm ${iyzicoEnabled() ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
-            iyzico: {iyzicoEnabled() ? "API anahtarları tanımlı ✓" : "IYZICO_API_KEY / IYZICO_SECRET_KEY .env'de tanımlı değil — havale/EFT moduna düşer."} <span className="block text-xs opacity-80">Anahtarlar güvenlik için ortam değişkeninde tutulur (Easypanel → Environment).</span>
+            iyzico: {iyzicoEnabled() ? "API anahtarları tanımlı ✓" : "IYZICO_API_KEY / IYZICO_SECRET_KEY tanımlı değil — seçilirse havale/EFT moduna düşer."}
           </div>
           <SettingsForm settingKey="payment" title="Ödeme" values={payment as unknown as Record<string, string>} fields={[
-            { key: "provider", label: "Ödeme yöntemi", type: "select", options: [{ value: "iyzico", label: "iyzico (kredi kartı)" }, { value: "manual", label: "Havale / EFT (elle onay)" }] },
+            { key: "provider", label: "Ödeme yöntemi", type: "select", options: [{ value: "paytr", label: "PayTR (kredi kartı)" }, { value: "iyzico", label: "iyzico (kredi kartı)" }, { value: "manual", label: "Havale / EFT (elle onay)" }] },
             { key: "bankInfo", label: "Havale / EFT bilgileri", type: "textarea", rows: 4, placeholder: "Banka: …\nIBAN: TR…\nAlıcı: …" },
           ]} />
         </div>

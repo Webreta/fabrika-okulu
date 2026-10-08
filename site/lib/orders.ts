@@ -20,7 +20,7 @@ export const CARD_HOLD_MINUTES = 30;
 export function heldSeatsSql(excludeUserId?: number | null) {
   return sql<number>`(select count(*) from orders o where (
       (o.status = 'pending' and o.provider = 'manual' and o.created_at > now() - make_interval(days => ${PENDING_ORDER_DAYS}))
-      or (o.status = 'pending' and o.provider = 'iyzico' and o.created_at > now() - make_interval(mins => ${CARD_HOLD_MINUTES}))
+      or (o.status = 'pending' and o.provider in ('iyzico', 'paytr') and o.created_at > now() - make_interval(mins => ${CARD_HOLD_MINUTES}))
       or (o.status = 'paid' and o.fulfilled_at is null))
     and exists (select 1 from jsonb_array_elements(o.items) it where it->>'periodId' = "periods"."id"::text)
     and not exists (select 1 from period_enrollments pe where pe.period_id = "periods"."id" and pe.user_id = o.user_id)
@@ -99,7 +99,7 @@ export async function expirePendingOrders(): Promise<number> {
   const abandoned = await db
     .select({ id: orders.id })
     .from(orders)
-    .where(and(eq(orders.status, "pending"), eq(orders.provider, "iyzico"), lt(orders.createdAt, sql`now() - make_interval(hours => ${CARD_EXPIRE_HOURS})`)));
+    .where(and(eq(orders.status, "pending"), inArray(orders.provider, ["iyzico", "paytr"]), lt(orders.createdAt, sql`now() - make_interval(hours => ${CARD_EXPIRE_HOURS})`)));
   for (const o of abandoned) await cancelPendingOrder(o.id, "Kartlı ödeme tamamlanmadığı için otomatik iptal edildi.");
 
   const old = await db

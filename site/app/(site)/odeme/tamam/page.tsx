@@ -9,6 +9,7 @@ import { fmtMoney } from "@/lib/format";
 import { toId } from "@/lib/ids";
 import { PENDING_ORDER_DAYS } from "@/lib/orders";
 import { Icon } from "@/components/site/Icon";
+import { OrderPendingRefresh } from "@/components/site/OrderPendingRefresh";
 
 export const metadata: Metadata = { title: "Sipariş", robots: { index: false } };
 
@@ -39,7 +40,7 @@ export default async function OrderDonePage({ searchParams }: { searchParams: Pr
     : waiting
       ? o.provider === "manual"
         ? `Havale / EFT ödemen onaylandığında programa erişimin açılır ve e-posta ile bilgilendirilirsin. Sipariş ${PENDING_ORDER_DAYS} gün boyunca senin için ayrılır.`
-        : "Kart ödemesi tamamlanmadığı için programa erişimin henüz açılmadı. Sepetine dönüp ödemeyi yeniden başlatabilirsin."
+        : "Kart ödemesinin onayı birkaç saniye içinde gelir; bu sayfa kendini yeniler. Onay gelmezse sepetine dönüp ödemeyi yeniden başlatabilirsin."
       : o.status === "refunded"
         ? "Bu siparişteki programlara erişim kapalıdır. Sorun varsa bizimle iletişime geçebilirsin."
         : o.status === "cancelled"
@@ -48,6 +49,7 @@ export default async function OrderDonePage({ searchParams }: { searchParams: Pr
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-16 text-center">
+      <OrderPendingRefresh pending={waiting && o.provider !== "manual"} paid={paid && (o.provider === "paytr" || o.provider === "iyzico")} />
       <div className={`mx-auto flex size-16 items-center justify-center rounded-full ${head.tone}`}><Icon name={head.icon} className="size-8" /></div>
       <h1 className="mt-4 text-3xl font-bold text-navy-800">{head.title}</h1>
       <p className="mt-2 text-muted">Sipariş #{o.id} · {fmtMoney(o.total)}</p>

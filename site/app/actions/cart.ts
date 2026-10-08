@@ -9,7 +9,9 @@ import { addressFromForm, addressFormatError } from "@/lib/address";
 import { getCart, setCart, clearCart } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth/session";
 import { enrollUser, fulfillOrder } from "@/lib/enroll";
-import { initCheckoutForm, iyzicoEnabled } from "@/lib/iyzico";
+import { initCheckoutForm } from "@/lib/iyzico";
+import { initPaytr, newMerchantOid } from "@/lib/paytr";
+import { resolvePaymentMode } from "@/lib/payment";
 import { siteUrl } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
 import { checkPrerequisite } from "@/lib/prerequisites";
@@ -106,9 +108,21 @@ export async function applyCoupon(formData: FormData) {
   redirect("/sepet");
 }
 
-export type CheckoutState = { error?: string; formHtml?: string };
+/**
+ * Kart ödemesi tamamlanınca sipariş sonucu sayfasından çağrılır: sepet ve kupon çerezlerini temizler (yalnızca çağıranın
+ * kendi çerezleri; sipariş durumuna dokunmaz). PayTR bildirimi sunucudan sunucuya geldiği için çerezler orada silinemez.
+ */
+export async function finishCardOrder() {
+  const user = await getCurrentUser();
+  if (!user) return;
+  await clearCart();
+  (await cookies()).delete("fabo_coupon");
+}
 
-/** Ödeme başlat: sipariş oluştur, 0 TL ise direkt kaydet; değilse iyzico formu */
+/** formHtml: iyzico gömülü form; iframeUrl: PayTR güvenli ödeme sayfası (iframe) */
+export type CheckoutState = { error?: string; formHtml?: string; iframeUrl?: string };
+
+/** Ödeme başlat: sipariş oluştur, 0 TL ise direkt kaydet; havalede sipariş sayfası; kartta iyzico formu ya da PayTR iframe'i */
 export async function startCheckout(_prev: CheckoutState, formData: FormData): Promise<CheckoutState> {
   const user = await getCurrentUser();
   if (!user) redirect("/panel/giris?r=/odeme");
@@ -144,7 +158,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   await db.update(users).set({ addresses: { billing: billingAddr, shipping: shippingAddr } }).where(eq(users.id, user.id));
 
   const payment = await getSetting("payment");
-  const provider = t.total === 0 ? "free" : payment.provider === "manual" || !iyzicoEnabled() ? "manual" : "iyzico";
+  const provider = resolvePaymentMode(payment, t.total);
 
   // Aynı eğitim için eski bekleyen sipariş varsa yenisi onun yerine geçer (mükerrer sipariş ve çift kupon kullanımı olmasın)
   await supersedePendingOrders(user.id, t.lines.map((l) => l.courseId));
@@ -208,6 +222,31 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "85.34.78.112";
   const [first, ...rest] = billing.name.split(" ");
+
+  if (provider === "paytr") {
+    // Her denemede yeni sipariş numarası (PayTR başarılı ödemede aynı numarayı yeniden kabul etmez); bildirim bu numarayla eşleşir
+    const merchantOid = newMerchantOid(orderId);
+    await db.update(orders).set({ providerToken: merchantOid }).where(eq(orders.id, orderId));
+    const init = await initPaytr({
+      merchantOid,
+      amountTl: t.total,
+      email: user.email,
+      userName: billing.name,
+      userAddress: [billing.address, billing.district, billing.city].filter(Boolean).join(" "),
+      userPhone: billing.phone ?? "",
+      userIp: ip,
+      items: basketItems(t.lines.map((l) => ({ id: String(l.courseId), name: l.title, price: l.price })), t.total),
+      okUrl: siteUrl(`/odeme/tamam?siparis=${orderId}`),
+      failUrl: siteUrl(`/odeme/hata?siparis=${orderId}`),
+    });
+    if (init.status !== "success") {
+      await db.update(orders).set({ status: "failed", note: init.reason }).where(eq(orders.id, orderId));
+      await releaseOrderCoupon(orderId);
+      return { error: `Ödeme başlatılamadı: ${init.reason}` };
+    }
+    return { iframeUrl: init.iframeUrl };
+  }
+
   const init = await initCheckoutForm({
     conversationId: String(orderId),
     price: t.total,

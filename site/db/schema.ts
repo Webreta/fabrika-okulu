@@ -714,7 +714,7 @@ export const orders = pgTable(
     discount: numeric("discount", { precision: 10, scale: 2 }).notNull().default("0"),
     total: numeric("total", { precision: 10, scale: 2 }).notNull().default("0"),
     couponCode: text("coupon_code"),
-    provider: text("provider").notNull().default("iyzico"), // iyzico|free|manual
+    provider: text("provider").notNull().default("iyzico"), // iyzico|paytr|free|manual
     providerToken: text("provider_token"),
     providerPaymentId: text("provider_payment_id"),
     billing: jsonb("billing").$type<BillingInfo>(),

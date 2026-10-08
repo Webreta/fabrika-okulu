@@ -6,7 +6,8 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { verifyPassword } from "@/lib/auth/password";
 import { getSetting } from "@/lib/settings";
-import { iyzicoEnabled } from "@/lib/iyzico";
+import { paytrTestMode } from "@/lib/paytr";
+import { cardProviderMissingKeys, PROVIDER_LABELS } from "@/lib/payment";
 import { cronSecretState } from "@/lib/cron-secret";
 import { cronStatus, DAILY_HOUR } from "@/lib/cron";
 import { fmtDateTime, fmtDate, todayISO } from "@/lib/format";
@@ -183,10 +184,13 @@ async function serverItems(): Promise<HealthItem[]> {
   }
 
   const payment = await getSetting("payment");
-  if (payment.provider === "iyzico" && !iyzicoEnabled()) {
-    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "Kartlı ödeme anahtarları eksik", text: "Ödeme yöntemi iyzico seçili ama API anahtarları tanımlı değil; ödemeler havale/EFT'ye düşer.", todo: "IYZICO_API_KEY ve IYZICO_SECRET_KEY ortam değişkenlerini tanımla ya da ödeme yöntemini havale yap." });
+  if (cardProviderMissingKeys(payment)) {
+    const env = payment.provider === "paytr" ? "PAYTR_MERCHANT_ID, PAYTR_MERCHANT_KEY ve PAYTR_MERCHANT_SALT" : "IYZICO_API_KEY ve IYZICO_SECRET_KEY";
+    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "Kartlı ödeme anahtarları eksik", text: `Ödeme yöntemi ${PROVIDER_LABELS[payment.provider]} seçili ama anahtarları tanımlı değil; ödemeler havale/EFT'ye düşer.`, todo: `${env} ortam değişkenlerini tanımla ya da ödeme yöntemini havale yap.` });
+  } else if (payment.provider === "paytr" && paytrTestMode()) {
+    items.push({ key: "odeme", group: "sunucu", level: "warn", title: "PayTR test modunda", text: "PAYTR_TEST_MODE=1: ödemeler test modunda alınır, gerçek çekim yapılmaz.", todo: "Canlıya geçerken PAYTR_TEST_MODE'u 0 yap (ya da sil) ve PayTR panelinde Bildirim URL'nin /api/odeme/paytr olduğunu doğrula." });
   } else {
-    items.push({ key: "odeme", group: "sunucu", level: "ok", title: "Ödeme", text: payment.provider === "iyzico" ? "iyzico anahtarları tanımlı." : "Havale / EFT (elle onay) modunda." });
+    items.push({ key: "odeme", group: "sunucu", level: "ok", title: "Ödeme", text: payment.provider === "manual" ? "Havale / EFT (elle onay) modunda." : `${PROVIDER_LABELS[payment.provider]} anahtarları tanımlı.` });
   }
   return items;
 }
