@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { studentActions } from "@/lib/data/student";
 import { fmtTime, CALENDAR_TYPES } from "@/lib/format";
 import { PageTitle, Empty, Chip } from "@/components/panel/ui";
+import { SessionJoinButton } from "@/components/panel/SessionJoinButton";
 
 const MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
@@ -28,9 +29,9 @@ export default async function CalendarPage() {
         <p className="mt-1 truncate font-semibold text-navy-800">{e.title}</p>
         <p className="mt-1 text-xs text-muted">{e.type !== "opening" && <><span className="date-chip">{fmtTime(e.date)}</span> · </>}{e.courseTitle}</p>
       </div>
-      {e.type === "session" && !e.external ? (
-        // Bağlantısı girilmemiş canlı ders: aynı sayfaya giden "Katıl" yerine bilgi
-        <span className="self-center rounded-lg bg-surface px-3 py-1.5 text-xs text-muted">{e.done ? "Bitti" : "Bağlantı henüz eklenmedi"}</span>
+      {e.type === "session" ? (
+        // Canlı ders: bağlantı oturumdan 15 dk önce açılır; bağlantı girilmemişse bilgi
+        <SessionJoinButton start={e.date.toISOString()} end={e.end.toISOString()} link={e.external ? e.link : ""} className="self-center" />
       ) : (
         <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm self-center">{CALENDAR_TYPES[e.type].action}</Link>
       )}

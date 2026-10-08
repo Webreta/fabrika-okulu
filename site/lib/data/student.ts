@@ -246,6 +246,31 @@ export type CalendarItem = {
 export const LIVE_SESSION_MINUTES = 120;
 
 /**
+ * Oynatıcı için: öğrencinin bu kursta kayıtlı olduğu dönemin canlı oturumları (tarihsiz satırlar atlanır).
+ * Birden çok dönem kaydı varsa en erken başlayan dönem (studentTaskBase ile aynı seçim). Dönemsiz kayıtta null.
+ */
+export async function studentPeriodSessions(userId: number, courseId: number) {
+  const [pe] = await db
+    .select({ p: periods })
+    .from(periodEnrollments)
+    .innerJoin(periods, eq(periodEnrollments.periodId, periods.id))
+    .where(and(eq(periodEnrollments.userId, userId), eq(periods.courseId, courseId)))
+    .orderBy(asc(periods.startDate))
+    .limit(1);
+  if (!pe) return null;
+  const sessions = (pe.p.schedule ?? [])
+    .map((s, index) => ({ s, index }))
+    .filter(({ s }) => !!s.date)
+    .map(({ s, index }) => {
+      const start = new Date(`${s.date}T${s.time || "00:00"}:00`);
+      return { index, title: s.title || "Canlı oturum", start, end: new Date(start.getTime() + LIVE_SESSION_MINUTES * 60000), link: s.link || "", notes: s.notes || "" };
+    })
+    .filter((s) => !isNaN(s.start.getTime()))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  return { periodName: pe.p.name, sessions };
+}
+
+/**
  * Panel: görevler + sınavlar + takvim.
  * İstek başına bir kez hesaplanır (panel layout'u ve sayfa aynı sonucu paylaşır).
  */

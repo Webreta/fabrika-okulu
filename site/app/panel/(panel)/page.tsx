@@ -11,6 +11,7 @@ import { fmtDate, fmtTime, numSuffix, CALENDAR_TYPES } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Progress, Kpi, Chip } from "@/components/panel/ui";
 import { ThemeButton } from "@/components/panel/ThemePicker";
+import { SessionJoinButton } from "@/components/panel/SessionJoinButton";
 
 export default async function PanelHome({ searchParams }: { searchParams: Promise<{ sifirlandi?: string }> }) {
   const user = (await getCurrentUser())!;
@@ -104,8 +105,8 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
                   </div>
                   <p className="mt-2 font-semibold text-navy-800">{e.title}</p>
                   <p className="text-xs text-muted">{e.courseTitle}</p>
-                  {e.type === "session" && !e.external ? (
-                    <span className="mt-3 inline-block rounded-lg bg-surface px-3 py-1.5 text-xs text-muted">Bağlantı henüz eklenmedi</span>
+                  {e.type === "session" ? (
+                    <div className="mt-3"><SessionJoinButton start={e.date.toISOString()} end={e.end.toISOString()} link={e.external ? e.link : ""} /></div>
                   ) : (
                     <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm mt-3">{CALENDAR_TYPES[e.type].action}</Link>
                   )}

@@ -484,7 +484,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
       </section>
       {related.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-4 pt-[30px]">
-          <div className="mb-6"><SectionHead icon="star" title="İlgili programlar" sub="Bu eğitimle birlikte iyi giden diğer programlar" /></div>
+          <div className="mb-6"><SectionHead icon="star" title="İlgili programlar" sub="Bu eğitimden sonra önerdiğimiz eğitimler" /></div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{related.map((c) => <CourseCard key={c.id} course={c} />)}</div>
         </section>
       )}

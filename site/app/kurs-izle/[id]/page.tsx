@@ -3,7 +3,8 @@ import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { playerAccess, playerState, stampStarted, quizForLesson, assignmentForLesson, quizPayload, assignmentPayload, lessonQuestions, courseQuizStats } from "@/lib/player";
-import { getEnrollment, studentMeeting } from "@/lib/data/student";
+import { getEnrollment, studentMeeting, studentPeriodSessions } from "@/lib/data/student";
+import { LiveSessionsCard } from "@/components/player/LiveSessionsCard";
 import { MeetingView } from "./MeetingView";
 import { db } from "@/db";
 import { quizzes, assignments, progress, courseSuggestions } from "@/db/schema";
@@ -114,6 +115,8 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const nextUrl = next && !nextNote ? `/kurs-izle/${courseId}?ders=${next.id}` : null;
   const prevUrl = prev ? `/kurs-izle/${courseId}?ders=${prev.id}` : null;
   const unread = await unreadCount(user!.id);
+  // Kayıtlı dönemin canlı oturumları yan sütunda (önizlemede yok); bağlantı oturumdan 15 dk önce açılır
+  const live = acc.preview ? null : await studentPeriodSessions(user!.id, courseId);
   const themeKey = themeByKey(user!.panelTheme, (await getSetting("panel")).defaultTheme).key;
   // Tüm sınavlar anlık geri bildirimli çözülür (test/D-Y anında; açık uçlu yalnız kaydedilir, eğitmene gönderim/değerlendirme yok)
   const instant = true;
@@ -270,6 +273,10 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       <PushBanner vapidKey={process.env.VAPID_PUBLIC_KEY ?? ""} />
       <div className="mx-auto grid max-w-[1310px] grid-cols-1 gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
         <div className="min-w-0 space-y-5">{celebrationCard}{statsCard}{stage}</div>
+        <div className="space-y-5">
+        {live && live.sessions.length > 0 && (
+          <LiveSessionsCard periodName={live.periodName} sessions={live.sessions.map((s) => ({ index: s.index, title: s.title, start: s.start.toISOString(), end: s.end.toISOString(), link: s.link, notes: s.notes }))} />
+        )}
         <Curriculum
           courseId={courseId}
           modules={course.modules.map((m) => ({
@@ -283,6 +290,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
           }))}
           progress={prog}
         />
+        </div>
       </div>
     </div>
   );
