@@ -71,11 +71,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               Açıkken ziyaretçiler, öğrenciler ve eğitmenler yalnızca bakım sayfasını görür; giriş yapmış yöneticiler siteyi ve panelleri normal kullanır.
               Yönetici girişi <b>/admin/giris</b> adresinden yapılır. Kart ödemesi dönüşü ve zamanlanmış işler çalışmaya devam eder. Değişiklik birkaç saniye içinde geçerli olur.
             </p>
-            {bakim.source === "env" && (
+            {bakim.source === "env" ? (
               <p className="mt-2 text-xs font-semibold">
-                Şu an sunucudaki MAINTENANCE_MODE={bakim.envValue} ortam değişkeni geçerli; aşağıdaki kutu, bu değişken kaldırılana kadar durumu değiştirmez.
+                Şu an sunucudaki MAINTENANCE_MODE={bakim.envValue} ortam değişkeni geçerli (panelde henüz kayıt yok). Aşağıdaki kutuyu istediğin gibi işaretleyip Kaydet dediğin anda panel ayarı belirleyici olur.
               </p>
-            )}
+            ) : bakim.envValue ? (
+              <p className="mt-2 text-xs opacity-90">Sunucuda MAINTENANCE_MODE={bakim.envValue} tanımlı ama panel ayarı önceliklidir; durumu aşağıdaki kutu belirler.</p>
+            ) : null}
           </div>
           <SettingsForm settingKey="maintenance" title="Bakım modu (dışarıya gösterme)" values={bakim.setting as unknown as Record<string, string | boolean>} fields={[
             { key: "enabled", label: "Bakım modu açık (siteyi yalnızca yöneticiler görsün)", type: "checkbox" },

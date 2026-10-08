@@ -198,7 +198,10 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
         modules={course.modules.map((m, mi) => ({
           id: m.id,
           title: m.title,
-          lessons: m.lessons.map((l, li) => ({ id: l.id, title: `${mi + 1}.${li + 1}. ${l.title}`, type: l.type, icon: LESSON_ICON[l.type], duration: l.type === "video" ? validDuration(l.duration) : "" })),
+          showcase: m.showcase,
+          count: m.lessons.length,
+          // Ders adları yalnızca önizleme modülünde istemciye gider; diğer modüllerde yalnızca bölüm sayısı
+          lessons: m.showcase ? m.lessons.map((l, li) => ({ id: l.id, title: `${mi + 1}.${li + 1}. ${l.title}`, type: l.type, icon: LESSON_ICON[l.type], duration: l.type === "video" ? validDuration(l.duration) : "" })) : [],
         }))}
       />
     ),

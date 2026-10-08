@@ -17,7 +17,7 @@ import { QuizStage } from "@/components/player/QuizStage";
 import { AssignmentStage } from "@/components/player/AssignmentStage";
 import { FileStage } from "@/components/player/FileStage";
 import { logout } from "@/app/actions/auth";
-import { initials } from "@/lib/format";
+import { initials, fmtDateTime } from "@/lib/format";
 import { getSetting } from "@/lib/settings";
 import { requiredSurveyFor } from "@/lib/survey";
 import { cleanHtml } from "@/lib/sanitize";
@@ -46,7 +46,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   if (gate) redirect(`/panel/anket/${gate.id}`);
   const state = await playerState(user!.id, courseId, acc.preview);
   if (!state) notFound();
-  const { course, done, prog, frontier } = state;
+  const { course, done, prog, frontier, moduleStates } = state;
   // Online görüşme ürünü: video oynatıcı yok, görüşme sayfası
   if (course.type === "meeting") {
     const meeting = acc.preview ? null : await studentMeeting(user!.id, courseId, course.meetingMinutes, course.meetingLink);
@@ -75,7 +75,16 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     const l = m?.lessons[Number(sp.lesson)];
     activeIdx = l ? flat.findIndex((x) => x.id === l.id) : -1;
   }
-  if (activeIdx === -1) {
+  // Modül kilidi: kapalı modülün açılış notu (müfredat ve bekleme kartı aynı metni kullanır)
+  const moduleNote = (moduleId: number) => {
+    const s = moduleStates?.get(moduleId);
+    if (!s || s.open) return null;
+    if (s.mode === "manual") return "Eğitmen açtığında erişebilirsin";
+    return s.opensAt ? `${fmtDateTime(s.opensAt)} tarihinde açılır` : "Açılış tarihi henüz belirlenmedi";
+  };
+  // İlk modül kapalıysa hiçbir ders açık değildir: yönlendirme yerine bekleme kartı gösterilir
+  const allLocked = !acc.preview && flat.length > 0 && frontier < 0;
+  if (activeIdx === -1 && !allLocked) {
     // kaldığın yer: kilidin durduğu ders; her şey açıksa ilk tamamlanmamış (dosya hariç) ya da son öğe
     const firstUndone = frontier < flat.length ? frontier : flat.findIndex((l) => l.type !== "file" && !done.has(l.id));
     activeIdx = firstUndone === -1 ? Math.max(0, flat.length - 1) : firstUndone;
@@ -84,11 +93,11 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     if (flat[activeIdx] && !acc.preview) redirect(`/kurs-izle/${courseId}?ders=${flat[activeIdx].id}`);
   }
   // Sıralı kilit
-  if (activeIdx >= 0 && activeIdx > frontier) {
+  if (!allLocked && activeIdx >= 0 && activeIdx > frontier) {
     const target = flat[frontier];
     redirect(target ? `/kurs-izle/${courseId}?ders=${target.id}` : `/kurs-izle/${courseId}`);
   }
-  const active = activeIdx >= 0 ? flat[activeIdx] : null;
+  const active = !allLocked && activeIdx >= 0 ? flat[activeIdx] : null;
 
   // Dosya dersi açıldıysa sıralama için tamamlandı say
   if (active?.type === "file" && !acc.preview && !done.has(active.id)) {
@@ -97,10 +106,12 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     await autoIssueCertificates(user!.id, courseId);
   }
 
-  const next = activeIdx >= 0 ? flat[activeIdx + 1] : undefined;
-  const prev = activeIdx > 0 ? flat[activeIdx - 1] : undefined;
+  const next = active ? flat[activeIdx + 1] : undefined;
+  const prev = active && activeIdx > 0 ? flat[activeIdx - 1] : undefined;
+  // Sonraki ders kapalı modüldeyse "Sonraki" bağlantısı verilmez (ders bitse de açılmaz); açılış notu gösterilir
+  const nextNote = next ? moduleNote(next.moduleId) : null;
   const nextLocked = !!next && !acc.preview && activeIdx + 1 > frontier;
-  const nextUrl = next ? `/kurs-izle/${courseId}?ders=${next.id}` : null;
+  const nextUrl = next && !nextNote ? `/kurs-izle/${courseId}?ders=${next.id}` : null;
   const prevUrl = prev ? `/kurs-izle/${courseId}?ders=${prev.id}` : null;
   const unread = await unreadCount(user!.id);
   const themeKey = themeByKey(user!.panelTheme, (await getSetting("panel")).defaultTheme).key;
@@ -135,6 +146,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
           preview={acc.preview}
           nextUrl={nextUrl}
           nextLocked={nextLocked}
+          nextNote={nextNote ? `Sonraki modül: ${nextNote.toLocaleLowerCase("tr")}` : null}
           prevUrl={prevUrl}
           questions={qs}
           userName={user!.name}
@@ -154,6 +166,16 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     } else if (active.type === "file") {
       stage = <FileStage lesson={{ id: active.id, title: active.title, fileName: active.fileName, mime: active.fileMime }} nextUrl={nextUrl} prevUrl={prevUrl} />;
     }
+  } else if (allLocked) {
+    const first = course.modules.find((m) => moduleStates?.get(m.id)?.open === false);
+    stage = (
+      <div className="card flex flex-col items-center gap-3 py-10 text-center">
+        <span className="flex size-14 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Icon name="lock" className="size-7" /></span>
+        <h1 className="text-xl font-bold text-navy-800">{first ? `“${first.title}” modülü henüz açılmadı` : "İçerik henüz açılmadı"}</h1>
+        <p className="max-w-md text-sm text-muted">{[first ? moduleNote(first.id) : null, "Modül açıldığında bildirim ve e-posta alacaksın; bu sayfadan devam edebilirsin."].filter(Boolean).join(". ")}</p>
+        <Link href="/panel/egitim" className="btn-secondary btn-sm">Kitaplığıma dön</Link>
+      </div>
+    );
   } else {
     stage = <div className="card text-center text-muted">Bu programda henüz içerik yok.</div>;
   }
@@ -253,6 +275,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
           modules={course.modules.map((m) => ({
             id: m.id,
             title: m.title,
+            lockNote: moduleNote(m.id),
             lessons: m.lessons.map((l) => ({
               id: l.id, title: l.title, type: l.type, duration: validDuration(l.duration),
               done: done.has(l.id), active: active?.id === l.id, locked: flat.findIndex((x) => x.id === l.id) > frontier,

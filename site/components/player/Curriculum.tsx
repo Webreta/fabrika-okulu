@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Icon } from "@/components/site/Icon";
 
 type L = { id: number; title: string; type: string; duration: string; done: boolean; active: boolean; locked: boolean };
-type M = { id: number; title: string; lessons: L[] };
+/** lockNote: modül kapalıysa açılış notu ("12 Eki 2026 09:00 tarihinde açılır" / "Eğitmen açtığında erişebilirsin") */
+type M = { id: number; title: string; lessons: L[]; lockNote?: string | null };
 
 const TYPE = {
   video: { icon: "play", chip: null, cls: "" },
@@ -37,11 +38,11 @@ export function Curriculum({ courseId, modules, progress }: { courseId: number; 
             return (
               <div key={m.id} className="border-b border-line last:border-0">
                 <button onClick={() => toggle(m.id)} className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-surface">
-                  <div>
-                    <p className="text-sm font-semibold text-navy-800">Modül {mi + 1}: {m.title}</p>
-                    <p className="text-xs text-muted">{counted.length ? `${doneN}/${counted.length} · ${doneN === counted.length ? "tamamlandı" : "devam ediyor"}` : `${m.lessons.length} dosya`}</p>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-navy-800">{m.lockNote && <Icon name="lock" className="size-3.5 shrink-0 text-amber-600" />}<span className="truncate">Modül {mi + 1}: {m.title}</span></p>
+                    <p className={`text-xs ${m.lockNote ? "font-semibold text-amber-700" : "text-muted"}`}>{m.lockNote ? m.lockNote : counted.length ? `${doneN}/${counted.length} · ${doneN === counted.length ? "tamamlandı" : "devam ediyor"}` : `${m.lessons.length} dosya`}</p>
                   </div>
-                  <Icon name={isOpen ? "chevronUp" : "chevronDown"} className="size-4 text-muted" />
+                  <Icon name={isOpen ? "chevronUp" : "chevronDown"} className="size-4 shrink-0 text-muted" />
                 </button>
                 {isOpen && (
                   <ul className="pb-2">
@@ -55,7 +56,7 @@ export function Curriculum({ courseId, modules, progress }: { courseId: number; 
                           <span className="min-w-0 flex-1">
                             {l.active && <span className="mb-0.5 inline-block rounded-full bg-navy-800 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">İzleniyor</span>}
                             <span className={`block truncate text-sm ${l.active ? "font-bold text-navy-900" : "text-ink"}`}>{l.title}</span>
-                            {l.locked && <span className="text-[11px] text-muted">Önceki tamamlanınca açılır</span>}
+                            {l.locked && <span className="text-[11px] text-muted">{m.lockNote ? "Modül açılınca erişilebilir" : "Önceki tamamlanınca açılır"}</span>}
                           </span>
                           {t.chip && <span className={`badge ${t.cls}`}>{t.chip}</span>}
                           {l.type === "video" && l.duration && <span className="text-xs text-muted">{l.duration}</span>}

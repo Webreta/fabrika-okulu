@@ -213,8 +213,39 @@ export const modules = pgTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Modül açılışı (lib/course-logic.ts moduleOpensAt): open = hemen; manual = yönetici dönem bazında açar (module_openings);
+    // scheduled = takvimli kursta dönem başlangıcından, esnek kursta öğrencinin başlangıcından unlockDays gün sonra (unlockTime saatinde)
+    unlockMode: text("unlock_mode").$type<ModuleUnlockMode>().notNull().default("open"),
+    unlockDays: integer("unlock_days").notNull().default(0),
+    unlockTime: time("unlock_time"),
+    // Önizleme modülü: program (site) sayfasında yalnızca bu modüller açılıp ders adlarını gösterir; diğerleri bölüm sayısıyla kapalı kalır
+    showcase: boolean("showcase").notNull().default(false),
   },
   (t) => [index("modules_course_idx").on(t.courseId)]
+);
+
+export type ModuleUnlockMode = "open" | "manual" | "scheduled";
+
+/**
+ * Dönem bazında modül açılışı: yöneticinin elle açtığı an ya da zamanlı modülde dönem için belirlenen mutlak tarih
+ * (opensAt null = manuel modda henüz açılmadı / zamanlı modda göreli kural geçerli). notifiedAt: öğrencilere haber verildi.
+ */
+export const moduleOpenings = pgTable(
+  "module_openings",
+  {
+    id: serial("id").primaryKey(),
+    moduleId: integer("module_id")
+      .notNull()
+      .references(() => modules.id, { onDelete: "cascade" }),
+    periodId: integer("period_id")
+      .notNull()
+      .references(() => periods.id, { onDelete: "cascade" }),
+    opensAt: timestamp("opens_at", { withTimezone: true }),
+    openedBy: integer("opened_by").references(() => users.id, { onDelete: "set null" }),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("module_openings_uq").on(t.moduleId, t.periodId), index("module_openings_period_idx").on(t.periodId)]
 );
 
 // Ders: video / quiz / assign (görev) / file (korumalı dosya — ilerlemeye dahil değil)
@@ -1047,6 +1078,7 @@ export const coursePrerequisites = pgTable(
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Module = typeof modules.$inferSelect;
+export type ModuleOpening = typeof moduleOpenings.$inferSelect;
 export type Lesson = typeof lessons.$inferSelect;
 export type Period = typeof periods.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;

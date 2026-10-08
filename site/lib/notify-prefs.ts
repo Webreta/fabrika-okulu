@@ -10,7 +10,7 @@ export const NOTIFY_CATEGORIES: { key: string; label: string; desc: string; pref
   { key: "gorev", label: "Görev & sınav", desc: "Yeni görev/sınav atandığında ve teslim tarihi yaklaşınca", prefixes: ["asg-", "qz-", "due-", "grade-"], mailTypes: ["new_assignment", "new_quiz", "due_reminder"] },
   { key: "oturum", label: "Canlı oturum & takvim", desc: "Oturum başlamadan önce hatırlatma, program değişiklikleri", prefixes: ["sess-", "ev-", "period-"], mailTypes: ["event_reminder"] },
   { key: "soru", label: "Soru-cevap", desc: "Eğitmenin sorunu yanıtlaması", prefixes: ["qa-"], mailTypes: ["question_answered"] },
-  { key: "program", label: "Program & sertifika", desc: "Kayıt tamamlandığında, erken kayıt olduğun eğitim açıldığında ve sertifikan hazır olduğunda", prefixes: ["enroll-", "cert-", "open-"], mailTypes: ["certificate", "preorder_open"] },
+  { key: "program", label: "Program & sertifika", desc: "Kayıt tamamlandığında, erken kayıt olduğun eğitim ya da yeni bir modül açıldığında ve sertifikan hazır olduğunda", prefixes: ["enroll-", "cert-", "open-", "mod-"], mailTypes: ["certificate", "preorder_open", "module_open"] },
   { key: "kupon", label: "Belge & kupon", desc: "Yüklediğin belge onaylanıp kupon tanımlandığında", prefixes: ["coupon-"], mailTypes: ["coupon"] },
   { key: "duyuru", label: "Duyurular", desc: "Fabrika Okulu ekibinden genel duyurular", prefixes: ["ann-"], mailTypes: ["announcement"] },
   { key: "anket", label: "Anketler", desc: "Yeni anket yayınlandığında", prefixes: ["survey-"], mailTypes: ["survey"] },

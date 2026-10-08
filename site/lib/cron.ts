@@ -14,6 +14,7 @@ import { getSetting, getRawSetting, setRawSetting } from "@/lib/settings";
 import { instructors } from "@/db/schema";
 import { runPreorderOpenings, pendingPreorderCourses } from "@/lib/preorder";
 import { expirePendingOrders } from "@/lib/orders";
+import { runModuleOpenings, closedLessonIds } from "@/lib/module-access";
 
 /** Aynı hatırlatmayı tekrar göndermemek için */
 async function once(key: string): Promise<boolean> {
@@ -51,6 +52,8 @@ export async function runFrequent() {
   const today = todayISO();
   // Erken kayıt: açılış günü gelen eğitimler için "eğitimin açıldı" haberi (gece yarısı değil, sabah 08:00'den sonra)
   if (new Date().getHours() >= 8) sent += await runPreorderOpenings();
+  // Açılış saati gelen modüller için "yeni modül açıldı" haberi (kilit zamana göre hesaplanır; cron yalnızca haber verir)
+  sent += await runModuleOpenings();
   // Süresi dolan bekleyen havale siparişleri iptal edilir (koltuk ve kupon serbest kalır)
   sent += await expirePendingOrders();
   // Açılışı bekleyen eğitimlerde hatırlatma gönderilmez
@@ -88,6 +91,8 @@ export async function runFrequent() {
     const submitted = new Set(subs.map((s) => s.userId));
     for (const { userId } of students) {
       if (submitted.has(userId)) continue;
+      // Henüz açılmamış modüldeki görev hatırlatılmaz
+      if (a.lessonId && (await closedLessonIds(userId, [a.courseId])).has(a.lessonId)) continue;
       const due = a.extraDays > 0 ? taskDue(await studentTaskBase(userId, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
       if (!due) continue;
       const diff = (due.getTime() - now) / 60000;
@@ -133,6 +138,8 @@ export async function runDaily() {
     const subs = new Set((await db.select({ userId: assignmentSubmissions.userId }).from(assignmentSubmissions).where(eq(assignmentSubmissions.assignmentId, a.id))).map((s) => s.userId));
     for (const s of students) {
       if (subs.has(s.userId)) continue;
+      // Henüz açılmamış modüldeki görev hatırlatılmaz
+      if (a.lessonId && (await closedLessonIds(s.userId, [a.courseId])).has(a.lessonId)) continue;
       const due = a.extraDays > 0 ? taskDue(await studentTaskBase(s.userId, a.courseId), a.extraDays) : deadlineOf(a.dueDate);
       if (!due || isoDay(due) !== tISO) continue;
       const url = `/kurs-izle/${a.courseId}?gorev=${a.id}`;

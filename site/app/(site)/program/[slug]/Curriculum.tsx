@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Icon, type IconName } from "@/components/site/Icon";
 
 type L = { id: number; title: string; type: string; icon: IconName; duration: string };
-type M = { id: number; title: string; lessons: L[] };
+/** showcase: önizleme modülü (açılır, ders adları görünür); değilse yalnızca bölüm sayısı, açılmaz. lessons yalnızca önizlemede dolu gelir. */
+type M = { id: number; title: string; showcase: boolean; count: number; lessons: L[] };
 
 /** Ders tipine göre ikon rengi */
 const TONE: Record<string, string> = {
@@ -14,24 +15,36 @@ const TONE: Record<string, string> = {
   file: "bg-emerald-50 text-emerald-600",
 };
 
-/** Müfredat akordeonu: numaralı modül başlıkları; ders satırında yalnızca ad ve süre (tipe göre renkli ikonla). Dersler için "önizleme" kavramı yok. */
+/**
+ * Müfredat listesi: numaralı modül başlıkları. Yalnızca yöneticinin "Önizleme modülü" işaretlediği modüller akordeon gibi
+ * açılır ve ders satırlarını (ad + süre, tipe göre renkli ikon) gösterir; diğer modüller bölüm sayısıyla kapalı kalır ve tıklanamaz.
+ */
 export function Curriculum({ modules }: { modules: M[] }) {
-  const [open, setOpen] = useState<number | null>(modules[0]?.id ?? null);
+  const [open, setOpen] = useState<number | null>(modules.find((m) => m.showcase)?.id ?? null);
   if (modules.length === 0) return <p className="text-sm text-muted">Müfredat henüz eklenmedi.</p>;
   return (
     <div className="space-y-2.5">
       {modules.map((m, i) => {
-        const isOpen = open === m.id;
+        const isOpen = m.showcase && open === m.id;
+        const head = (
+          <>
+            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${isOpen ? "bg-navy-800 text-white" : "bg-white text-navy-800 ring-1 ring-line"}`}>{i + 1}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-semibold text-navy-800">{m.title}</span>
+              <span className="block text-xs text-navy-700">{m.count} bölüm</span>
+            </span>
+          </>
+        );
         return (
-          <div key={m.id} className={`overflow-hidden rounded-2xl ring-1 transition ${isOpen ? "bg-white ring-sky-200 shadow-[0_14px_30px_-22px_rgba(20,43,86,.5)]" : "bg-surface/70 ring-line/70 hover:bg-white hover:ring-sky-200"}`}>
-            <button onClick={() => setOpen(isOpen ? null : m.id)} aria-expanded={isOpen} className="flex w-full items-center gap-4 px-4 py-3.5 text-left sm:px-5">
-              <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${isOpen ? "bg-navy-800 text-white" : "bg-white text-navy-800 ring-1 ring-line"}`}>{i + 1}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-navy-800">{m.title}</span>
-                <span className="block text-xs text-navy-700">{m.lessons.length} bölüm</span>
-              </span>
-              <Icon name="chevronDown" className={`size-5 shrink-0 text-muted transition duration-300 ${isOpen ? "rotate-180" : ""}`} />
-            </button>
+          <div key={m.id} className={`overflow-hidden rounded-2xl ring-1 transition ${isOpen ? "bg-white ring-sky-200 shadow-[0_14px_30px_-22px_rgba(20,43,86,.5)]" : m.showcase ? "bg-surface/70 ring-line/70 hover:bg-white hover:ring-sky-200" : "bg-surface/70 ring-line/70"}`}>
+            {m.showcase ? (
+              <button onClick={() => setOpen(isOpen ? null : m.id)} aria-expanded={isOpen} className="flex w-full items-center gap-4 px-4 py-3.5 text-left sm:px-5">
+                {head}
+                <Icon name="chevronDown" className={`size-5 shrink-0 text-muted transition duration-300 ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+            ) : (
+              <div className="flex w-full items-center gap-4 px-4 py-3.5 sm:px-5">{head}</div>
+            )}
             {isOpen && (
               <ul className="border-t border-line">
                 {m.lessons.map((l, li) => (

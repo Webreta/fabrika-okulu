@@ -19,6 +19,8 @@ type Props = {
   preview: boolean;
   nextUrl: string | null;
   nextLocked?: boolean;
+  /** Sonraki ders kapalı modüldeyse (nextUrl yok) gösterilen açılış notu */
+  nextNote?: string | null;
   prevUrl: string | null;
   questions: QuestionItem[];
   userName: string;
@@ -31,7 +33,7 @@ type Props = {
  * Video sahnesi: HTML5 dosya videoları için özel kontroller (ileri sarma kapalı, %90'da otomatik tamamlama,
  * kaldığı yerden devam). YouTube/Vimeo için iframe + "Tamamlandı" butonu (embed API'siz).
  */
-export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocked = false, prevUrl, questions, userName, notes = [], suggestions = [], startAt = null }: Props) {
+export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocked = false, nextNote = null, prevUrl, questions, userName, notes = [], suggestions = [], startAt = null }: Props) {
   const timeRef = useRef(0);
   const [lockWarn, setLockWarn] = useState(false);
   const router = useRouter();
@@ -100,7 +102,10 @@ export function VideoStage({ courseId, lesson, done, preview, nextUrl, nextLocke
               <button onClick={() => { setLockWarn(true); setTimeout(() => setLockWarn(false), 2200); }} className="btn-primary btn-sm opacity-70">Sonraki <Icon name="lock" className="size-4" /></button>
             </span>
           ) : (
-            <button disabled className="btn-primary btn-sm">Sonraki</button>
+            <span className="flex items-center gap-2">
+              {nextNote && <span className="text-xs text-muted">{nextNote}</span>}
+              <button disabled className="btn-primary btn-sm">Sonraki {nextNote && <Icon name="lock" className="size-4" />}</button>
+            </span>
           )}
         </div>
       </div>

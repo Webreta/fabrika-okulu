@@ -24,6 +24,7 @@ export const MAIL_TYPES = {
   waitlist: { title: "Kontenjan/yeni dönem açıldığında (bekleme listesi)", to: "haber ver diyenler" },
   favorite_sale: { title: "Favori eğitimde indirim başladığında", to: "favorileyen öğrenciler" },
   preorder_open: { title: "Erken kayıt yapılan eğitim açıldığında", to: "erken kayıt yapan öğrenciler" },
+  module_open: { title: "Eğitimde yeni modül açıldığında", to: "dönemin öğrencileri" },
   password_reset: { title: "Şifre sıfırlama", to: "kullanıcı" },
   contact: { title: "İletişim formu", to: "yönetici" },
 } as const;

@@ -10,6 +10,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { ownsCourse } from "@/lib/data/teacher";
 import { courses } from "@/db/schema";
 import { awaitsOpening } from "@/lib/preorder";
+import { studentModuleStates } from "@/lib/module-access";
 
 /** notopen: erken kayıt yapılmış, eğitim henüz açılmadı (opensAt = açılış tarihi) */
 export type PlayerAccess = { ok: false; reason: "login" | "noaccess" } | { ok: false; reason: "notopen"; opensAt: string } | { ok: true; preview: boolean };
@@ -41,12 +42,20 @@ export async function stampStarted(userId: number, courseId: number) {
 export async function playerState(userId: number, courseId: number, preview: boolean) {
   const course = await getCourseFull(courseId);
   if (!course) return null;
-  const sets = preview ? { done: new Set<number>(), open: new Set<number>() } : await lessonSets(userId, courseId, course.flatLessons);
+  const [sets, moduleStates] = preview
+    ? [{ done: new Set<number>(), open: new Set<number>() }, null]
+    : await Promise.all([lessonSets(userId, courseId, course.flatLessons), studentModuleStates(userId, courseId, course.modules)]);
   const done = sets.done;
   const prog = computeProgress(course.flatLessons, done);
   // Kilit "open" kümesine bakar: geçilemeyip hakkı biten sınav yolu kapatmaz ama tamamlanmış da sayılmaz
-  const frontier = preview ? course.flatLessons.length : computeFrontier(course.flatLessons, sets.open);
-  return { course, done, prog, frontier };
+  let frontier = preview ? course.flatLessons.length : computeFrontier(course.flatLessons, sets.open);
+  // Modül kilidi: kapalı modülün dersleri sıralı kilidin önüne geçer (ilk kapalı modülün ilk dersinden itibaren kilitli;
+  // ilk modül kapalıysa frontier -1 → hiçbir ders açık değil)
+  if (moduleStates) {
+    const firstClosed = course.flatLessons.findIndex((l) => moduleStates.get(l.moduleId)?.open === false);
+    if (firstClosed !== -1) frontier = Math.min(frontier, firstClosed - 1);
+  }
+  return { course, done, prog, frontier, moduleStates };
 }
 
 /**

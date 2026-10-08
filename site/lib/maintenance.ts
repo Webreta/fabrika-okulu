@@ -1,9 +1,11 @@
 import "server-only";
-import { getSetting, type MaintenanceSettings } from "@/lib/settings";
+import { getSetting, getRawSetting, type MaintenanceSettings } from "@/lib/settings";
 
 // Bakım modu (dışarıya gösterme): açıkken siteyi yalnızca giriş yapmış yöneticiler görür.
 // Engelleme middleware.ts içinde yapılır; middleware veritabanına erişemediği için durumu /api/bakim ucundan sorar.
-// Öncelik: MAINTENANCE_MODE ortam değişkeni (on/off) → Yönetim → Ayarlar → Bakım modu.
+// Öncelik: panelde (Yönetim → Ayarlar → Bakım modu) bir kez kaydedilmiş ayar → MAINTENANCE_MODE ortam değişkeni (on/off).
+// Ortam değişkeni yalnızca panelde hiç kayıt yokken (canlıya ilk çıkış) geçerlidir; yönetici panelden kaydedince
+// kutu belirleyici olur (2026-10-08: canlıda kutu işaretsizken site bakımda kalıyor, yönetici panelden kapatamıyordu).
 
 export type MaintenanceInfo = {
   enabled: boolean;
@@ -21,8 +23,9 @@ export function maintenanceEnv(): "on" | "off" | "" {
 }
 
 export async function maintenanceInfo(): Promise<MaintenanceInfo> {
-  const setting = await getSetting("maintenance");
+  const [setting, raw] = await Promise.all([getSetting("maintenance"), getRawSetting<Partial<MaintenanceSettings> | null>("maintenance", null)]);
   const env = maintenanceEnv();
-  if (env) return { enabled: env === "on", source: "env", envValue: env, setting };
-  return { enabled: !!setting.enabled, source: "setting", envValue: "", setting };
+  const savedInPanel = !!raw && typeof raw.enabled === "boolean";
+  if (env && !savedInPanel) return { enabled: env === "on", source: "env", envValue: env, setting };
+  return { enabled: !!setting.enabled, source: "setting", envValue: env, setting };
 }

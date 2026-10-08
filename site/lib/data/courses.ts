@@ -104,7 +104,9 @@ export async function getCoursePeriods(courseId: number) {
     })
     .from(periods)
     .where(eq(periods.courseId, courseId))
-    .orderBy(asc(periods.startDate));
+    // Aynı güne birden çok dönem (10:00 ve 11:00 grubu) açılabildiği için sıra: tarih → saat → ad → kimlik
+    // (yalnızca tarihe göre sıralanınca aynı günün dönemleri her kayıtta farklı sırada geliyordu)
+    .orderBy(asc(periods.startDate), sql`${periods.startTime} nulls first`, asc(periods.name), asc(periods.id));
   // held: bekleyen siparişlerin tuttuğu koltuk; satışta doluluk = enrolled + held (yönetim ekranları enrolled'ı gösterir)
   return rows.map((r) => ({ ...r.p, enrolled: r.enrolled, held: r.held }));
 }

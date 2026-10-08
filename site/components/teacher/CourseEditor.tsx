@@ -8,8 +8,9 @@ import type { CourseInput } from "@/lib/course-save";
 import { generateSlots } from "@/lib/meeting";
 import { saveCourseAction, uploadCourseImage, uploadProtectedFile, notifyPeriodStudents } from "@/app/actions/teacher";
 import { Icon } from "@/components/site/Icon";
-import { todayISO, addDays } from "@/lib/format";
+import { todayISO, addDays, fmtDateTime } from "@/lib/format";
 import { COURSE_LIMITS as L } from "@/lib/course-limits";
+import { moduleOpensAt, moduleUnlockLabel, taskBase } from "@/lib/course-logic";
 
 type Module = CourseInput["modules"][number];
 type Lesson = Module["lessons"][number];
@@ -22,6 +23,7 @@ const newLesson = (type: Lesson["type"]): Lesson => ({
   shuffleQuestions: false, showCorrectAnswers: true, isGraded: false, maxScore: 100, allowFile: true, allowVoice: true, allowText: true,
 });
 const newQuestion = (): Question => ({ qtype: "multiple_choice", text: "", points: 1, options: ["", "", "", ""], correct: 0, explanation: "", image: "" });
+const newModule = (title: string, lessons: Lesson[] = []): Module => ({ title, lessons, unlockMode: "open", unlockDays: 0, unlockTime: "", showcase: false });
 /** İki "YYYY-MM-DD" günü arasındaki gün sayısı (saat diliminden bağımsız) */
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 const newPeriod = (): Period => ({ name: "", startDate: "", startTime: "", endDate: "", capacity: 20, description: "", schedule: [] });
@@ -30,16 +32,16 @@ const newPeriod = (): Period => ({ name: "", startDate: "", startTime: "", endDa
 // "Dönemli" ve "Atölye" şablonları doldurulacak bir başlangıç dönemiyle birlikte gelir.
 const TEMPLATES: Record<string, Module[]> = {
   standart: [
-    { title: "Modül 1: Giriş", lessons: [newLesson("video"), newLesson("video")] },
-    { title: "Modül 2: Derinleşme", lessons: [newLesson("video"), newLesson("video"), newLesson("quiz")] },
+    newModule("Modül 1: Giriş", [newLesson("video"), newLesson("video")]),
+    newModule("Modül 2: Derinleşme", [newLesson("video"), newLesson("video"), newLesson("quiz")]),
   ],
   donemli: [
-    { title: "Modül 1: Temeller", lessons: [newLesson("video"), newLesson("video"), newLesson("quiz")] },
-    { title: "Modül 2: Canlı Oturumlar", lessons: [newLesson("video"), newLesson("assign")] },
+    newModule("Modül 1: Temeller", [newLesson("video"), newLesson("video"), newLesson("quiz")]),
+    newModule("Modül 2: Canlı Oturumlar", [newLesson("video"), newLesson("assign")]),
   ],
   atolye: [
-    { title: "Atölye 1", lessons: [newLesson("video"), newLesson("assign"), newLesson("assign")] },
-    { title: "Atölye 2", lessons: [newLesson("video"), newLesson("assign")] },
+    newModule("Atölye 1", [newLesson("video"), newLesson("assign"), newLesson("assign")]),
+    newModule("Atölye 2", [newLesson("video"), newLesson("assign")]),
   ],
 };
 
@@ -130,12 +132,13 @@ export function CourseEditor({
   };
 
   const addPeriod = (p: Period = newPeriod()) => setC((x) => ({ ...x, periods: [...x.periods, p] }));
-  // Dönemi kopyalar: yeni dönem eskisinin bittiği günün ertesinde başlar, aynı uzunlukta sürer, oturum tarihleri aynı
-  // kadar kayar (bağlantı/başlık/saat korunur). Adındaki sayı artar ("1. Dönem" → "2. Dönem"), yoksa "(kopya)" eklenir.
-  const copyPeriod = (pi: number) => setC((x) => {
+  // Dönemi kopyalar. "Kopyala": tüm alanlar birebir (tarihler, saat, oturumlar, bağlantılar) — aynı gün farklı saatte
+  // ikinci grup açmak için; yalnızca ad değişir. "Ötele": kopya eskisinin bittiği günün ertesinde başlar, aynı uzunlukta
+  // sürer, oturum tarihleri aynı kadar kayar. İki yolda da addaki sayı artar ("1. Dönem" → "2. Dönem"), yoksa "(kopya)" eklenir.
+  const copyPeriod = (pi: number, shifted = false) => setC((x) => {
     const p = x.periods[pi];
     if (!p) return x;
-    const shift = p.startDate && p.endDate && p.endDate >= p.startDate ? dayDiff(p.startDate, p.endDate) + 1 : 0;
+    const shift = shifted && p.startDate && p.endDate && p.endDate >= p.startDate ? dayDiff(p.startDate, p.endDate) + 1 : 0;
     const move = (d: string) => (shift && d ? addDays(d, shift) : d);
     const name = /\d+/.test(p.name) ? p.name.replace(/\d+/, (n) => String(Number(n) + 1)) : p.name ? `${p.name} (kopya)` : "";
     const copy: Period = { ...p, id: undefined, name, startDate: move(p.startDate), endDate: move(p.endDate), schedule: p.schedule.map((s) => ({ ...s, date: move(s.date) })) };
@@ -345,6 +348,7 @@ export function CourseEditor({
                 <button onClick={() => set("modules", move(c.modules, mi, 1))} className="rounded p-1.5 hover:bg-white" title="Aşağı"><Icon name="chevronDown" className="size-4" /></button>
                 <button onClick={() => set("modules", c.modules.filter((_, j) => j !== mi))} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Sil"><Icon name="trash" className="size-4" /></button>
               </div>
+              <ModuleUnlockRow m={m} mi={mi} isAdmin={isAdmin} hasPeriods={hasPeriods} periods={c.periods} courseId={c.id} isAdminShell={isAdminShell} fid={fid} onChange={(x) => setModule(mi, { ...m, ...x })} />
               <div className="mt-3 space-y-3">
                 {m.lessons.map((l, li) => {
                   const meta = LESSON_META[l.type];
@@ -406,7 +410,7 @@ export function CourseEditor({
               </div>
             </div>
           ))}
-          <button onClick={() => set("modules", [...c.modules, { title: `Modül ${c.modules.length + 1}`, lessons: [] }])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Modül ekle</button>
+          <button onClick={() => set("modules", [...c.modules, newModule(`Modül ${c.modules.length + 1}`)])} className="btn-primary btn-sm"><Icon name="plus" className="size-4" /> Modül ekle</button>
         </div>
       </Section>}
 
@@ -424,7 +428,8 @@ export function CourseEditor({
                   <span className="text-sm font-bold text-muted">Dönem {pi + 1}{enrolled > 0 && ` · ${enrolled} kayıtlı`}{passed && " · Bitti"}</span>
                   <div className="flex items-center gap-2">
                     {p.id && enrolled > 0 && !passed && <NotifyPeriodButton periodId={p.id} />}
-                    {!locked && <button onClick={() => copyPeriod(pi)} className="btn-secondary btn-sm" title="Bu dönemin kopyasını, bitişinin ertesi gününden başlayacak şekilde ekler"><Icon name="copy" className="size-3.5" /> Kopyala</button>}
+                    {!locked && <button onClick={() => copyPeriod(pi)} className="btn-secondary btn-sm" title="Tüm alanları birebir kopyalar (aynı tarihler ve oturumlar); örneğin aynı gün farklı saatte ikinci grup için"><Icon name="copy" className="size-3.5" /> Kopyala</button>}
+                    {!locked && <button onClick={() => copyPeriod(pi, true)} className="btn-secondary btn-sm" title="Kopyayı bu dönemin bitişinin ertesi gününden başlatır; oturum tarihleri aynı kadar kayar"><Icon name="arrowRight" className="size-3.5" /> Ötele</button>}
                     {!locked && (enrolled === 0 || isAdmin) && (
                       <button onClick={() => { if (enrolled > 0 && !confirm(`Bu dönemde ${enrolled} kayıtlı öğrenci var. Dönem silinsin mi? (Öğrencilerin kurs erişimi kalır, dönem kaydı düşer.)`)) return; set("periods", c.periods.filter((_, j) => j !== pi)); }} className="rounded p-1.5 text-red-600 hover:bg-red-50" title="Dönemi sil"><Icon name="trash" className="size-4" /></button>
                     )}
@@ -560,6 +565,58 @@ export function CourseEditor({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Modül açılış ayarı (yalnızca yönetici değiştirir; eğitmen yalnızca görür). Takvimli kursta taban dönem başlangıcı,
+ * esnek kursta öğrencinin başlangıcıdır; "Yönetici açınca" yalnızca dönemli kursta seçilebilir. Dönem bazında
+ * açma/tarih belirleme kurs detayındaki "Modül Açılışları" sekmesinde yapılır.
+ */
+function ModuleUnlockRow({ m, mi, isAdmin, hasPeriods, periods, courseId, isAdminShell, fid, onChange }: {
+  m: Module; mi: number; isAdmin: boolean; hasPeriods: boolean; periods: Period[]; courseId?: number; isAdminShell: boolean;
+  fid: (k: string) => string; onChange: (x: Partial<Module>) => void;
+}) {
+  const mode = m.unlockMode ?? "open";
+  if (!isAdmin) {
+    if (mode === "open" && !m.showcase) return null;
+    return (
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-amber-700">
+        {mode !== "open" && <span className="flex items-center gap-1.5"><Icon name="lock" className="size-3.5" /> Açılış: {moduleUnlockLabel(m, hasPeriods)} (yönetici ayarı)</span>}
+        {m.showcase && <span className="flex items-center gap-1.5"><Icon name="eye" className="size-3.5" /> Önizleme modülü: program sayfasında ders adları görünür</span>}
+      </p>
+    );
+  }
+  const previews = mode === "scheduled" && hasPeriods
+    ? periods.filter((p) => p.startDate).map((p) => ({ name: p.name || "Dönem", at: moduleOpensAt({ unlockMode: "scheduled", unlockDays: m.unlockDays, unlockTime: m.unlockTime || null }, { base: taskBase({ periodStartDate: p.startDate, periodStartTime: p.startTime || null }) }) }))
+    : [];
+  return (
+    <div className="mt-2 rounded-lg border border-dashed border-line bg-white px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={fid(`unlock-${mi}`)} className="text-xs font-semibold text-muted">Açılış</label>
+        <select id={fid(`unlock-${mi}`)} value={mode} onChange={(e) => onChange({ unlockMode: e.target.value as Module["unlockMode"] })} className="input w-auto py-1 text-sm">
+          <option value="open">Hemen açık</option>
+          {hasPeriods && <option value="manual">Yönetici açınca</option>}
+          <option value="scheduled">Zamanlı</option>
+        </select>
+        {mode === "scheduled" && (
+          <>
+            <span className="text-xs text-muted">{hasPeriods ? "dönem başlangıcından" : "öğrenci başladıktan"}</span>
+            <input aria-label="Kaç gün sonra" type="number" min={0} max={3650} value={m.unlockDays} onChange={(e) => onChange({ unlockDays: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="input w-20 py-1 text-sm" />
+            <span className="text-xs text-muted">gün sonra, saat</span>
+            <input aria-label="Açılış saati" type="time" value={m.unlockTime} onChange={(e) => onChange({ unlockTime: e.target.value })} className="input w-28 py-1 text-sm" />
+          </>
+        )}
+        <label className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-navy-800" title="Program sayfasında yalnızca önizleme modülleri açılıp ders adlarını gösterir; diğerleri bölüm sayısıyla kapalı kalır">
+          <input type="checkbox" checked={!!m.showcase} onChange={(e) => onChange({ showcase: e.target.checked })} /> Önizleme modülü
+        </label>
+      </div>
+      {mode === "manual" && <p className="mt-1 text-[11px] text-muted">Her dönem için ayrı açılır: {courseId ? <Link href={`${isAdminShell ? "/admin/kurslar" : "/egitmen"}/detay/${courseId}?sekme=moduller`} className="font-semibold underline">Kurs detayı → Modül Açılışları</Link> : "kaydettikten sonra kurs detayındaki Modül Açılışları sekmesinden"}. Açılana kadar öğrenci bu modüle giremez.</p>}
+      {mode === "scheduled" && !hasPeriods && <p className="mt-1 text-[11px] text-muted">Taban: öğrencinin eğitime ilk girdiği an{m.unlockTime ? "; verilen saatte" : " (aynı saatte)"}.</p>}
+      {mode === "scheduled" && hasPeriods && previews.length > 0 && (
+        <p className="mt-1 text-[11px] text-muted">{previews.map((p) => `${p.name}: ${p.at ? fmtDateTime(p.at) : "—"}`).join(" · ")}{courseId ? <> · Dönem için farklı tarih: <Link href={`${isAdminShell ? "/admin/kurslar" : "/egitmen"}/detay/${courseId}?sekme=moduller`} className="font-semibold underline">Modül Açılışları</Link></> : null}</p>
       )}
     </div>
   );

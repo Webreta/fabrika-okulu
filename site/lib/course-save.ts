@@ -9,8 +9,8 @@ import { notifyPreorderOpened } from "@/lib/preorder";
 import { isPreorder } from "@/lib/course-logic";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/uploads";
-import { normalizeDuration, isDuration } from "@/lib/course-logic";
-import { addDays, todayISO, isWaNumber } from "@/lib/format";
+import { normalizeDuration, isDuration, moduleOpensAt, taskBase } from "@/lib/course-logic";
+import { addDays, todayISO, isWaNumber, fmtDateTime } from "@/lib/format";
 import { COURSE_LIMITS, ASSIGN_NEEDS_PERIOD } from "@/lib/course-limits";
 
 // ---- Doğrulama yardımcıları ----
@@ -80,6 +80,12 @@ const moduleSchema = z.object({
   id: z.number().optional(),
   title: text(L.moduleTitle).trim(),
   lessons: z.array(lessonSchema).max(300, "en fazla 300 içerik olabilir").default([]),
+  // Modül açılışı (yalnızca yönetici değiştirir; bkz. lib/course-logic.ts moduleOpensAt)
+  unlockMode: z.enum(["open", "manual", "scheduled"]).default("open"),
+  unlockDays: int(0, 3650).default(0),
+  unlockTime: z.string().default(""),
+  // Önizleme modülü (yalnızca yönetici): program sayfasında ders adları görünür
+  showcase: z.boolean().default(false),
 });
 
 const scheduleSchema = z.object({
@@ -201,6 +207,23 @@ export const courseInputSchema = courseObjectSchema.superRefine((c, ctx) => {
     const scheduled = c.periods.length > 0;
     c.modules.forEach((m, mi) => {
       if (!m.title) issue(["modules", mi, "title"], "gerekli (boş modülü sil)");
+      // ---- Modül açılışı
+      if (m.unlockMode === "manual" && !scheduled) issue(["modules", mi, "unlockMode"], "“Yönetici açınca” yalnızca dönemli eğitimde kullanılabilir; esnek eğitimde “Hemen açık” ya da “Zamanlı” seç");
+      if (m.unlockMode === "scheduled") {
+        if (m.unlockTime && !isTime(m.unlockTime)) issue(["modules", mi, "unlockTime"], "geçerli bir saat değil (örnek: 09:00)");
+        if (scheduled) {
+          // Takvimli kursta teslim tarihi mutlaktır: modül, içindeki görev/sınavın tesliminden sonra açılırsa öğrenci teslim edemez
+          for (const p of c.periods) {
+            if (!isDay(p.startDate)) continue;
+            const opens = moduleOpensAt({ unlockMode: "scheduled", unlockDays: m.unlockDays, unlockTime: m.unlockTime || null }, { base: taskBase({ periodStartDate: p.startDate, periodStartTime: p.startTime || null }) });
+            for (const l of m.lessons) {
+              if ((l.type !== "quiz" && l.type !== "assign") || !isDay(l.dueDate)) continue;
+              const due = new Date(`${l.dueDate}T${isTime(l.dueTime) ? `${l.dueTime}:00` : "23:59:59"}`);
+              if (opens && due.getTime() < opens.getTime()) { issue(["modules", mi, "unlockDays"], `${p.name || "dönem"} için modül ${fmtDateTime(opens)} tarihinde açılıyor ama “${l.title || "görev/sınav"}” son teslimi ${fmtDateTime(due)}; açılışı öne çek ya da teslim tarihini ertele`); break; }
+            }
+          }
+        }
+      }
       m.lessons.forEach((l, li) => {
         const at = (...rest: (string | number)[]) => ["modules", mi, "lessons", li, ...rest];
         if (!scheduled && l.type === "assign") issue(at(), ASSIGN_NEEDS_PERIOD);
@@ -245,6 +268,7 @@ const FIELD_LABELS: Record<string, string> = {
   points: "Puan", text: "Soru metni", options: "Şıklar", correct: "Doğru şık", explanation: "Açıklama", image: "Görsel", videoUrl: "Video adresi",
   duration: "Süre", dueDays: "Süre (gün)", dueDate: "Son tarih", dueTime: "Son tarih saati", passScore: "Geçme notu", maxScore: "Maks puan",
   timeLimit: "Süre sınırı", maxAttempts: "Deneme hakkı", fileName: "Dosya adı", requirements: "Gereksinimler", modules: "Müfredat",
+  unlockMode: "Açılış", unlockDays: "Açılış", unlockTime: "Açılış saati",
   periods: "Dönemler", relations: "Kurs önerileri", questions: "Sorular", lessons: "İçerikler", schedule: "Oturumlar",
 };
 
@@ -427,7 +451,7 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
 
   let created: Created = { quizzes: [], assignments: [] };
   if (!opts.locked) {
-    created = await syncCurriculum(courseId, input.type === "meeting" ? [] : input.modules, opts.authorId, input.periods.length > 0);
+    created = await syncCurriculum(courseId, input.type === "meeting" ? [] : input.modules, opts.authorId, input.periods.length > 0, opts.isAdmin);
     await syncPeriods(courseId, input.periods, opts.isAdmin, input.type === "meeting");
   } else {
     await syncPeriodLinks(courseId, opts.links ?? input.periods.map((p) => ({ id: p.id, schedule: p.schedule.map((s) => ({ link: s.link })) })));
@@ -467,7 +491,7 @@ export async function saveCourse(input: CourseInput, opts: { authorId: number; i
 
 export type Created = { quizzes: { id: number; title: string }[]; assignments: { id: number; title: string }[] };
 
-async function syncCurriculum(courseId: number, mods: CourseInput["modules"], authorId: number, scheduled: boolean): Promise<Created> {
+async function syncCurriculum(courseId: number, mods: CourseInput["modules"], authorId: number, scheduled: boolean, isAdmin: boolean): Promise<Created> {
   const created: Created = { quizzes: [], assignments: [] };
   const keepModules: number[] = [];
   const keepLessons: number[] = [];
@@ -475,12 +499,14 @@ async function syncCurriculum(courseId: number, mods: CourseInput["modules"], au
   for (const m of mods) {
     if (!m.title) continue;
     let moduleId = m.id;
+    // Modül açılış ayarını yalnızca yönetici yazar; eğitmen kaydında mevcut ayar korunur (yeni modül "hemen açık" gelir)
+    const unlock = isAdmin ? { unlockMode: m.unlockMode, unlockDays: m.unlockMode === "scheduled" ? m.unlockDays : 0, unlockTime: m.unlockMode === "scheduled" && isTime(m.unlockTime) ? m.unlockTime : null, showcase: m.showcase } : {};
     if (moduleId) {
-      const r = await db.update(modules).set({ title: m.title, sortOrder: mi }).where(and(eq(modules.id, moduleId), eq(modules.courseId, courseId))).returning({ id: modules.id });
+      const r = await db.update(modules).set({ title: m.title, sortOrder: mi, ...unlock }).where(and(eq(modules.id, moduleId), eq(modules.courseId, courseId))).returning({ id: modules.id });
       if (!r[0]) moduleId = undefined;
     }
     if (!moduleId) {
-      const [c] = await db.insert(modules).values({ courseId, title: m.title, sortOrder: mi }).returning({ id: modules.id });
+      const [c] = await db.insert(modules).values({ courseId, title: m.title, sortOrder: mi, ...unlock }).returning({ id: modules.id });
       moduleId = c.id;
     }
     keepModules.push(moduleId);
@@ -610,7 +636,7 @@ export async function duplicateCourse(courseId: number) {
   const mods = await db.select().from(modules).where(eq(modules.courseId, courseId)).orderBy(modules.sortOrder);
   const ls = await db.select().from(lessons).where(eq(lessons.courseId, courseId)).orderBy(lessons.sortOrder);
   for (const m of mods) {
-    const [nm] = await db.insert(modules).values({ courseId: n.id, title: m.title, sortOrder: m.sortOrder }).returning({ id: modules.id });
+    const [nm] = await db.insert(modules).values({ courseId: n.id, title: m.title, sortOrder: m.sortOrder, unlockMode: m.unlockMode, unlockDays: m.unlockDays, unlockTime: m.unlockTime, showcase: m.showcase }).returning({ id: modules.id });
     for (const l of ls.filter((x) => x.moduleId === m.id)) {
       const { id: lid, ...lrest } = l;
       const [nl] = await db.insert(lessons).values({ ...lrest, courseId: n.id, moduleId: nm.id }).returning({ id: lessons.id });

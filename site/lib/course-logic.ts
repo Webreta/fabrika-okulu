@@ -1,7 +1,7 @@
 // Kurs iş kuralları — eski eklentideki fabo_* yardımcılarının TS karşılığı.
 // Panel, player, hatırlatma cron'u ve raporlar AYNI hesabı kullanmalı.
 
-import type { Lesson } from "@/db/schema";
+import type { Lesson, ModuleUnlockMode } from "@/db/schema";
 
 /** "2:35" → 155 sn, "1:02:35" → h:m:s, "12" → 12 dakika */
 export function durationSecs(text: string | null | undefined): number {
@@ -168,6 +168,51 @@ export function deadlineOf(d: Date | string | null | undefined): Date | null {
 
 export function isOverdue(due: Date | null) {
   return !!due && due.getTime() < Date.now();
+}
+
+// ---- Modül açılışı ----
+// Dersler modül içinde sıralı kilitle açılır; modülün kendisi ayrıca "kapalı" olabilir (bkz. modules.unlockMode):
+//  - open: hemen açık (varsayılan; mevcut eğitimlerde davranış değişmez)
+//  - manual: yönetici dönem bazında açar (module_openings.opensAt); açılana dek kapalı. Yalnızca dönemli kursta.
+//  - scheduled: tabandan unlockDays gün sonra (unlockTime saatinde) açılır. Taban takvimli kursta öğrencinin
+//    dönem başlangıcı, esnek kursta öğrencinin eğitime başladığı an (taskBase ile aynı). Dönem bazında mutlak
+//    tarihle (module_openings.opensAt) üzerine yazılabilir.
+// Panel, oynatıcı, sunucu işlemleri ve cron aynı hesabı kullanır.
+
+export type { ModuleUnlockMode };
+export type ModuleUnlockFields = { unlockMode: ModuleUnlockMode | string; unlockDays: number; unlockTime: string | null };
+
+/** Modülün açılış anı. null = henüz belli değil (manuel modda açılmamış; zamanlıda taban yok). */
+export function moduleOpensAt(m: ModuleUnlockFields, opts: { base: TaskBase; override?: Date | null }): Date | null {
+  if (m.unlockMode === "manual") return opts.override ?? null;
+  if (m.unlockMode === "scheduled") {
+    if (opts.override) return opts.override;
+    if (!opts.base) return null;
+    const d = new Date(opts.base.date);
+    d.setDate(d.getDate() + Math.max(0, m.unlockDays || 0));
+    const t = (m.unlockTime || "").slice(0, 5);
+    if (/^\d{1,2}:\d{2}$/.test(t)) {
+      const [h, mi] = t.split(":").map((x) => parseInt(x, 10) || 0);
+      d.setHours(h, mi, 0, 0);
+    } else if (opts.base.dateOnly) d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return new Date(0);
+}
+
+export function moduleIsOpen(at: Date | null, now: Date | number = Date.now()) {
+  return !!at && at.getTime() <= (typeof now === "number" ? now : now.getTime());
+}
+
+/** Editör/yönetici metni: modülün açılış kuralı */
+export function moduleUnlockLabel(m: ModuleUnlockFields, scheduledCourse: boolean) {
+  if (m.unlockMode === "manual") return "Yönetici açınca";
+  if (m.unlockMode === "scheduled") {
+    const t = (m.unlockTime || "").slice(0, 5);
+    const when = `${m.unlockDays || 0}. gün${t ? ` ${t}` : ""}`;
+    return scheduledCourse ? `Dönem başlangıcından sonra ${when}` : `Öğrenci başladıktan sonra ${when}`;
+  }
+  return "Hemen açık";
 }
 
 export const LEVEL_LABELS: Record<string, string> = {

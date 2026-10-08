@@ -21,6 +21,7 @@ import {
   meetingAttendance,
 } from "@/db/schema";
 import { computeProgress, taskBase, taskDue, deadlineOf, isPreorder, opensAtDate, quizStanding, type TaskBase, type AttemptLite } from "@/lib/course-logic";
+import { closedLessonIds } from "@/lib/module-access";
 
 /** Öğrencinin erişebildiği kurs id'leri (aktif kayıt) */
 export async function accessibleCourseIds(userId: number) {
@@ -269,12 +270,16 @@ export const studentActions = cache(async function studentActions(userId: number
   const bases = new Map<number, TaskBase>();
   for (const id of ids) bases.set(id, await studentTaskBase(userId, id));
 
-  const [asg, subs, qz, atts] = await Promise.all([
+  const [asgAll, subs, qzAll, atts, closed] = await Promise.all([
     db.select().from(assignments).where(and(inArray(assignments.courseId, ids), eq(assignments.status, "active"))),
     db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.userId, userId)),
     db.select().from(quizzes).where(and(inArray(quizzes.courseId, ids), eq(quizzes.status, "active"))),
     db.select().from(quizAttempts).where(and(eq(quizAttempts.userId, userId), eq(quizAttempts.voided, false), inArray(quizAttempts.status, ["completed", "pending_review"]))),
+    // Henüz açılmamış modüldeki görev/sınavlar listelenmez (modül açılınca düşer)
+    closedLessonIds(userId, ids),
   ]);
+  const asg = asgAll.filter((a) => !a.lessonId || !closed.has(a.lessonId));
+  const qz = qzAll.filter((q) => !q.lessonId || !closed.has(q.lessonId));
 
   for (const a of asg) {
     const sub = subs.find((s) => s.assignmentId === a.id);

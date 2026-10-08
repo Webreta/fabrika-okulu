@@ -71,6 +71,10 @@ export async function loadCourseForEditor(courseId: number): Promise<(CourseInpu
     modules: c.modules.map((m) => ({
       id: m.id,
       title: m.title,
+      unlockMode: m.unlockMode,
+      unlockDays: m.unlockDays,
+      unlockTime: m.unlockTime ? m.unlockTime.slice(0, 5) : "",
+      showcase: m.showcase,
       lessons: m.lessons.map((l) => {
         const q = l.type === "quiz" ? qz.find((x) => x.lessonId === l.id) : undefined;
         const a = l.type === "assign" ? asgs.find((x) => x.lessonId === l.id) : undefined;

@@ -197,6 +197,20 @@
       "when": 1791378071745,
       "tag": "0027_cynical_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791450579247,
+      "tag": "0028_stormy_steel_serpent",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791452578762,
+      "tag": "0029_worried_goliath",
+      "breakpoints": true
     }
   ]
 }

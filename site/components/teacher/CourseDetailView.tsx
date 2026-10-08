@@ -11,6 +11,9 @@ import { SubmissionCard } from "@/components/teacher/SubmissionCard";
 import { QuizAttemptRow } from "@/components/teacher/QuizAttemptRow";
 import { courseWaitlist } from "@/lib/waitlist";
 import { Icon } from "@/components/site/Icon";
+import { periodModuleStates } from "@/lib/module-access";
+import { moduleUnlockLabel } from "@/lib/course-logic";
+import { ModuleOpeningsPanel } from "@/components/teacher/ModuleOpeningsPanel";
 
 /**
  * Eğitim detayı (öğrenciler, görev/sınav sonuçları, bekleme listesi). Eğitmen ve yönetim panelinde aynı görünüm kullanılır;
@@ -27,6 +30,9 @@ export async function CourseDetailView({ user, courseId, sekme = "ogrenciler", a
   const subs = sekme === "gonderimler" ? await teacherSubmissions(user, courseId) : [];
   const attempts = sekme === "gonderimler" ? await teacherQuizAttempts(user, courseId) : [];
   const base = `${root}/detay/${courseId}`;
+  // Modül açılışları: yalnızca açılışı kısıtlı (manuel/zamanlı) modüller; dönem × modül durumları
+  const gatedModules = course.type === "meeting" ? [] : course.modules.filter((m) => m.unlockMode === "manual" || m.unlockMode === "scheduled");
+  const openings = sekme === "moduller" && gatedModules.length > 0 && course.periods.length > 0 ? await periodModuleStates(courseId) : [];
 
   return (
     <>
@@ -73,6 +79,7 @@ export async function CourseDetailView({ user, courseId, sekme = "ogrenciler", a
         { href: `${base}?sekme=ogrenciler`, label: "Öğrenciler", count: students.length, active: sekme === "ogrenciler" },
         { href: `${base}?sekme=gonderimler`, label: "Görevler & Sınavlar", active: sekme === "gonderimler" },
         ...(course.periods.length > 0 || waitlist.length > 0 || course.comingSoon ? [{ href: `${base}?sekme=bekleme`, label: course.comingSoon ? "Talep Listesi" : "Bekleme Listesi", count: waiting.length, active: sekme === "bekleme" }] : []),
+        ...(course.type !== "meeting" && course.modules.length > 0 ? [{ href: `${base}?sekme=moduller`, label: "Modül Açılışları", count: gatedModules.length || undefined, active: sekme === "moduller" }] : []),
         { href: area === "admin" ? "/admin/sorular" : "/egitmen/sorular", label: "Sorular →", active: false },
       ]} />
       {sekme === "ogrenciler" && (
@@ -126,6 +133,16 @@ export async function CourseDetailView({ user, courseId, sekme = "ogrenciler", a
             </tbody>
           </table>
         </div>
+      )}
+      {sekme === "moduller" && (
+        <ModuleOpeningsPanel
+          isAdmin={user.role === "admin"}
+          hasPeriods={course.periods.length > 0}
+          editorHref={`${root}/editor/${courseId}`}
+          modules={gatedModules.map((m) => ({ id: m.id, title: m.title, mode: m.unlockMode as "manual" | "scheduled", label: moduleUnlockLabel(m, course.periods.length > 0) }))}
+          periods={course.periods.map((p) => ({ id: p.id, name: p.name, startDate: p.startDate, endDate: p.endDate, enrolled: p.enrolled, past: p.endDate < todayISO() }))}
+          cells={openings.map((o) => ({ periodId: o.periodId, moduleId: o.moduleId, opensAt: o.opensAt ? o.opensAt.toISOString() : null, open: o.open, override: o.override ? o.override.toISOString() : null, notifiedAt: o.notifiedAt ? o.notifiedAt.toISOString() : null, lateTasks: o.lateTasks }))}
+        />
       )}
       <p className="mt-6 text-xs text-muted"><Link href={area === "admin" ? "/admin/kurslar" : "/egitmen/kurslarim"} className="hover:underline">{area === "admin" ? "← Eğitimler" : "← Eğitimlerim"}</Link></p>
     </>
