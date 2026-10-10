@@ -75,7 +75,8 @@ export function siteUrl(path = "") {
 }
 
 /**
- * Marka şablonu (lacivert başlık, logo, buton).
+ * Marka şablonu (açık başlık + logo, buton). Logo PNG'dir (webp Outlook'ta açılmaz) ve CSS `filter` kullanılmaz
+ * (Gmail/Outlook filtreyi siler; eskiden lacivert zeminde koyu logo kare gibi görünüyordu, 2026-10-10).
  * title ve buttonText düz metindir, burada kaçışlanır (çağıran ayrıca kaçışlamaz). html gövdesi HTML'dir:
  * içine konan kullanıcı metni çağıran tarafta escapeHtml'den geçirilmelidir.
  */
@@ -85,7 +86,7 @@ export function emailTemplate(opts: {
   buttonText?: string;
   buttonUrl?: string;
 }) {
-  const logo = siteUrl("/img/site/logo.webp");
+  const logo = siteUrl("/img/site/logo-mail.png");
   const btn =
     opts.buttonText && opts.buttonUrl
       ? `<p style="margin:26px 0 8px"><a href="${safeMailUrl(opts.buttonUrl)}" style="display:inline-block;background:#142b56;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">${escapeHtml(opts.buttonText)}</a></p>`
@@ -93,7 +94,8 @@ export function emailTemplate(opts: {
   return `<!doctype html><html lang="tr"><body style="margin:0;background:#f3f5f9;font-family:Inter,Segoe UI,Arial,sans-serif;color:#1b2437">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:28px 12px"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e3e8ef">
-<tr><td style="background:#142b56;padding:22px 28px;text-align:center"><img src="${logo}" alt="Fabrika Okulu" style="height:52px;filter:brightness(0) invert(1)"></td></tr>
+<tr><td style="background:#142b56;height:6px;font-size:0;line-height:0">&nbsp;</td></tr>
+<tr><td style="background:#fff;padding:22px 28px 16px;text-align:center;border-bottom:1px solid #e3e8ef"><img src="${logo}" alt="Fabrika Okulu" width="64" height="73" style="display:inline-block;width:64px;height:73px;border:0"></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 14px;font-size:20px;color:#142b56">${escapeHtml(opts.title)}</h1>
 <div style="font-size:15px;line-height:1.6">${opts.html}</div>

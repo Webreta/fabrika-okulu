@@ -21,8 +21,9 @@ export default async function SurveyListPage() {
             // Ana soru cevaplandıysa kart o hedefin rengine döner ve bayrak taşır
             const flag = flags.find((f) => f.surveyId === s.id);
             const goal = flag?.answer ? goalColor(flag.color) : null;
+            // Zemin bayrak renginin saydam tonu: yazı rengi temadan gelir, kart açık ve koyu temada okunur
             return (
-              <div key={s.id} className="card flex flex-col border-2 transition" style={goal ? { borderColor: goal.hex, background: goal.soft } : undefined}>
+              <div key={s.id} className="card flex flex-col border-2 transition" style={goal ? { borderColor: goal.hex, background: `${goal.hex}22` } : undefined}>
                 <div className="flex items-start justify-between gap-2">
                   {goal ? (
                     <span className="flex size-11 items-center justify-center rounded-xl text-white shadow" style={{ background: goal.hex }}><Icon name="flag" className="size-6" /></span>

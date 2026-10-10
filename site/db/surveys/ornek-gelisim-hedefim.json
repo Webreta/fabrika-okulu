@@ -3,7 +3,7 @@
   "title": "Bu Yıl Gelişim Hedefim",
   "mode": "flow",
   "editable": false,
-  "intro": "Bu yıl kendini hangi alanda geliştirmek istiyorsun? Test tek seferlik; ama seçtiğin gelişim hedefinin bayrağını istediğin zaman değiştirebilirsin.",
+  "intro": "Bu yıl kendini hangi alanda geliştirmek istiyorsun? Test tek seferlik; seçtiğin gelişim hedefi panelinde renkli bir bayrak olarak görünür.",
   "sections": {
     "hedef": "Gelişim hedefim",
     "tercih": "Öğrenme tercihlerim"

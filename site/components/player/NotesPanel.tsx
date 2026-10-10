@@ -17,7 +17,8 @@ export function fmtSecs(s: number) {
 
 /**
  * Ders altındaki "Notlar" sekmesi.
- * "Burada not al" → o dersin o anki saniyesine bağlı not; "Genel not al" → derse/saniyeye bağlı olmayan not.
+ * "Burada not al" → o dersin o anki saniyesine bağlı not. Derse bağlı olmayan "genel not" oynatıcının sağ sütunundaki
+ * GeneralNotesButton penceresinden alınır (2026-10-10); liste burada tüm notları (genel dahil) gösterir.
  */
 export function NotesPanel({ courseId, lessonId, lessonTitle, notes, getTime, description, canTimestamp }: {
   courseId: number; lessonId: number; lessonTitle: string; notes: NoteItem[];
@@ -48,7 +49,6 @@ export function NotesPanel({ courseId, lessonId, lessonTitle, notes, getTime, de
 
       <div className="flex flex-wrap gap-2">
         <button onClick={() => open(true)} disabled={!canTimestamp} title={canTimestamp ? "" : "Bu video türünde zaman bilgisi alınamıyor"} className={`btn-sm ${mode && mode.seconds !== null ? "btn-primary" : "btn-secondary"}`}><Icon name="clock" className="size-4" /> Burada not al</button>
-        <button onClick={() => open(false)} className={`btn-sm ${mode && mode.seconds === null ? "btn-primary" : "btn-secondary"}`}><Icon name="edit" className="size-4" /> Genel not al</button>
         <span className="ml-auto self-center text-xs text-muted">{notes.length}/100</span>
         <Link href="/panel/notlar" className="btn-secondary btn-sm">Tüm notlarım →</Link>
       </div>

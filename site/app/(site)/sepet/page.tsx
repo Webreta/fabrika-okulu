@@ -7,6 +7,7 @@ import { removeFromCart, applyCoupon } from "@/app/actions/cart";
 import { cartTotals } from "@/lib/cart-totals";
 import { fmtMoney, fmtDay } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
+import { CartAutoPrune } from "@/components/site/CartAutoPrune";
 
 export const metadata: Metadata = { title: "Sepet" };
 
@@ -18,6 +19,8 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
   return (
     <section className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="text-3xl font-bold text-navy-800">Sepet</h1>
+      {/* Satın alınmış (erişimi olan) eğitim sepette kalmaz: sonuç sayfasına uğramadan gelen öğrencide burada düşer */}
+      <CartAutoPrune active={!!user && t.lines.some((l) => l.blockCode === "kayitli")} />
       {hata === "odeme" && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</p>}
       {hata === "satir" && t.blocked && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">Sepetindeki bir eğitim şu an satın alınamıyor. Nedeni aşağıda yazıyor; o eğitimi sepetten çıkarınca ödemeye geçebilirsin.</p>}
       {t.lines.length === 0 ? (

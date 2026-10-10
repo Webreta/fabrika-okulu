@@ -20,6 +20,7 @@ import { checkCartLine } from "@/lib/cart-rules";
 import { cartTotals } from "@/lib/cart-totals";
 import { heldSeatsSql, releaseOrderCoupon, reserveCoupon, supersedePendingOrders, unreserveCoupon } from "@/lib/orders";
 import { toId } from "@/lib/ids";
+import { hasAccess } from "@/lib/data/student";
 
 /** Misafirken başlatılan kayıt niyeti (ücretsiz eğitim / görüşme koltuğu); girişten sonra program sayfası sürdürür */
 const INTENT_COOKIE = "fabo_intent";
@@ -117,6 +118,25 @@ export async function finishCardOrder() {
   if (!user) return;
   await clearCart();
   (await cookies()).delete("fabo_coupon");
+}
+
+/**
+ * Sepetten, öğrencinin zaten erişimi olan eğitimleri düşürür (sepet sayfası `CartAutoPrune` ile çağırır). Kart ödemesinde
+ * sepet çerezi sonuç sayfasında temizlenir; öğrenci oraya hiç uğramazsa (PayTR ekranını kapattı, bildirim geç geldi)
+ * satın alınan eğitim sepette "zaten kayıtlısın" diye kalıyordu. Yalnızca çağıranın kendi çerezi değişir.
+ */
+export async function pruneOwnedCartLines(): Promise<{ removed: number }> {
+  const user = await getCurrentUser();
+  if (!user) return { removed: 0 };
+  const cart = await getCart();
+  const keep: typeof cart = [];
+  for (const i of cart) if (!(await hasAccess(user.id, i.courseId))) keep.push(i);
+  const removed = cart.length - keep.length;
+  if (removed > 0) {
+    if (keep.length) await setCart(keep);
+    else await clearCart();
+  }
+  return { removed };
 }
 
 /** formHtml: iyzico gömülü form; iframeUrl: PayTR güvenli ödeme sayfası (iframe) */
@@ -236,8 +256,10 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
       userPhone: billing.phone ?? "",
       userIp: ip,
       items: basketItems(t.lines.map((l) => ({ id: String(l.courseId), name: l.title, price: l.price })), t.total),
-      okUrl: siteUrl(`/odeme/tamam?siparis=${orderId}`),
-      failUrl: siteUrl(`/odeme/hata?siparis=${orderId}`),
+      // Dönüş iframe İÇİNDE açılır ve PayTR'den gelen çerçeve isteğine oturum çerezi (SameSite=Lax) gitmez; bu uç
+      // oturum istemeden üst pencereyi sonuç sayfasına taşır (orada sepet temizlenir)
+      okUrl: siteUrl(`/api/odeme/paytr/donus?siparis=${orderId}&sonuc=ok`),
+      failUrl: siteUrl(`/api/odeme/paytr/donus?siparis=${orderId}&sonuc=hata`),
     });
     if (init.status !== "success") {
       await db.update(orders).set({ status: "failed", note: init.reason }).where(eq(orders.id, orderId));

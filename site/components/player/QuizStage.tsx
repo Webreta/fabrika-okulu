@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { submitQuiz, answerQuizQuestion, type QuizResult } from "@/app/actions/player";
+import { submitQuiz, type QuizResult } from "@/app/actions/player";
+import type { QuizReviewItem } from "@/lib/course-logic";
 import { fmtDateTime } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 
 type Q = { id: number; text: string; type: string; options: string[]; image: string; points: number };
-type ReviewItem = { text: string; type: string; options: string[]; image: string; points: number; yourAnswer: string | null; correctAnswer: string; isCorrect: boolean | null; explanation: string };
 type Payload = {
   id: number; title: string; description: string; timeLimit: number; passScore: number; maxAttempts: number; shuffle?: boolean;
   questions: Q[];
@@ -20,53 +20,30 @@ type Payload = {
   exhausted?: boolean;
   /** Kalan deneme hakkı (null = sınırsız) */
   left?: number | null;
-  /** Yarım kalan denemede kontrol edilip kilitlenmiş cevaplar */
-  progress?: Record<string, Feedback & { answer: number | string }>;
   due: string | null;
-  review?: ReviewItem[];
+  /** Yalnızca sınav GEÇİLDİYSE dolu: geçen denemenin cevapları (doğru cevap / açıklama ayarlara göre) */
+  review?: QuizReviewItem[];
 };
 
-type Feedback = { correct: boolean; correctAnswer: number | string | null; explanation: string };
-
-export function QuizStage({ payload, courseId, nextUrl, preview, instant = false }: { payload: Payload; courseId: number; nextUrl: string | null; preview: boolean; instant?: boolean }) {
+/**
+ * Sınav sahnesi. Sorular tek tek gezilir (Önceki/Sonraki), cevaplar yalnızca "Sınavı bitir" ile gönderilir;
+ * çözerken doğru/yanlış bilgisi verilmez (2026-10-10 kararı: soru bazlı anında geri bildirim kaldırıldı).
+ * Sonuçta doğru/yanlış listesi yalnızca sınav geçildiyse gösterilir; geçemeyen öğrenci cevapları göremez
+ * (yeniden çözebileceği için). Açıklamaların gösterilmesi yönetici ayarıdır (panel.quizExplanations).
+ */
+export function QuizStage({ payload, courseId, nextUrl, preview }: { payload: Payload; courseId: number; nextUrl: string | null; preview: boolean }) {
   const [started, setStarted] = useState(false);
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
-  // Kontrol edilmiş (kilitli) cevaplar: sunucuda kayıtlıdır, sayfa yenilense de değiştirilemez
-  const [locked, setLocked] = useState<Record<string, Feedback>>({});
-  const [err, setErr] = useState("");
   const [pending, start] = useTransition();
   const router = useRouter();
   const [qs] = useState(() => payload.shuffle ? [...payload.questions].sort(() => Math.random() - 0.5) : payload.questions);
   const q = qs[idx];
   const last = payload.attempts[payload.attempts.length - 1];
-  const saved = payload.progress ?? {};
-  const resuming = Object.keys(saved).length > 0;
+  const unanswered = qs.filter((x) => answers[String(x.id)] === undefined || answers[String(x.id)] === "").length;
 
-  // Başla / devam et: yarım kalan denemedeki kilitli cevaplar yüklenir, ilk cevaplanmamış sorudan sürer
-  const begin = () => {
-    const a: Record<string, number | string> = {};
-    const l: Record<string, Feedback> = {};
-    for (const [k, v] of Object.entries(saved)) {
-      a[k] = v.answer;
-      l[k] = { correct: v.correct, correctAnswer: v.correctAnswer, explanation: v.explanation };
-    }
-    const first = qs.findIndex((x) => !l[String(x.id)]);
-    setAnswers(a);
-    setLocked(l);
-    setIdx(first === -1 ? Math.max(0, qs.length - 1) : first);
-    setErr("");
-    setStarted(true);
-  };
-  const retry = () => {
-    setResult(null);
-    setAnswers({});
-    setLocked({});
-    setIdx(0);
-    setErr("");
-    setStarted(true);
-  };
+  const begin = () => { setAnswers({}); setIdx(0); setResult(null); setStarted(true); };
 
   const finish = () =>
     start(async () => {
@@ -83,7 +60,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
         ) : result.count > 0 ? (
           <>
             <p className="text-6xl font-bold text-navy-800">{result.correct}<span className="text-2xl text-muted">/{result.count}</span></p>
-            <h2 className="mt-2 text-xl font-bold text-navy-800">Tamamlandı 🎉</h2>
+            <h2 className="mt-2 text-xl font-bold text-navy-800">{result.passed ? "Tebrikler, geçtin 🎉" : "Sınav tamamlandı"}</h2>
             <p className="text-muted">Test soruların: {result.correct}/{result.count} doğru · Puan: %{result.score}{payload.passScore > 0 && (result.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)}</p>
             {!result.passed && (
               <p className="mx-auto mt-3 max-w-xl rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -93,6 +70,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
                   : "Deneme hakkın bitti. Sonraki içeriklere devam edebilirsin; yeni hak için eğitmenine yazabilirsin."}
               </p>
             )}
+            {result.passed && result.review && result.review.length > 0 && <ReviewList items={result.review} light />}
           </>
         ) : (
           <>
@@ -102,7 +80,7 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           </>
         )}
         <div className="mt-5 flex justify-center gap-2">
-          {result.ok && !result.passed && result.canRetry && <button onClick={retry} className="btn-primary">Tekrar çöz</button>}
+          {result.ok && !result.passed && result.canRetry && <button onClick={begin} className="btn-primary">Tekrar çöz</button>}
           {nextUrl && result.ok && (result.passed || !result.canRetry) && <Link href={nextUrl} className="btn-primary">Sıradaki içeriğe geç <Icon name="arrowRight" className="size-4" /></Link>}
           <Link href={`/kurs-izle/${courseId}`} className="btn-secondary">Kursa dön</Link>
         </div>
@@ -119,7 +97,10 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
           <span className="relative inline-flex items-center gap-1.5 rounded-full border border-[#fff]/40 bg-[#fff]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"><Icon name="quiz" className="size-3.5" /> Sınav</span>
           <h1 className="relative mt-4 text-2xl font-bold md:text-3xl">{payload.title}</h1>
           {payload.description && <p className="relative mt-2 max-w-2xl text-[#fff]/80">{payload.description}</p>}
-          {payload.due && <p className="relative mt-3 text-sm text-[#fff]/80">Son tarih: <span className="font-semibold">{fmtDateTime(payload.due)}</span></p>}
+          <p className="relative mt-3 text-sm text-[#fff]/80">
+            {qs.length} soru{payload.passScore > 0 && <> · Geçme notu <span className="font-semibold">%{payload.passScore}</span></>}{payload.maxAttempts > 0 && <> · Deneme hakkı <span className="font-semibold">{payload.maxAttempts}</span></>}
+            {payload.due && <> · Son tarih: <span className="font-semibold">{fmtDateTime(payload.due)}</span></>}
+          </p>
           {last && (
             <div className="relative mt-4 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-3 text-sm">
               <span className="font-semibold">Sonucun:</span> {last.total > 0 ? `${last.earned}/${last.total} puan · %${last.score}` : "Yanıtların kaydedildi"}{payload.passScore > 0 && last.total > 0 && (last.passed ? " · Geçtin" : ` · Geçme notu %${payload.passScore}`)} · <span className="text-[#fff]/70">{fmtDateTime(last.at)}</span>
@@ -133,33 +114,13 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
                 : "Deneme hakkın bitti. Sonraki içeriklere devam edebilirsin; yeni hak için eğitmenine yazabilirsin."}
             </p>
           )}
-          {(payload.review?.length ?? 0) > 0 && (
-            <div className="relative mt-3 rounded-xl border border-[#fff]/25 bg-[#000]/15 p-4 text-sm">
-              <p className="mb-3 font-semibold">Cevapların</p>
-              <ol className="space-y-2">
-                {payload.review!.map((r, i) => (
-                  <li key={i} className={`rounded-lg p-3 ${r.isCorrect === true ? "bg-emerald-500/20" : r.isCorrect === false ? "bg-red-500/20" : "bg-[#fff]/10"}`}>
-                    <p className="font-semibold">{i + 1}. {r.text}</p>
-                    <p className="mt-1 text-[#fff]/85">
-                      Senin cevabın: <b>{r.yourAnswer ?? "—"}</b>
-                      {r.isCorrect === true && <span className="ml-1 font-semibold text-emerald-200">✓ Doğru</span>}
-                      {r.isCorrect === false && <span className="ml-1 font-semibold text-red-200">✗ Yanlış</span>}
-                    </p>
-                    {r.isCorrect === false && r.correctAnswer && <p className="text-[#fff]/85">Doğru cevap: <b>{r.correctAnswer}</b></p>}
-                    {r.type === "open_ended" && <p className="text-[11px] text-[#fff]/60">Açık uçlu soru — puanlanmaz</p>}
-                    {r.explanation && <p className="mt-1 text-[#fff]/75">{r.explanation}</p>}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+          {payload.passed && (payload.review?.length ?? 0) > 0 && <ReviewList items={payload.review!} />}
           <div className="relative mt-6 flex flex-wrap items-center gap-3">
             {payload.canAttempt && !preview && qs.length > 0 ? (
-              <button onClick={begin} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> {resuming ? "Sınava devam et" : last ? "Tekrar çöz" : "Sınava başla"}</button>
+              <button onClick={begin} className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-[#142b56] shadow transition hover:bg-[#eaf6fc]"><Icon name="play" className="size-4" /> {last ? "Tekrar çöz" : "Sınava başla"}</button>
             ) : (
-              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : payload.passed === false ? "Cevaplarını yukarıda görebilirsin." : "Bu sınavı tamamladın. Cevaplarını yukarıda görebilirsin."}</span>
+              <span className="text-sm text-[#fff]/80">{preview ? "Önizleme modunda sınav çözülemez." : qs.length === 0 ? "Sınavda soru yok." : payload.passed === false ? "Deneme hakkın bitti." : "Bu sınavı tamamladın. Cevaplarını yukarıda görebilirsin."}</span>
             )}
-            {resuming && payload.canAttempt && !preview && <span className="text-xs text-[#fff]/70">Kontrol ettiğin cevaplar kayıtlı; kaldığın sorudan devam edersin.</span>}
             {nextUrl && last && (payload.passed !== false || !payload.canAttempt) && <Link href={nextUrl} className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
           </div>
         </div>
@@ -168,75 +129,71 @@ export function QuizStage({ payload, courseId, nextUrl, preview, instant = false
   }
 
   const a = answers[String(q.id)];
-  const feedback: Feedback | null = locked[String(q.id)] ?? null;
-  // Anlık mod: cevabı kontrol et → doğru/yanlış + açıklama → sonraki soru. Kontrol edilen cevap sunucuda kilitlenir.
-  const checkAnswer = () =>
-    start(async () => {
-      setErr("");
-      const r = await answerQuizQuestion(payload.id, q.id, a!);
-      if (!r.ok) { setErr(r.error); return; }
-      // Soru daha önce cevaplandıysa (başka sekme/yenileme) sunucudaki ilk cevap geçerlidir
-      setAnswers((x) => ({ ...x, [String(q.id)]: r.answer }));
-      setLocked((x) => ({ ...x, [String(q.id)]: { correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation } }));
-    });
-  const goNext = () => {
-    setErr("");
-    if (idx < qs.length - 1) setIdx(idx + 1);
-    else finish();
-  };
-  const optionCls = (selected: boolean, isCorrect: boolean) => {
-    if (instant && feedback) {
-      if (isCorrect) return "border-emerald-500 bg-emerald-50";
-      if (selected && !feedback.correct) return "border-red-500 bg-red-50";
-      return "border-line opacity-60";
-    }
-    return selected ? "border-navy-800 bg-navy-50" : "border-line hover:bg-surface";
-  };
+  const optionCls = (selected: boolean) => (selected ? "border-navy-800 bg-navy-50" : "border-line hover:bg-surface");
+  const isLast = idx >= qs.length - 1;
   return (
     <div className="card">
       <div className="flex items-center justify-between text-sm text-muted">
         <span>Soru {idx + 1} / {qs.length}</span>
+        <span>{qs.length - unanswered} cevaplandı</span>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy-100"><div className="h-full bg-sky-400" style={{ width: `${((idx + 1) / qs.length) * 100}%` }} /></div>
       <h2 className="mt-5 text-lg font-semibold text-navy-800">{q.text}</h2>
       {q.image && <img src={q.image} alt="" className="mt-3 max-h-72 rounded-lg" />}
       <div className="mt-4 space-y-2">
         {q.type === "multiple_choice" && q.options.map((o, i) => (
-          <button key={i} disabled={instant && !!feedback} onClick={() => setAnswers({ ...answers, [q.id]: i })} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${optionCls(a === i, instant && !!feedback && feedback!.correctAnswer === i)}`}>
+          <button key={i} onClick={() => setAnswers({ ...answers, [q.id]: i })} aria-pressed={a === i} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${optionCls(a === i)}`}>
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-bold">{String.fromCharCode(65 + i)}</span>{o}
           </button>
         ))}
         {q.type === "true_false" && ["true", "false"].map((v) => (
-          <button key={v} disabled={instant && !!feedback} onClick={() => setAnswers({ ...answers, [q.id]: v })} className={`w-full rounded-xl border px-4 py-3 text-left text-sm ${optionCls(a === v, instant && !!feedback && feedback!.correctAnswer === v)}`}>{v === "true" ? "Doğru" : "Yanlış"}</button>
+          <button key={v} onClick={() => setAnswers({ ...answers, [q.id]: v })} aria-pressed={a === v} className={`w-full rounded-xl border px-4 py-3 text-left text-sm ${optionCls(a === v)}`}>{v === "true" ? "Doğru" : "Yanlış"}</button>
         ))}
         {q.type === "open_ended" && <textarea aria-label="Cevabını yaz" rows={5} value={(a as string) ?? ""} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} className="input" placeholder="Cevabını yaz…" />}
       </div>
-      {instant && feedback && (
-        <div className={`mt-4 rounded-xl p-4 text-sm ${feedback.correct ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
-          <p className="font-bold">{feedback.correct ? "🎉 Tebrikler, doğru!" : "Maalesef yanlış."}</p>
-          {!feedback.correct && q.type === "multiple_choice" && typeof feedback.correctAnswer === "number" && (
-            <p className="mt-1">Doğru cevap: <b>{String.fromCharCode(65 + feedback.correctAnswer)} — {q.options[feedback.correctAnswer]}</b></p>
-          )}
-          {!feedback.correct && q.type === "true_false" && <p className="mt-1">Doğru cevap: <b>{feedback.correctAnswer === "true" ? "Doğru" : "Yanlış"}</b></p>}
-          {feedback.explanation && <p className="mt-1">{feedback.explanation}</p>}
-        </div>
-      )}
-      {err && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{err}</p>}
+      {/* Soru noktaları: cevaplanan dolu, cevapsız boş; tıklayınca o soruya gidilir */}
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {qs.map((x, i) => {
+          const has = answers[String(x.id)] !== undefined && answers[String(x.id)] !== "";
+          return <button key={x.id} onClick={() => setIdx(i)} aria-label={`Soru ${i + 1}`} className={`size-7 rounded-full border text-[11px] font-semibold transition ${i === idx ? "border-navy-800 bg-navy-800 text-white" : has ? "border-sky-400 bg-sky-100 text-navy-800" : "border-line text-muted hover:bg-surface"}`}>{i + 1}</button>;
+        })}
+      </div>
+      {isLast && unanswered > 0 && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{unanswered} soru cevapsız. Cevapsız sorular yanlış sayılır; yukarıdaki numaralardan geri dönebilirsin.</p>}
       <div className="mt-6 flex items-center justify-between">
-        {instant ? <span /> : <button onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0} className="btn-secondary btn-sm">Önceki</button>}
+        <button onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0} className="btn-secondary btn-sm">Önceki</button>
         <Link href={`/kurs-izle/${courseId}`} className="text-sm text-muted hover:underline">Çık</Link>
-        {instant && q.type !== "open_ended" ? (
-          feedback ? (
-            <button onClick={goNext} disabled={pending} className="btn-primary btn-sm">{pending ? "Gönderiliyor…" : idx < qs.length - 1 ? "Sonraki soru" : "Sınavı bitir"}</button>
-          ) : (
-            <button onClick={checkAnswer} disabled={pending || a === undefined} className="btn-primary btn-sm">{pending ? "Kontrol ediliyor…" : "Cevabı kontrol et"}</button>
-          )
-        ) : idx < qs.length - 1 ? (
+        {!isLast ? (
           <button onClick={() => setIdx(idx + 1)} className="btn-primary btn-sm">Sonraki</button>
         ) : (
           <button onClick={finish} disabled={pending} className="btn-primary btn-sm">{pending ? "Gönderiliyor…" : "Sınavı bitir"}</button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Geçilen sınavın cevapları: doğru/yanlış, (ayara göre) doğru cevap ve açıklama. light: açık zeminli sonuç kartında */
+function ReviewList({ items, light = false }: { items: QuizReviewItem[]; light?: boolean }) {
+  const txt = light ? "text-navy-800" : "text-[#fff]";
+  const sub = light ? "text-muted" : "text-[#fff]/85";
+  return (
+    <div className={`relative mt-4 rounded-xl p-4 text-left text-sm ${light ? "border border-line bg-surface" : "border border-[#fff]/25 bg-[#000]/15"}`}>
+      <p className={`mb-3 font-semibold ${txt}`}>Cevapların</p>
+      <ol className="space-y-2">
+        {items.map((r, i) => (
+          <li key={i} className={`rounded-lg p-3 ${r.isCorrect === true ? (light ? "bg-emerald-50" : "bg-emerald-500/20") : r.isCorrect === false ? (light ? "bg-red-50" : "bg-red-500/20") : light ? "bg-white" : "bg-[#fff]/10"}`}>
+            <p className={`font-semibold ${txt}`}>{i + 1}. {r.text}</p>
+            <p className={`mt-1 ${sub}`}>
+              Senin cevabın: <b>{r.yourAnswer ?? "—"}</b>
+              {r.isCorrect === true && <span className={`ml-1 font-semibold ${light ? "text-emerald-700" : "text-emerald-200"}`}>✓ Doğru</span>}
+              {r.isCorrect === false && <span className={`ml-1 font-semibold ${light ? "text-red-700" : "text-red-200"}`}>✗ Yanlış</span>}
+            </p>
+            {r.isCorrect === false && r.correctAnswer && <p className={sub}>Doğru cevap: <b>{r.correctAnswer}</b></p>}
+            {r.type === "open_ended" && <p className={`text-[11px] ${light ? "text-muted" : "text-[#fff]/60"}`}>Açık uçlu soru — puanlanmaz</p>}
+            {r.explanation && <p className={`mt-1 ${light ? "text-muted" : "text-[#fff]/75"}`}>{r.explanation}</p>}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

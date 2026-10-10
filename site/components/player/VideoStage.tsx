@@ -11,6 +11,7 @@ import { QuestionsPanel, type QuestionItem } from "@/components/player/Questions
 import { NotesPanel, type NoteItem } from "@/components/player/NotesPanel";
 import { SuggestionsPanel } from "@/components/player/SuggestionsPanel";
 import type { SuggestionItem } from "@/lib/suggestions";
+import { VIDEO_PAUSE_EVENT } from "@/lib/player-events";
 
 type Props = {
   courseId: number;
@@ -181,9 +182,12 @@ function EmbedVideo({ src, title, onEnded }: { src: string; title: string; onEnd
       if (state === 1) ended = false;
       if (state === 0 && !ended) { ended = true; cb.current(); }
     };
+    // Genel not penceresi açılınca duraklat
+    const onPauseReq = () => { try { frame.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), origin); } catch {} };
     window.addEventListener("message", onMsg);
+    window.addEventListener(VIDEO_PAUSE_EVENT, onPauseReq);
     frame.addEventListener("load", hello);
-    return () => { clearInterval(timer); window.removeEventListener("message", onMsg); frame.removeEventListener("load", hello); };
+    return () => { clearInterval(timer); window.removeEventListener("message", onMsg); window.removeEventListener(VIDEO_PAUSE_EVENT, onPauseReq); frame.removeEventListener("load", hello); };
   }, [src]);
 
   return <iframe ref={ref} src={src} className="aspect-video w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={title} />;
@@ -252,8 +256,11 @@ function FileVideo({ src, posKey, unlocked, onComplete, onEnded, timeRef, startA
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
     v.addEventListener("ended", onEnd);
+    const onPauseReq = () => v.pause(); // genel not penceresi açılınca
+    window.addEventListener(VIDEO_PAUSE_EVENT, onPauseReq);
     if (v.readyState >= 1) onMeta();
     return () => {
+      window.removeEventListener(VIDEO_PAUSE_EVENT, onPauseReq);
       v.removeEventListener("loadedmetadata", onMeta);
       v.removeEventListener("timeupdate", onTime);
       v.removeEventListener("seeking", onSeeking);
@@ -333,6 +340,12 @@ function VimeoVideo({ videoId, posKey, unlocked, onComplete, onEnded, timeRef, s
   const holder = useRef<HTMLDivElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
+  // Genel not penceresi açılınca duraklat
+  useEffect(() => {
+    const onPauseReq = () => { playerRef.current?.pause().catch(() => {}); };
+    window.addEventListener(VIDEO_PAUSE_EVENT, onPauseReq);
+    return () => window.removeEventListener(VIDEO_PAUSE_EVENT, onPauseReq);
+  }, []);
   const watchedMax = useRef(0);
   const durationRef = useRef(0);
   const completedRef = useRef(false);

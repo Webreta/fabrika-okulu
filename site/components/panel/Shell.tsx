@@ -11,9 +11,19 @@ import { goalColor } from "@/lib/survey-logic";
 
 /** match: bu yollarda da sekme aktif sayılır (örn. Tercihler altındaki alt sayfalar) */
 /** end: ikincil menüde sağa, Çıkış butonunun yanına yaslanır */
-export type NavItem = { href: string; label: string; icon: IconName; badge?: number; exact?: boolean; match?: string[]; end?: boolean; newTab?: boolean };
-/** Hedef bayrağı: ana sorusu olan anket + öğrencinin cevabı (cevapsızsa gri) */
-export type GoalFlagItem = { surveyId: number; title: string; question: string; answer: string | null; color: string | null };
+/** color: sekmenin ikon, metin ve kenarlığı bu renkte çizilir (Kariyer Hedefim → hedef bayrağının rengi) */
+export type NavItem = { href: string; label: string; icon: IconName; badge?: number; exact?: boolean; match?: string[]; end?: boolean; newTab?: boolean; color?: string };
+/** Hedef bayrağı: ana sorusu olan anket + öğrencinin cevabı (cevapsızsa gri); editable: test yeniden çözülerek hedef değiştirilebilir */
+export type GoalFlagItem = { surveyId: number; title: string; question: string; answer: string | null; color: string | null; editable: boolean };
+
+/**
+ * Renkli sekme (hedef bayrağı): tema renkleri ne olursa olsun bayrak rengi belli olsun diye kenarlık, ikon ve metin
+ * bayrak renginde, zemin aynı rengin açık tonunda çizilir; aktifken zemin tam renk, metin beyaz.
+ */
+function tintStyle(color: string | undefined, active: boolean): React.CSSProperties | undefined {
+  if (!color) return undefined;
+  return active ? { borderColor: color, background: color, color: "#fff" } : { borderColor: color, color, background: `${color}1f` };
+}
 
 /**
  * Öğrenci + eğitmen paneli ortak kabuk: üst çubuk (logo, pill nav, zil, kullanıcı menüsü),
@@ -62,7 +72,7 @@ export function Shell({
               <button className="rounded-lg p-2 hover:bg-surface lg:hidden" onClick={() => setDrawer(true)} aria-label="Menü"><Icon name="menu" className="size-6 text-navy-800" /></button>
               <nav className="hidden items-center gap-1 lg:flex">
                 {primary.map((n) => (
-                  <Link key={n.href} href={n.href} target={n.newTab ? "_blank" : undefined} rel={n.newTab ? "noopener" : undefined} className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-[13px] font-semibold transition ${isActive(n) ? "border-navy-800 text-navy-800" : "border-transparent text-muted hover:bg-surface"}`}>
+                  <Link key={n.href} href={n.href} target={n.newTab ? "_blank" : undefined} rel={n.newTab ? "noopener" : undefined} style={tintStyle(n.color, isActive(n))} className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-[13px] font-semibold transition ${isActive(n) ? "border-navy-800 text-navy-800" : n.color ? "" : "border-transparent text-muted hover:bg-surface"}`}>
                     <Icon name={n.icon} className="size-4" />{n.label}
                     {n.badge ? <span className="rounded-full bg-sky-400 px-1.5 text-[10px] text-white">{n.badge}</span> : null}
                   </Link>
@@ -119,14 +129,14 @@ export function Shell({
                 {flags.map((f) => {
                   const c = f.answer ? goalColor(f.color) : null;
                   return (
-                    <Link key={f.surveyId} href={`/panel/anket/${f.surveyId}#hedef`} aria-label={`${f.title}: ${f.answer ?? "hedef seçilmedi"}`} className="group relative flex size-9 shrink-0 items-center justify-center rounded-full transition hover:bg-surface">
+                    <Link key={f.surveyId} href={f.answer ? `/panel/anket/${f.surveyId}#hedef` : `/panel/anket/${f.surveyId}`} aria-label={`${f.title}: ${f.answer ?? "hedef seçilmedi"}`} className="group relative flex size-9 shrink-0 items-center justify-center rounded-full transition hover:bg-surface">
                       <span className={`flex transition group-hover:scale-110 ${c ? "" : "text-navy-300"}`} style={c ? { color: c.hex } : undefined}><Icon name="flag" className="size-5" /></span>
                       {c && <span className="absolute bottom-1 right-1 size-2 rounded-full ring-2 ring-white" style={{ background: c.hex }} />}
                       <span role="tooltip" className="menu-tip pointer-events-none absolute right-0 top-full z-20 mt-2 w-max max-w-[260px] origin-top-right rounded-xl bg-navy-900 px-3 py-2 text-left text-white shadow-xl">
                         <span className="absolute -top-1 right-3 size-2.5 rotate-45 bg-navy-900" />
                         <span className="block text-[10px] font-semibold uppercase tracking-wide text-white/60">{f.title}</span>
                         <span className="mt-0.5 flex items-center gap-1.5 text-sm font-bold"><span className="size-2.5 shrink-0 rounded-full" style={{ background: c ? c.hex : "#9aabc7" }} />{f.answer ?? "Hedef seçilmedi"}</span>
-                        <span className="mt-0.5 block text-[11px] text-white/70">{f.answer ? "Değiştirmek için tıkla" : "Seçmek için tıkla"}</span>
+                        <span className="mt-0.5 block text-[11px] text-white/70">{f.answer ? (f.editable ? "Testi yeniden çözerek değiştirebilirsin" : "Tek seferlik test; hedef değişmez") : "Seçmek için testi çöz"}</span>
                       </span>
                     </Link>
                   );
@@ -152,7 +162,7 @@ export function Shell({
             </div>
             <nav className="space-y-1">
               {[...primary, ...secondary].map((n) => (
-                <Link key={n.href} href={n.href} target={n.newTab ? "_blank" : undefined} rel={n.newTab ? "noopener" : undefined} onClick={() => setDrawer(false)} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${isActive(n) ? "bg-navy-800 text-white" : "text-navy-800 hover:bg-surface"}`}>
+                <Link key={n.href} href={n.href} target={n.newTab ? "_blank" : undefined} rel={n.newTab ? "noopener" : undefined} onClick={() => setDrawer(false)} style={n.color ? (isActive(n) ? { background: n.color, color: "#fff" } : { color: n.color }) : undefined} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${isActive(n) ? "bg-navy-800 text-white" : "text-navy-800 hover:bg-surface"}`}>
                   <Icon name={n.icon} className="size-5" />{n.label}
                   {n.badge ? <span className="ml-auto rounded-full bg-sky-400 px-1.5 text-[10px] text-white">{n.badge}</span> : null}
                 </Link>

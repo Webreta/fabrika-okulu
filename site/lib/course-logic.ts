@@ -105,6 +105,9 @@ export function attemptPassed(a: AttemptLite, passScore: number) {
  *    (kurs %100 olmaz, otomatik sertifika verilmez); eğitmen/yönetici yeni hak tanımlayabilir
  * Geçersiz sayılan (voided) ve yarım kalan (in_progress) denemeler hak hesabına girmez.
  */
+/** Geçilen sınavın sonuç listesi satırı (doğru cevap ve açıklama ayarlara göre boş gelebilir) */
+export type QuizReviewItem = { text: string; type: string; options: string[]; image: string; points: number; yourAnswer: string | null; correctAnswer: string; isCorrect: boolean | null; explanation: string };
+
 export function quizStanding(quiz: { passScore: number; maxAttempts: number }, attempts: AttemptLite[]) {
   const finished = attempts.filter((a) => !a.voided && a.status !== "in_progress");
   const passed = finished.some((a) => attemptPassed(a, quiz.passScore));

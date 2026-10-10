@@ -60,6 +60,8 @@ export type PanelSettings = {
   /** İkincil menü stili: normal (ikon+metin) | icon (büyük ikon, üzerine gelince metin yana açılır) | tooltip (sabit ikon, üzerine gelince adı altında baloncukta belirir) */
   menuStyle: "normal" | "icon" | "tooltip";
   registrationOpen: boolean;
+  /** Geçilen sınavın sonuç listesinde soru açıklamaları gösterilsin mi (kapalıysa yalnızca doğru/yanlış) */
+  quizExplanations: boolean;
 };
 
 export type PaymentSettings = {
@@ -137,6 +139,7 @@ const DEFAULTS = {
     defaultTheme: "aydinlik",
     menuStyle: "icon",
     registrationOpen: true,
+    quizExplanations: true,
   } as PanelSettings,
   payment: {
     provider: "iyzico" as PaymentSettings["provider"],

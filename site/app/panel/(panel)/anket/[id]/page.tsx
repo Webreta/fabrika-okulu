@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getSurveyById, getSurveyAnswers, completedSurveyKeys } from "@/lib/survey";
 import { groupBySection, isVisible, toArr, goalQuestion } from "@/lib/survey-logic";
-import { GoalPicker } from "@/components/panel/GoalPicker";
+import { goalColor } from "@/lib/survey-logic";
 import { PageTitle } from "@/components/panel/ui";
 import { SurveyForm } from "@/components/panel/SurveyForm";
 import { Icon } from "@/components/site/Icon";
@@ -54,9 +54,28 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
         sub={survey.editable ? "Cevaplarını istediğin zaman güncelleyebilirsin." : "Bu test tek seferlik; verdiğin cevaplar aşağıda."}
         action={<div className="flex gap-2">{back}{survey.editable && <Link href={`/panel/anket/${survey.id}?duzenle=1`} className="btn-primary btn-sm"><Icon name="edit" className="size-4" /> Cevaplarımı güncelle</Link>}</div>}
       />
+      {/* Hedef bayrağı salt okunur: buradan tek tık değiştirme yok, hedef yalnızca test yeniden çözülerek değişir (2026-10-10) */}
       {(() => {
         const gq = goalQuestion(survey);
-        return gq ? <div className="mb-6"><GoalPicker surveyId={survey.id} question={gq.label} options={gq.options ?? []} initial={toArr(answers[gq.key])[0] ?? null} /></div> : null;
+        if (!gq) return null;
+        const val = toArr(answers[gq.key])[0] ?? null;
+        const opt = gq.options?.find((o) => o.value === val) ?? null;
+        const c = goalColor(opt?.color);
+        return (
+          <section id="hedef" className="card mx-auto mb-6 max-w-2xl scroll-mt-24" style={opt ? { borderColor: c.hex, background: `${c.hex}22` } : undefined}>
+            <div className="flex items-start gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ background: opt ? c.hex : "#9aabc7" }}><Icon name="flag" className="size-6" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-navy-700/70">Hedef bayrağım</p>
+                <h3 className="font-bold text-navy-800">{gq.label}</h3>
+                <p className="mt-0.5 text-sm text-navy-700/80">
+                  {opt ? <>Şu an: <b>{opt.label}</b>.</> : "Henüz bir hedef seçmedin."}{" "}
+                  {survey.editable ? <>Değiştirmek için <Link href={`/panel/anket/${survey.id}?duzenle=1`} className="font-semibold underline underline-offset-2">testi yeniden çöz</Link>.</> : "Bu test tek seferlik olduğu için hedef sonradan değiştirilemez."}
+                </p>
+              </div>
+            </div>
+          </section>
+        );
       })()}
       <div className="card mx-auto max-w-2xl space-y-6">
         {groups.map((g) => (

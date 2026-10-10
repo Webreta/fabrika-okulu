@@ -139,9 +139,21 @@ body {
   --color-violet-50: #2a2145; --color-violet-100: #352a58; --color-violet-700: #c4b5fd;
   color-scheme: dark;
 }
-.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"]) .fo-logo { filter: brightness(0) invert(1); }
-/* Gece'de açık laciverte dönen dolu butonlarda koyu yazı */
-.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"]) :is(.bg-navy-800, .bg-navy-900, .btn-primary) { color: var(--color-surface); }
+/* Koyu Mor: gece moru zemin, lila vurgu */
+.fo-theme[data-theme="mor"] {
+  --color-surface: #140f22; --color-line: #2f2547; --color-white: #1e1733; --color-ink: #ece6f7; --color-muted: #a99ec4;
+  --color-navy-950: #f5f0ff; --color-navy-900: #ebe2fb; --color-navy-800: #d9ccf5; --color-navy-700: #c4b2ee; --color-navy-600: #ae99e3; --color-navy-500: #9480cf;
+  --color-navy-400: #7a69b3; --color-navy-300: #5b4c8f; --color-navy-200: #41346b; --color-navy-100: #30264f; --color-navy-50: #241c3c;
+  --color-sky-700: #e5d4ff; --color-sky-600: #d4bdfb; --color-sky-500: #b894f3; --color-sky-400: #a078e8; --color-sky-300: #8359cf; --color-sky-200: #5a3c99; --color-sky-100: #3d2a6a; --color-sky-50: #2e2050;
+  --color-emerald-50: #15301f; --color-emerald-100: #1b4329; --color-emerald-700: #7fd9a4; --color-emerald-800: #96e1b4;
+  --color-amber-50: #36260c; --color-amber-100: #4c3712; --color-amber-200: #6c4c16; --color-amber-700: #f0c168; --color-amber-800: #f4cf86;
+  --color-red-50: #3c1a22; --color-red-700: #f08ea0; --color-red-600: #f39eae; --color-red-200: #6c2b3a;
+  --color-violet-50: #2c2250; --color-violet-100: #3a2c66; --color-violet-700: #d2c3ff;
+  color-scheme: dark;
+}
+.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"],[data-theme="mor"]) .fo-logo { filter: brightness(0) invert(1); }
+/* Koyu temalarda açık tona dönen dolu butonlarda koyu yazı */
+.fo-theme:is([data-theme="gece"],[data-theme="kafe"],[data-theme="kutuphane"],[data-theme="mor"]) :is(.bg-navy-800, .bg-navy-900, .btn-primary) { color: var(--color-surface); }
 
 /* Lavanta: açık mor zemin, koyu mor vurgu */
 .fo-theme[data-theme="lavanta"] {

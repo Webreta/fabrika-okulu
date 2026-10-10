@@ -6,7 +6,7 @@ import { pendingSurveyFor } from "@/lib/survey";
 import { studentRecommendations } from "@/lib/recommendations";
 import { RecoSlider } from "@/components/panel/RecoSlider";
 import { getSetting } from "@/lib/settings";
-import { themeByKey } from "@/lib/panel-themes";
+import { BANNER_ASPECT, themeByKey } from "@/lib/panel-themes";
 import { fmtDate, fmtTime, numSuffix, CALENDAR_TYPES } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Progress, Kpi, Chip } from "@/components/panel/ui";
@@ -37,10 +37,11 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
       <div className="space-y-6">
         {/* Tema banner */}
         <div className="relative rounded-2xl">
+          {/* Kapak görseli kendi oranında, kırpılmadan (yönetici isteği 2026-10-10) */}
           {theme.img ? (
-            <Image src={theme.img} alt="" width={1310} height={260} className="h-44 w-full rounded-2xl object-cover md:h-64" style={{ objectPosition: theme.focus }} />
+            <Image src={theme.img} alt="" width={1600} height={638} priority className="w-full rounded-2xl object-cover" style={{ aspectRatio: BANNER_ASPECT }} />
           ) : (
-            <div className="h-44 w-full rounded-2xl bg-gradient-to-r from-navy-800 to-sky-500 md:h-64" />
+            <div className="w-full rounded-2xl bg-gradient-to-r from-navy-800 to-sky-500" style={{ aspectRatio: BANNER_ASPECT }} />
           )}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#000]/75 via-[#000]/20 to-transparent" />
           <div className="absolute bottom-5 left-6 text-[#fff]">

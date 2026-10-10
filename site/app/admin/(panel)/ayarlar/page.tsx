@@ -68,6 +68,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           { key: "defaultTheme", label: "Varsayılan panel teması", type: "select", options: PANEL_THEMES.map((t) => ({ value: t.key, label: t.label })) },
           { key: "menuStyle", label: "Öğrenci paneli menü stili", type: "select", options: [{ value: "normal", label: "Normal (ikon + metin)" }, { value: "icon", label: "İkon (büyük ikon, üzerine gelince metin yana açılır)" }, { value: "tooltip", label: "İkon + baloncuk (sabit ikon, üzerine gelince adı altında belirir)" }] },
           { key: "registrationOpen", label: "Üye kaydı açık", type: "checkbox" },
+          { key: "quizExplanations", label: "Sınav sonunda soru açıklamalarını göster", type: "checkbox", hint: "Öğrenci cevapları yalnızca sınavı geçince görür. Kapalıysa listede yalnızca doğru/yanlış (ve sınav ayarına göre doğru cevap) yer alır, soru açıklamaları gizlenir." },
         ]} />
       )}
       {sekme === "seo" && (

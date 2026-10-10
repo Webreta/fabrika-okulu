@@ -29,6 +29,13 @@ export function FileStage({ lesson, nextUrl, prevUrl }: { lesson: { id: number; 
           {nextUrl && <Link href={nextUrl} className="btn-primary btn-sm">Sonraki <Icon name="arrowRight" className="size-4" /></Link>}
         </div>
       </div>
+      {!lesson.fileName ? (
+        <div className="card flex flex-col items-center gap-3 py-10 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Icon name="file" className="size-7" /></span>
+          <p className="font-semibold text-navy-800">Bu derse henüz belge yüklenmedi.</p>
+          <p className="max-w-md text-sm text-muted">Eğitmen belgeyi eklediğinde burada görüntülenecek. Dilersen sonraki içeriğe geçebilirsin.</p>
+        </div>
+      ) : (
       <div className="relative overflow-hidden rounded-2xl border border-line bg-white select-none">
         {isPdf ? (
           <iframe src={`${src}#toolbar=0&navpanes=0&scrollbar=1`} className="h-[78vh] w-full" title={lesson.title} />
@@ -39,7 +46,8 @@ export function FileStage({ lesson, nextUrl, prevUrl }: { lesson: { id: number; 
           {Array.from({ length: 9 }).map((_, i) => <span key={i} className="-rotate-12 text-2xl font-bold text-navy-800">Fabrika Okulu</span>)}
         </div>
       </div>
-      <p className="text-center text-xs text-muted">Bu dosya indirilemez ve kopyalanamaz · ilerlemeni etkilemez</p>
+      )}
+      {lesson.fileName && <p className="text-center text-xs text-muted">Bu dosya indirilemez ve kopyalanamaz · ilerlemeni etkilemez</p>}
     </div>
   );
 }

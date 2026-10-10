@@ -17,10 +17,12 @@ import { VideoStage } from "@/components/player/VideoStage";
 import { QuizStage } from "@/components/player/QuizStage";
 import { AssignmentStage } from "@/components/player/AssignmentStage";
 import { FileStage } from "@/components/player/FileStage";
+import { GeneralNotesButton } from "@/components/player/GeneralNotesButton";
 import { logout } from "@/app/actions/auth";
 import { initials, fmtDateTime } from "@/lib/format";
 import { getSetting } from "@/lib/settings";
-import { requiredSurveyFor } from "@/lib/survey";
+import { requiredSurveyFor, studentGoalFlags } from "@/lib/survey";
+import { goalColor } from "@/lib/survey-logic";
 import { cleanHtml } from "@/lib/sanitize";
 import { listCourseNotes } from "@/app/actions/notes";
 import { autoIssueCertificates } from "@/lib/cert-issue";
@@ -115,25 +117,28 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   const nextUrl = next && !nextNote ? `/kurs-izle/${courseId}?ders=${next.id}` : null;
   const prevUrl = prev ? `/kurs-izle/${courseId}?ders=${prev.id}` : null;
   const unread = await unreadCount(user!.id);
+  // Üst menüdeki "Kariyer Hedefim" sekmesi panel kabuğundaki gibi hedef bayrağının ikonunu ve rengini taşır
+  const goal = user!.role === "student" ? ((await studentGoalFlags(user!.id)).find((f) => f.answer && f.color) ?? null) : null;
+  const goalHex = goal ? goalColor(goal.color).hex : null;
   // Kayıtlı dönemin canlı oturumları yan sütunda (önizlemede yok); bağlantı oturumdan 15 dk önce açılır
   const live = acc.preview ? null : await studentPeriodSessions(user!.id, courseId);
   const themeKey = themeByKey(user!.panelTheme, (await getSetting("panel")).defaultTheme).key;
-  // Tüm sınavlar anlık geri bildirimli çözülür (test/D-Y anında; açık uçlu yalnız kaydedilir, eğitmene gönderim/değerlendirme yok)
-  const instant = true;
+  // Notlar her içerik türünde: sağ sütundaki "Genel not al" penceresi derse bağlı olmayan notları gösterir
+  const allNotes = acc.preview ? [] : await listCourseNotes(courseId);
 
   // Sahne verisi
   let stage: React.ReactNode = null;
   if (activeIdx === -2 && sp.quiz) {
     const p = await quizPayload(Number(sp.quiz), user!.id);
-    stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={null} preview={acc.preview} instant={instant} /> : <p className="card">Sınav bulunamadı.</p>;
+    stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={null} preview={acc.preview} /> : <p className="card">Sınav bulunamadı.</p>;
   } else if (activeIdx === -2 && sp.gorev) {
     const p = await assignmentPayload(Number(sp.gorev), user!.id);
     stage = p ? <AssignmentStage payload={serializeAssignment(p)} nextUrl={null} preview={acc.preview} /> : <p className="card">Görev bulunamadı.</p>;
   } else if (active) {
     if (active.type === "video") {
-      const [qs, myNotes, mySuggestions] = await Promise.all([
+      const myNotes = allNotes;
+      const [qs, mySuggestions] = await Promise.all([
         lessonQuestions(user!.id, courseId),
-        listCourseNotes(courseId),
         db
           .select({ id: courseSuggestions.id, text: courseSuggestions.text, createdAt: courseSuggestions.createdAt })
           .from(courseSuggestions)
@@ -161,7 +166,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
     } else if (active.type === "quiz") {
       const q = await quizForLesson(active.id);
       const p = q ? await quizPayload(q.id, user!.id) : null;
-      stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={nextUrl} preview={acc.preview} instant={instant} /> : <p className="card">Bu derse bağlı sınav bulunamadı.</p>;
+      stage = p ? <QuizStage payload={serializeQuiz(p)} courseId={courseId} nextUrl={nextUrl} preview={acc.preview} /> : <p className="card">Bu derse bağlı sınav bulunamadı.</p>;
     } else if (active.type === "assign") {
       const a = await assignmentForLesson(active.id);
       const p = a ? await assignmentPayload(a.id, user!.id) : null;
@@ -233,8 +238,8 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       <header className="sticky top-0 z-40 border-b border-line bg-white">
         <div className="mx-auto grid max-w-[1310px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 lg:grid-cols-[1fr_auto_1fr]">
           <nav className="hidden items-center gap-1 md:flex">
-            {([["/panel", "Çalışma Odam", "home"], ["/panel/takvim", "Gündemim", "calendar"], ["/panel/anket", "Kariyer Hedefim", "target"]] as const).map(([h, l, i]) => (
-              <Link key={h} href={h} className="flex items-center gap-2 rounded-full border-2 border-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted transition hover:bg-surface">
+            {([["/panel", "Çalışma Odam", "home"], ["/panel/takvim", "Gündemim", "calendar"], ["/panel/anket", "Kariyer Hedefim", goalHex ? "flag" : "target"]] as const).map(([h, l, i]) => (
+              <Link key={h} href={h} style={h === "/panel/anket" && goalHex ? { borderColor: goalHex, color: goalHex, background: `${goalHex}1f` } : undefined} className="flex items-center gap-2 rounded-full border-2 border-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted transition hover:bg-surface">
                 <Icon name={i} className="size-4" />{l}
               </Link>
             ))}
@@ -274,6 +279,7 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
       <div className="mx-auto grid max-w-[1310px] grid-cols-1 gap-6 px-4 py-5 lg:grid-cols-[1fr_372px]">
         <div className="min-w-0 space-y-5">{celebrationCard}{statsCard}{stage}</div>
         <div className="space-y-5">
+        {!acc.preview && <GeneralNotesButton courseId={courseId} notes={allNotes.filter((n) => !n.lessonId)} total={allNotes.length} />}
         {live && live.sessions.length > 0 && (
           <LiveSessionsCard periodName={live.periodName} sessions={live.sessions.map((s) => ({ index: s.index, title: s.title, start: s.start.toISOString(), end: s.end.toISOString(), link: s.link, notes: s.notes }))} />
         )}
@@ -311,7 +317,6 @@ function serializeQuiz(p: NonNullable<Awaited<ReturnType<typeof quizPayload>>>) 
     passed: p.attempts.length > 0 ? p.passed : undefined,
     exhausted: p.exhausted,
     left: p.left,
-    progress: p.progress,
     due: p.due?.toISOString() ?? null,
     review: p.review,
   };

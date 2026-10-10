@@ -4,7 +4,8 @@ import { db } from "@/db";
 import { enrollments, quizzes, assignments, quizAttempts, assignmentSubmissions, quizQuestions, questions, questionAnswers, users } from "@/db/schema";
 import { getCourseFull } from "@/lib/data/courses";
 import { lessonSets, getEnrollment, studentTaskBase } from "@/lib/data/student";
-import { computeProgress, computeFrontier, taskDue, deadlineOf, quizStanding } from "@/lib/course-logic";
+import { computeProgress, computeFrontier, taskDue, deadlineOf, quizStanding, attemptPassed, type QuizReviewItem } from "@/lib/course-logic";
+import { getSetting } from "@/lib/settings";
 import type { QuizQuestion } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { ownsCourse } from "@/lib/data/teacher";
@@ -106,50 +107,15 @@ export async function quizPayload(quizId: number, userId: number) {
     .orderBy(quizAttempts.id);
   const finished = attempts.filter((a) => a.status !== "in_progress");
   const standing = quizStanding(q, attempts);
-  // Yarım kalan deneme: kontrol edilmiş cevaplar kilitlidir; sayfa yenilense de aynı cevaplarla kaldığı yerden sürer
-  const current = attempts.find((a) => a.status === "in_progress");
-  const progress: Record<string, { answer: number | string; correct: boolean; correctAnswer: number | string | null; explanation: string }> = {};
-  if (current && standing.canAttempt) {
-    for (const x of qs) {
-      const a = current.answers[String(x.id)];
-      if (a === undefined || a === null || x.type === "open_ended") continue;
-      progress[String(x.id)] = { answer: a, ...evaluateAnswer(x, a) };
-    }
-  }
   const base = await studentTaskBase(userId, q.courseId);
   const due = q.extraDays && q.extraDays > 0 ? taskDue(base, q.extraDays) : deadlineOf(q.endDate);
-  // Tamamlanmış deneme varsa: sınavın tümü salt-okunur tekrar görüntülenebilir.
-  // Doğru cevaplar YALNIZCA tamamlandıktan sonra istemciye gider (çözerken sızmaz).
-  const lastDone = finished[finished.length - 1];
-  const review = lastDone
-    ? qs.map((x) => {
-        const a = lastDone.answers[String(x.id)];
-        const yourAnswer =
-          a === undefined || a === null || a === ""
-            ? null
-            : x.type === "multiple_choice"
-              ? (x.options[Number(a)] ?? String(a))
-              : x.type === "true_false"
-                ? (a === "true" ? "Doğru" : "Yanlış")
-                : String(a);
-        const correctAnswer =
-          x.type === "multiple_choice"
-            ? (Array.isArray(x.correct) ? x.correct.map((i) => x.options[i]).filter(Boolean).join(", ") : "")
-            : x.type === "true_false"
-              ? (String(x.correct) === "true" ? "Doğru" : "Yanlış")
-              : "";
-        const isCorrect =
-          x.type === "multiple_choice"
-            ? (Array.isArray(x.correct) && x.correct.includes(Number(a)))
-            : x.type === "true_false"
-              ? String(a) === String(x.correct)
-              : null; // açık uçlu: doğru/yanlış yok
-        return { text: x.text, type: x.type, options: x.options, image: x.image, points: x.points, yourAnswer, correctAnswer, isCorrect, explanation: x.explanation ?? "" };
-      })
-    : [];
+  // Cevap listesi YALNIZCA sınav geçildiyse (geçen deneme) gider. Doğru cevaplar çözerken istemciye gitmez; geçemeyen
+  // öğrenci yeniden çözebileceği için cevaplarını ve doğruları göremez (2026-10-10). Açıklama yönetici ayarına bağlı.
+  const passedAttempt = standing.passed ? [...finished].reverse().find((a) => attemptPassed(a, q.passScore)) : undefined;
+  const review = passedAttempt ? await buildQuizReview(q, qs, passedAttempt.answers) : [];
   return {
     quiz: q,
-    // correct cevaplar çözerken istemciye gitmez (yalnız review'da, tamamlandıktan sonra)
+    // correct cevaplar çözerken istemciye gitmez (yalnız review'da, geçildikten sonra)
     questions: qs.map((x) => ({ id: x.id, text: x.text, type: x.type, options: x.options, image: x.image, points: x.points })),
     attempts: finished,
     // Geçildiyse ya da hak bittiyse tekrar çözülemez (kural: quizStanding)
@@ -157,10 +123,43 @@ export async function quizPayload(quizId: number, userId: number) {
     passed: standing.passed,
     exhausted: standing.exhausted,
     left: standing.left,
-    progress,
     due,
     review,
   };
+}
+
+/**
+ * Geçilen sınavın cevap listesi: öğrencinin cevabı + doğru/yanlış; doğru cevap sınavın "Sonuçta doğru cevapları göster"
+ * kutusuna, açıklama yöneticinin "Sınav sonunda açıklamaları göster" ayarına (panel.quizExplanations) bağlı.
+ * Kapalı olan alan istemciye hiç gönderilmez.
+ */
+export async function buildQuizReview(q: { showCorrectAnswers: boolean }, qs: QuizQuestion[], answers: Record<string, unknown>): Promise<QuizReviewItem[]> {
+  const showExplanations = (await getSetting("panel")).quizExplanations;
+  return qs.map((x) => {
+    const a = answers[String(x.id)];
+    const yourAnswer =
+      a === undefined || a === null || a === ""
+        ? null
+        : x.type === "multiple_choice"
+          ? (x.options[Number(a)] ?? String(a))
+          : x.type === "true_false"
+            ? (a === "true" ? "Doğru" : "Yanlış")
+            : String(a);
+    const correctAnswer = !q.showCorrectAnswers
+      ? ""
+      : x.type === "multiple_choice"
+        ? (Array.isArray(x.correct) ? x.correct.map((i) => x.options[i]).filter(Boolean).join(", ") : "")
+        : x.type === "true_false"
+          ? (String(x.correct) === "true" ? "Doğru" : "Yanlış")
+          : "";
+    const isCorrect =
+      x.type === "multiple_choice"
+        ? (Array.isArray(x.correct) && x.correct.includes(Number(a)))
+        : x.type === "true_false"
+          ? String(a) === String(x.correct)
+          : null; // açık uçlu: doğru/yanlış yok
+    return { text: x.text, type: x.type, options: x.options, image: x.image, points: x.points, yourAnswer, correctAnswer, isCorrect, explanation: showExplanations ? (x.explanation ?? "") : "" };
+  });
 }
 
 /**

@@ -11,6 +11,7 @@ import { PushBanner } from "@/components/panel/PushBanner";
 import { SurveyPopup } from "@/components/panel/SurveyPopup";
 import { getSetting } from "@/lib/settings";
 import { themeByKey } from "@/lib/panel-themes";
+import { goalColor } from "@/lib/survey-logic";
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await getCurrentUser();
@@ -21,21 +22,32 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // Zorunlu test: tamamlanana kadar panelde yalnızca test sayfası açılır (menüler gizli)
   const gate = await requiredSurveyFor(user);
   if (gate) {
-    const path = (await headers()).get("x-fabo-path") ?? "";
-    if (path && path !== `/panel/anket/${gate.id}`) redirect(`/panel/anket/${gate.id}`);
+    const h = await headers();
+    const path = h.get("x-fabo-path") ?? "";
+    // Yalnızca TAM SAYFA yüklemesinde (307) yönlendirilir. Panel içi geçişte (RSC isteği; girişten sonraki yönlendirme de
+    // böyledir) layout paylaşılan segment olarak istemcide önbelleğe alınır: burada atılan redirect, hedef sayfa
+    // /panel/anket/[id] aynı layout'un altında olduğu için her geçişte yeniden fırlatılıyor ve sayfa sonsuz döngüde
+    // boş kalıyordu (2026-10-10). O durumda yönlendirmeyi RequiredSurveyGate (istemci) yapar.
+    // Ayrım: tarayıcı gezinmede `sec-fetch-dest: document` gönderir; RSC/fetch isteklerinde `empty`. (`rsc` başlığını ve
+    // `_rsc` parametresini Next, middleware'e ve uygulamaya vermeden siler.) Başlık yoksa Accept'e bakılır.
+    const dest = h.get("sec-fetch-dest");
+    const fullLoad = dest ? dest !== "empty" : (h.get("accept") ?? "").includes("text/html");
+    if (path && path !== `/panel/anket/${gate.id}` && fullLoad) redirect(`/panel/anket/${gate.id}`);
   }
   const [unread, actions, pendingSurvey, panelSettings, goalFlags] = await Promise.all([unreadCount(user.id), studentActions(user.id), pendingSurveyFor(user), getSetting("panel"), studentGoalFlags(user.id)]);
   const theme = themeByKey(user.panelTheme, panelSettings.defaultTheme);
   const pending = actions.items.filter((i) => !i.done).length;
 
+  // Kariyer Hedefim sekmesi hedef bayrağının ikonunu ve rengini taşır (ilk cevaplı bayrak); bayrak yoksa hedef ikonu
+  const goal = gate ? null : (goalFlags.find((f) => f.answer && f.color) ?? null);
   const primary: NavItem[] = [
     { href: "/panel", label: "Çalışma Odam", icon: "home", exact: true },
     { href: "/panel/takvim", label: "Gündemim", icon: "calendar" },
-    { href: "/panel/anket", label: "Kariyer Hedefim", icon: "target", badge: pendingSurvey ? 1 : undefined },
+    { href: "/panel/anket", label: "Kariyer Hedefim", icon: goal ? "flag" : "target", color: goal ? goalColor(goal.color).hex : undefined, badge: pendingSurvey ? 1 : undefined },
   ];
   const secondary: NavItem[] = [
     { href: "/panel/bildirim", label: "Gelen Kutusu", icon: "mail", badge: unread || undefined },
-    { href: "/panel/egitim?sekme=devam", label: "Devam Eden Programlar", icon: "play" },
+    { href: "/panel/egitim?sekme=devam", label: "Devam Ettiklerim", icon: "play" },
     { href: "/panel/egitim", label: "Kitaplığım", icon: "library" },
     { href: "/panel/notlar", label: "Notlarım", icon: "edit" },
     { href: "/panel/aksiyon", label: "Aksiyonlarım", icon: "bolt", badge: pending || undefined },

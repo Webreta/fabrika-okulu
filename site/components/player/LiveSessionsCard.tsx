@@ -17,18 +17,21 @@ export function LiveSessionsCard({ periodName, sessions }: { periodName: string;
   const now = Date.now();
   const upcoming = sessions.filter((s) => new Date(s.end).getTime() >= now);
   const past = sessions.filter((s) => new Date(s.end).getTime() < now);
+  // Yan sütun dar: başlık tarih kutusunun yanında tam genişlikte (kesilmeden) yazılır, katılım düğmesi/notu alt satıra iner
   const Row = ({ s, next }: { s: LiveSessionView; next: boolean }) => (
-    <li className={`flex flex-wrap items-center gap-3 px-4 py-3 ${next ? "bg-emerald-50/60" : ""}`}>
-      <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl bg-navy-800 text-white">
-        <span className="text-sm font-bold leading-none">{new Date(s.start).getDate()}</span>
-        <span className="text-[10px] uppercase">{fmtDate(s.start).split(" ")[1]}</span>
+    <li className={`px-4 py-3 ${next ? "bg-emerald-50/60" : ""}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl bg-navy-800 text-white">
+          <span className="text-sm font-bold leading-none">{new Date(s.start).getDate()}</span>
+          <span className="text-[10px] uppercase">{fmtDate(s.start).split(" ")[1]}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-semibold leading-snug text-navy-800">{s.title}{next && <span className="ml-2 inline-block rounded-full bg-emerald-600 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase text-white">Sıradaki</span>}</p>
+          <p className="mt-0.5 text-xs text-muted">{fmtDate(s.start, true)} · {fmtTime(s.start)}</p>
+          {s.notes && <p className="mt-0.5 text-xs text-muted">{s.notes}</p>}
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-navy-800">{s.title}{next && <span className="ml-2 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Sıradaki</span>}</p>
-        <p className="text-xs text-muted">{fmtDate(s.start, true)} · {fmtTime(s.start)}</p>
-        {s.notes && <p className="mt-0.5 text-xs text-muted">{s.notes}</p>}
-      </div>
-      <SessionJoinButton start={s.start} end={s.end} link={s.link} />
+      <div className="mt-2 pl-14"><SessionJoinButton start={s.start} end={s.end} link={s.link} className="w-full justify-center text-center" /></div>
     </li>
   );
   return (

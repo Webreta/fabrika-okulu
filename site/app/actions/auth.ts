@@ -11,6 +11,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { users, passwordResets, instructors } from "@/db/schema";
 import { verifyPassword, hashPassword, DUMMY_HASH } from "@/lib/auth/password";
+import { requiredSurveyFor } from "@/lib/survey";
 import {
   createSession,
   destroySession,
@@ -111,7 +112,14 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   await createSession(user.id, remember === "1");
   // Yönlendirme role göre: admin → /admin, eğitmen → /egitmen, öğrenci → /panel.
   // Geçerli bir derin bağlantı (next, yalnızca site içi yol) verildiyse ona öncelik verilir.
-  redirect(safeInternalPath(next, homeForRole(user.role)));
+  // Öğrencinin tamamlamadığı zorunlu hedef testi varsa panel yerine doğrudan teste (panel layout'u zaten kilitler;
+  // doğrudan gitmek /panel'de "yönlendiriliyorsun" kartının görünmesini önler)
+  const target = safeInternalPath(next, homeForRole(user.role));
+  if (user.role === "student" && target.startsWith("/panel")) {
+    const gate = await requiredSurveyFor({ id: user.id, role: user.role });
+    if (gate) redirect(`/panel/anket/${gate.id}`);
+  }
+  redirect(target);
 }
 
 const registerSchema = z.object({

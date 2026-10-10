@@ -27,14 +27,15 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title={sekme === "devam" ? "Devam Eden Programlar" : sekme === "yeni" ? "Yeni Programlar" : sekme === "favori" ? "Favorilerim" : "Kitaplığım"} />
+      <PageTitle title={sekme === "devam" ? "Devam Ettiklerim" : sekme === "yeni" ? "Başlayacaklarım" : sekme === "bitmis" ? "Tamamladıklarım" : sekme === "favori" ? "İstediklerim" : "Tüm Eğitimlerim"} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* Sıra ve adlar yönetici isteği (2026-10-10): başlayacaklarım → devam ettiklerim → tamamladıklarım → tüm eğitimlerim → istediklerim */}
         <SideNav label="Kitaplığım" items={[
-          { href: "/panel/egitim", label: "Tüm Eğitimler", icon: "library", count: all.length, active: sekme !== "devam" && sekme !== "bitmis" && sekme !== "yeni" && sekme !== "favori" },
-          { href: "/panel/egitim?sekme=devam", label: "Devam Eden", icon: "play", count: ongoing.length, active: sekme === "devam" },
-          { href: "/panel/egitim?sekme=bitmis", label: "Bitmiş", icon: "check", count: done.length, active: sekme === "bitmis" },
-          { href: "/panel/egitim?sekme=yeni", label: "Yeni Program", icon: "star", count: fresh.length, active: sekme === "yeni" },
-          { href: "/panel/egitim?sekme=favori", label: "Favoriler", icon: "heart", count: favs.length, active: sekme === "favori" },
+          { href: "/panel/egitim?sekme=yeni", label: "Başlayacaklarım", icon: "star", count: fresh.length, active: sekme === "yeni" },
+          { href: "/panel/egitim?sekme=devam", label: "Devam Ettiklerim", icon: "play", count: ongoing.length, active: sekme === "devam" },
+          { href: "/panel/egitim?sekme=bitmis", label: "Tamamladıklarım", icon: "check", count: done.length, active: sekme === "bitmis" },
+          { href: "/panel/egitim", label: "Tüm Eğitimlerim", icon: "library", count: all.length, active: sekme !== "devam" && sekme !== "bitmis" && sekme !== "yeni" && sekme !== "favori" },
+          { href: "/panel/egitim?sekme=favori", label: "İstediklerim", icon: "heart", count: favs.length, active: sekme === "favori" },
         ]} />
         <div className="min-w-0 flex-1">
       {notOpen && (
@@ -42,7 +43,7 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
       )}
       {sekme === "favori" ? (
         favs.length === 0 ? (
-          <Empty text="Henüz favori eğitimin yok. Programlardaki kalp simgesiyle ekleyebilirsin." action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
+          <Empty text="Henüz istediğin bir eğitim yok. Programlardaki kalp simgesiyle ekleyebilirsin." action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {favs.map((c) => (
@@ -73,7 +74,7 @@ export default async function MyCoursesPage({ searchParams }: { searchParams: Pr
           </div>
         )
       ) : list.length === 0 ? (
-        <Empty text={sekme === "bitmis" ? "Henüz tamamlanmış eğitimin yok." : sekme === "devam" ? "Devam eden eğitimin yok." : sekme === "yeni" ? "Başlanmamış yeni programın yok." : "Henüz bir eğitime kayıtlı değilsin."} action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
+        <Empty text={sekme === "bitmis" ? "Henüz tamamladığın eğitim yok." : sekme === "devam" ? "Devam ettiğin eğitim yok." : sekme === "yeni" ? "Başlayacağın yeni eğitim yok." : "Henüz bir eğitime kayıtlı değilsin."} action={<Link href="/kesfet" className="btn-primary">Programları keşfet</Link>} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => (

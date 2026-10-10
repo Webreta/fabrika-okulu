@@ -7,11 +7,11 @@ import {
   progress, lessons, quizzes, quizQuestions, quizAttempts, assignments, assignmentSubmissions, questions, courses, instructors, courseSuggestions,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
-import { playerAccess, lessonUnlocked, evaluateAnswer } from "@/lib/player";
+import { playerAccess, lessonUnlocked, evaluateAnswer, buildQuizReview } from "@/lib/player";
 import { saveUploadedFile, DOCUMENT_EXTENSIONS, AUDIO_EXTENSIONS } from "@/lib/uploads";
 import { notifyUser } from "@/lib/notify";
 import { sendMail, emailTemplate, siteUrl, adminEmails, escapeHtml } from "@/lib/mailer";
-import { taskDue, deadlineOf, quizStanding } from "@/lib/course-logic";
+import { taskDue, deadlineOf, quizStanding, type QuizReviewItem } from "@/lib/course-logic";
 import { studentTaskBase } from "@/lib/data/student";
 import { autoIssueCertificates } from "@/lib/cert-issue";
 import { SUGGESTION_MAX_LEN, SUGGESTION_MAX_COUNT, type SuggestionItem } from "@/lib/suggestions";
@@ -89,50 +89,16 @@ const noAttemptError = (st: { passed: boolean }) => (st.passed ? "Bu sınavı za
  * soruyu baştan cevaplamak mümkün değildir (ikinci istek ilk cevabın sonucunu döndürür).
  * Açık uçlu sorularda kullanılmaz.
  */
-export async function answerQuizQuestion(quizId: number, questionId: number, answer: number | string) {
-  const g = await quizGate(quizId);
-  if (!g.ok) return g;
-  const { q, ctx } = g;
-  if (!isId(questionId)) return { ok: false as const, error: "Soru bulunamadı." };
-  const [x] = await db.select().from(quizQuestions).where(and(eq(quizQuestions.id, questionId), eq(quizQuestions.quizId, quizId))).limit(1);
-  if (!x || x.type === "open_ended") return { ok: false as const, error: "Soru bulunamadı." };
-
-  let value: number | string;
-  if (x.type === "multiple_choice") {
-    const idx = typeof answer === "number" ? answer : parseInt(String(answer), 10);
-    if (!Number.isInteger(idx) || idx < 0 || idx >= x.options.length) return { ok: false as const, error: "Geçersiz cevap." };
-    value = idx;
-  } else {
-    if (answer !== "true" && answer !== "false") return { ok: false as const, error: "Geçersiz cevap." };
-    value = answer;
-  }
-  // Önizleme (eğitmen/yönetici): kayıt tutulmaz
-  if (ctx.preview) return { ok: true as const, answer: value, locked: false, ...evaluateAnswer(x, value) };
-
-  return db.transaction(async (tx) => {
-    await tx.execute(quizLock(ctx.user.id, quizId));
-    const atts = await tx.select().from(quizAttempts).where(and(eq(quizAttempts.quizId, quizId), eq(quizAttempts.userId, ctx.user.id), eq(quizAttempts.voided, false)));
-    const st = quizStanding(q, atts);
-    if (!st.canAttempt) return { ok: false as const, error: noAttemptError(st) };
-    let cur = atts.find((a) => a.status === "in_progress");
-    if (!cur) [cur] = await tx.insert(quizAttempts).values({ quizId, userId: ctx.user.id, status: "in_progress", answers: {} }).returning();
-    const stored = cur.answers[String(x.id)];
-    if (stored !== undefined && stored !== null) {
-      return { ok: true as const, answer: stored, locked: true, ...evaluateAnswer(x, stored) };
-    }
-    await tx.update(quizAttempts).set({ answers: { ...cur.answers, [String(x.id)]: value } }).where(eq(quizAttempts.id, cur.id));
-    return { ok: true as const, answer: value, locked: false, ...evaluateAnswer(x, value) };
-  });
-}
-
 export type QuizResult =
   | { ok: false; error: string }
-  | { ok: true; score: number; earned: number; total: number; passed: boolean; correct: number; count: number; canRetry: boolean; left: number | null };
+  | { ok: true; score: number; earned: number; total: number; passed: boolean; correct: number; count: number; canRetry: boolean; left: number | null; review?: QuizReviewItem[] };
 
 /**
  * Sınav gönderimi. Test/D-Y soruları otomatik puanlanır; açık uçlu sorular yalnızca kaydedilir (puanlanmaz).
- * Kontrol edilerek kilitlenmiş cevaplar istemciden gelenlerin önüne geçer. Geçme notu varsa ve öğrenci altında
- * kaldıysa sınav dersi tamamlanmış sayılmaz; hakkı varsa (maxAttempts, 0 = sınırsız) yeniden çözebilir.
+ * Cevaplar yalnızca burada, sınavın sonunda değerlendirilir (soru bazlı anında kontrol 2026-10-10'da kaldırıldı);
+ * eski yarım denemeden (in_progress) kalan cevaplar varsa istemciden gelenlerin önüne geçer. Geçme notu varsa ve
+ * öğrenci altında kaldıysa sınav dersi tamamlanmış sayılmaz; hakkı varsa (maxAttempts, 0 = sınırsız) yeniden çözebilir.
+ * Cevap listesi (review) yalnızca geçildiyse döner.
  */
 export async function submitQuiz(quizId: number, answers: Record<string, number | string>): Promise<QuizResult> {
   const g = await quizGate(quizId);
@@ -178,7 +144,8 @@ export async function submitQuiz(quizId: number, answers: Record<string, number 
     if (cur) await tx.update(quizAttempts).set(values).where(eq(quizAttempts.id, cur.id));
     else await tx.insert(quizAttempts).values({ quizId, userId: ctx.user.id, ...values });
     const after = quizStanding(q, [...atts.filter((a) => a.id !== cur?.id), { status: "completed", passed, score: values.score }]);
-    return { ok: true, score, earned, total, passed, correct, count, canRetry: after.canAttempt, left: after.left };
+    const review = passed ? await buildQuizReview(q, qs, merged) : undefined;
+    return { ok: true, score, earned, total, passed, correct, count, canRetry: after.canAttempt, left: after.left, review };
   });
   if (!result.ok) return result;
   revalidatePath(`/kurs-izle/${q.courseId}`);

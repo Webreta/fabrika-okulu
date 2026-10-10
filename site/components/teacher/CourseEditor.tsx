@@ -19,8 +19,9 @@ type Period = CourseInput["periods"][number];
 
 const newLesson = (type: Lesson["type"]): Lesson => ({
   type, title: "", videoUrl: "", duration: "", preview: false, description: "", dueDays: 0, dueDate: "", dueTime: "", fileUrl: "", fileName: "", fileMime: "",
-  questions: type === "quiz" ? [newQuestion(), newQuestion()] : [], timeLimit: 0, passScore: 0, maxAttempts: 1,
-  shuffleQuestions: false, showCorrectAnswers: true, isGraded: false, maxScore: 100, allowFile: true, allowVoice: true, allowText: true,
+  // Yeni sınav: geçme notu %70, 3 deneme hakkı; yeni görevde sesli not kapalı (eğitmen açar) — 2026-10-10
+  questions: type === "quiz" ? [newQuestion(), newQuestion()] : [], timeLimit: 0, passScore: 70, maxAttempts: 3,
+  shuffleQuestions: false, showCorrectAnswers: true, isGraded: false, maxScore: 100, allowFile: true, allowVoice: false, allowText: true,
 });
 const newQuestion = (): Question => ({ qtype: "multiple_choice", text: "", points: 1, options: ["", "", "", ""], correct: 0, explanation: "", image: "" });
 const newModule = (title: string, lessons: Lesson[] = []): Module => ({ title, lessons, unlockMode: "open", unlockDays: 0, unlockTime: "", showcase: false });
@@ -385,7 +386,7 @@ export function CourseEditor({
                           <div className="flex flex-wrap items-center gap-4 text-xs sm:col-span-2">
                             <span className="text-muted">Teslim türleri:</span>
                             <label className="flex items-center gap-1"><input type="checkbox" checked={l.allowFile} onChange={(e) => setLesson(mi, li, { ...l, allowFile: e.target.checked })} /> Dosya</label>
-                            <label className="flex items-center gap-1"><input type="checkbox" checked={l.allowVoice} onChange={(e) => setLesson(mi, li, { ...l, allowVoice: e.target.checked })} /> Ses</label>
+                            <label className="flex items-center gap-1"><input type="checkbox" checked={l.allowVoice} onChange={(e) => setLesson(mi, li, { ...l, allowVoice: e.target.checked })} /> Sesli not (mikrofon kaydı)</label>
                             <label className="flex items-center gap-1"><input type="checkbox" checked={l.allowText} onChange={(e) => setLesson(mi, li, { ...l, allowText: e.target.checked })} /> Metin</label>
                           </div>
                         </div>
@@ -659,7 +660,7 @@ function QuizBuilder({ lesson, hasPeriods, onChange }: { lesson: Lesson; hasPeri
         <div><input aria-label="Deneme hakkı" type="number" min={0} max={100} value={lesson.maxAttempts} onChange={(e) => onChange({ ...lesson, maxAttempts: Number(e.target.value) })} className="input" /><p className="text-[11px] text-muted">Deneme hakkı · 0 = sınırsız</p></div>
       </div>
       <p className="mb-1 text-[11px] text-muted">
-        Test ve doğru/yanlış sorular otomatik değerlendirilir; öğrenci her sorudan sonra doğru cevabı ve açıklamayı anında görür, kontrol ettiği cevabı değiştiremez. Geçme notu varsa altında kalan öğrencinin sınavı tamamlanmış sayılmaz (eğitim %100 olmaz, otomatik sertifika verilmez); deneme hakkı varsa yeniden çözer, hakkı bitince sonraki derslere devam eder. Sonuç listesinden “Yeni deneme hakkı ver” ile ek hak tanımlayabilirsin. Açık uçlu sorular aynı sınavda yer alabilir ancak puanlanmaz (yalnızca kaydedilir, eğitmen değerlendirmesi yoktur).
+        Test ve doğru/yanlış sorular otomatik değerlendirilir; öğrenci çözerken doğru/yanlış görmez, sonuç sınavın sonunda gösterilir. Cevap listesini (doğru/yanlış, bu kutuya göre doğru cevap, yönetici ayarına göre açıklama) yalnızca sınavı geçen öğrenci görür. Geçme notu varsa altında kalan öğrencinin sınavı tamamlanmış sayılmaz (eğitim %100 olmaz, otomatik sertifika verilmez); deneme hakkı varsa yeniden çözer, hakkı bitince sonraki derslere devam eder ama sınav tamamlanmaz. Sonuç listesinden “Yeni deneme hakkı ver” ile ek hak tanımlayabilirsin. Açık uçlu sorular aynı sınavda yer alabilir ancak puanlanmaz (yalnızca kaydedilir, eğitmen değerlendirmesi yoktur).
       </p>
       <button onClick={() => setOpen(!open)} className="mt-2 text-sm font-semibold text-navy-800">{open ? "▾" : "▸"} Sorular ({lesson.questions.filter((q) => q.text).length})</button>
       {open && (

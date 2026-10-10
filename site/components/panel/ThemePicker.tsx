@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { PANEL_THEMES } from "@/lib/panel-themes";
+import { BANNER_ASPECT, PANEL_THEMES } from "@/lib/panel-themes";
 import { setPanelTheme } from "@/app/actions/auth";
 import { Icon } from "@/components/site/Icon";
 
@@ -22,7 +22,18 @@ export function ThemeGrid({ current }: { current: string }) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {PANEL_THEMES.map((t) => (
         <button key={t.key} onClick={() => choose(t.key)} disabled={pending} aria-pressed={sel === t.key} className={`relative overflow-hidden rounded-xl border-2 text-left transition ${sel === t.key ? "border-navy-800 shadow-lg ring-4 ring-navy-800/20" : "border-line opacity-80 hover:border-navy-300 hover:opacity-100"}`}>
-          {t.img ? <Image src={t.img} alt={t.label} width={400} height={160} className="aspect-[5/2] h-auto w-full object-cover" style={{ objectPosition: t.focus }} /> : <div className="aspect-[5/2] w-full bg-gradient-to-r from-[#142b56] to-[#5baecf]" />}
+          {t.img ? (
+            <Image src={t.img} alt={t.label} width={400} height={160} className="h-auto w-full object-cover" style={{ aspectRatio: BANNER_ASPECT }} />
+          ) : (
+            /* Kapak görseli yoksa temanın kendi renkleri: zemin, kart ve vurgu şeritleri */
+            <div className="relative aspect-[5/2] w-full" style={{ background: t.vars?.surface ?? "#e3eef9" }}>
+              <div className="absolute inset-x-3 top-3 h-2 rounded-full" style={{ background: t.vars?.navy ?? "#142b56" }} />
+              <div className="absolute inset-x-3 bottom-3 top-7 rounded-lg" style={{ background: t.vars?.card ?? "#ffffff", border: `1px solid ${t.vars?.line ?? "#e3e8ef"}` }}>
+                <span className="absolute left-2 top-2 h-1.5 w-1/2 rounded-full" style={{ background: t.vars?.ink ?? "#1b2437", opacity: 0.7 }} />
+                <span className="absolute left-2 top-5 h-1.5 w-1/3 rounded-full" style={{ background: t.vars?.sky ?? "#5baecf" }} />
+              </div>
+            </div>
+          )}
           {/* Seçili tema: köşede onay rozeti + dolgulu alt şerit */}
           {sel === t.key && (
             <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-navy-800 px-2 py-0.5 text-[11px] font-semibold text-white shadow"><Icon name="check" className="size-3.5" /> Seçili</span>

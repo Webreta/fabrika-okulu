@@ -193,7 +193,7 @@ export async function getSurveyStats(survey: Survey): Promise<SurveyStats> {
 }
 
 /** Öğrencinin üst çubuktaki hedef bayrakları: ana sorusu olan yayındaki anketler + verdiği cevap (cevapsızlar da listelenir, gri) */
-export type GoalFlag = { surveyId: number; title: string; question: string; answer: string | null; color: string | null };
+export type GoalFlag = { surveyId: number; title: string; question: string; answer: string | null; color: string | null; editable: boolean };
 export async function studentGoalFlags(userId: number): Promise<GoalFlag[]> {
   const list = (await listSurveys(true)).filter((s) => goalQuestion(s));
   if (!list.length) return [];
@@ -205,27 +205,7 @@ export async function studentGoalFlags(userId: number): Promise<GoalFlag[]> {
     const a: Record<string, string | string[]> = {};
     for (const r of rows) if (r.surveyKey === s.key) a[r.questionKey] = r.value;
     const g = goalOf(s, a);
-    return { surveyId: s.id, title: s.title, question: goalQuestion(s)!.label, answer: g?.option.label ?? null, color: g?.option.color ?? null };
+    return { surveyId: s.id, title: s.title, question: goalQuestion(s)!.label, answer: g?.option.label ?? null, color: g?.option.color ?? null, editable: s.editable };
   });
 }
 
-/**
- * Yalnızca ana sorunun cevabını değiştirir (test tek seferlik olsa bile). Görünen diğer cevaplara dokunmaz;
- * yeni hedefle birlikte gizlenen koşullu soruların eski cevapları silinir (sonuçlarda ve dağılımda kalmasın).
- */
-export async function setGoalAnswer(userId: number, survey: Survey, value: string) {
-  const q = goalQuestion(survey);
-  if (!q) return { error: "Bu testte hedef sorusu yok." };
-  if (!q.options?.some((o) => o.value === value)) return { error: "Geçersiz seçenek." };
-  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key), eq(surveyAnswers.questionKey, q.key)));
-  await db.insert(surveyAnswers).values({ userId, surveyKey: survey.key, questionKey: q.key, value });
-  const all = await getSurveyAnswers(userId, survey.key);
-  const kept = pruneHiddenAnswers(survey, all);
-  // Tanımı silinmiş sorulara ait eski kayıtlara dokunulmaz; yalnızca ankette duran ama artık görünmeyen sorular temizlenir
-  const known = new Set(survey.questions.map((x) => x.key));
-  const hidden = Object.keys(all).filter((k) => known.has(k) && !(k in kept));
-  if (hidden.length) {
-    await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, survey.key), inArray(surveyAnswers.questionKey, hidden)));
-  }
-  return { ok: true };
-}

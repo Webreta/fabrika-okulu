@@ -3,7 +3,7 @@
   "title": "İş Hayatında Hedefim",
   "mode": "steps",
   "editable": true,
-  "intro": "Şu anki durumunu ve önümüzdeki dönem için hedefini seç. Seçtiğin hedef panelinde renkli bir bayrak olarak görünür; istediğin zaman değiştirebilirsin.",
+  "intro": "Şu anki durumunu ve önümüzdeki dönem için hedefini seç. Seçtiğin hedef panelinde renkli bir bayrak olarak görünür; testi yeniden çözerek güncelleyebilirsin.",
   "sections": {
     "durum": "Bugünkü durumum",
     "plan": "Planım"

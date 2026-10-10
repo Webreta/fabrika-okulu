@@ -10,7 +10,7 @@ import { saveUploadedFile, removeUploadedFile } from "@/lib/uploads";
 import { RESUME_EXTENSIONS, RESUME_QUOTA_BYTES, fmtBytes, isResumeKind } from "@/lib/resume-kinds";
 import { sendMail, emailTemplate, siteUrl, adminEmails, escapeHtml } from "@/lib/mailer";
 import { getSetting } from "@/lib/settings";
-import { saveSurvey, getSurveyById, completedSurveyKeys, setGoalAnswer, requiredSurveyFor } from "@/lib/survey";
+import { saveSurvey, getSurveyById, completedSurveyKeys, requiredSurveyFor } from "@/lib/survey";
 import type { FormState } from "@/app/actions/auth";
 import { isId } from "@/lib/format";
 
@@ -189,14 +189,3 @@ export async function requiredSurveyCheck(): Promise<{ id: number; title: string
   return gate ? { id: gate.id, title: gate.title } : null;
 }
 
-/** Hedef bayrağı: ana sorunun cevabını tek başına günceller (üst çubuk bayrağı + anket kartı rengi) */
-export async function setSurveyGoal(surveyId: number, value: string): Promise<{ ok?: true; error?: string }> {
-  const user = await requireUser();
-  const survey = isId(surveyId) ? await getSurveyById(surveyId) : null;
-  if (!survey || survey.status !== "published") return { error: "Hedef testi bulunamadı." };
-  const res = await setGoalAnswer(user.id, survey, String(value));
-  if ("error" in res && res.error) return { error: res.error };
-  revalidatePath("/panel", "layout");
-  revalidatePath("/panel/anket");
-  return { ok: true };
-}
