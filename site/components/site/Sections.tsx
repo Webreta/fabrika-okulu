@@ -17,7 +17,8 @@ export function PageHero({ title, subtitle, crumbs = [], flags = false }: { titl
       <div className="relative mx-auto max-w-7xl px-4 py-16 text-center text-white md:py-24">
         <h1 className="text-3xl font-medium tracking-tight md:text-5xl [text-shadow:0_2px_12px_rgba(10,21,48,.9)]">{title}</h1>
         {subtitle && <p className="mx-auto mt-3 max-w-4xl truncate text-base text-white/85 md:text-lg [text-shadow:0_1px_8px_rgba(10,21,48,.9)]" title={subtitle}>{subtitle}</p>}
-        <nav aria-label="Konum" className="mt-6 flex justify-center">
+        {/* Konum izi (breadcrumb) yalnızca masaüstünde; telefonda hiçbir sayfada gösterilmez (2026-10-12) */}
+        <nav aria-label="Konum" className="mt-6 hidden justify-center md:flex">
           <ol className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs font-semibold backdrop-blur-md sm:text-[13px]">
             {trail.map((c, i) => {
               const last = i === trail.length - 1;

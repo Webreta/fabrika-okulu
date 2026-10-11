@@ -64,7 +64,7 @@ export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing
   }
 
   return (
-    <form onSubmit={submit} className="card space-y-4">
+    <form onSubmit={submit} className="space-y-4 rounded-2xl bg-white p-4 shadow-[0_20px_50px_-30px_rgba(20,43,86,.55)] ring-1 ring-line sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-bold text-navy-800">Fatura bilgileri</h2>
         <span className="text-xs text-muted">Kayıtlı adresin ön tanımlı geldi; değişiklikler hesabına kaydedilir.</span>
@@ -90,7 +90,7 @@ export function CheckoutForm({ defaults, mode, bankInfo }: { defaults: { billing
         </span>
       </label>
       {state.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
-      <button disabled={pending} className="btn-primary w-full py-3">
+      <button disabled={pending} className="btn-primary w-full py-3 text-base">
         {pending ? "İşleniyor…" : mode === "free" ? "Ücretsiz kaydı tamamla" : mode === "manual" ? "Siparişi oluştur" : "Kart ile öde"}
       </button>
     </form>
