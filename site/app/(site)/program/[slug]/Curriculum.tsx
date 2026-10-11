@@ -28,29 +28,30 @@ export function Curriculum({ modules }: { modules: M[] }) {
         const isOpen = m.showcase && open === m.id;
         const head = (
           <>
-            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${isOpen ? "bg-navy-800 text-white" : "bg-white text-navy-800 ring-1 ring-line"}`}>{i + 1}</span>
+            <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-extrabold sm:size-9 sm:rounded-xl sm:text-sm ${isOpen ? "bg-navy-800 text-white" : "bg-white text-navy-800 ring-1 ring-line"}`}>{i + 1}</span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-semibold text-navy-800">{m.title}</span>
-              <span className="block text-xs text-navy-700">{m.count} bölüm</span>
+              {/* Telefonda başlık küçük ve kesilmez (alt satıra kırılır); sm+ tek satır */}
+              <span className="block break-words text-[13px] font-semibold leading-snug text-navy-800 sm:truncate sm:text-[15px]">{m.title}</span>
+              <span className="block text-[11px] text-navy-700 sm:text-xs">{m.count} bölüm</span>
             </span>
           </>
         );
         return (
           <div key={m.id} className={`overflow-hidden rounded-2xl ring-1 transition ${isOpen ? "bg-white ring-sky-200 shadow-[0_14px_30px_-22px_rgba(20,43,86,.5)]" : m.showcase ? "bg-surface/70 ring-line/70 hover:bg-white hover:ring-sky-200" : "bg-surface/70 ring-line/70"}`}>
             {m.showcase ? (
-              <button onClick={() => setOpen(isOpen ? null : m.id)} aria-expanded={isOpen} className="flex w-full items-center gap-4 px-4 py-3.5 text-left sm:px-5">
+              <button onClick={() => setOpen(isOpen ? null : m.id)} aria-expanded={isOpen} className="flex w-full items-center gap-3 px-3 py-2.5 text-left sm:gap-4 sm:px-5 sm:py-3.5">
                 {head}
                 <Icon name="chevronDown" className={`size-5 shrink-0 text-muted transition duration-300 ${isOpen ? "rotate-180" : ""}`} />
               </button>
             ) : (
-              <div className="flex w-full items-center gap-4 px-4 py-3.5 sm:px-5">{head}</div>
+              <div className="flex w-full items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-5 sm:py-3.5">{head}</div>
             )}
             {isOpen && (
               <ul className="border-t border-line">
                 {m.lessons.map((l, li) => (
-                  <li key={l.id} className={`flex items-center gap-3 px-4 py-2 text-[13px] sm:px-5 ${li % 2 ? "bg-surface/60" : ""}`}>
-                    <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${TONE[l.type] ?? "bg-navy-50 text-navy-700"}`}><Icon name={l.icon} className="size-4" /></span>
-                    <span className="min-w-0 flex-1 truncate text-navy-800">{l.title}</span>
+                  <li key={l.id} className={`flex items-center gap-2.5 px-3 py-2 text-xs sm:gap-3 sm:px-5 sm:text-[13px] ${li % 2 ? "bg-surface/60" : ""}`}>
+                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-8 ${TONE[l.type] ?? "bg-navy-50 text-navy-700"}`}><Icon name={l.icon} className="size-4" /></span>
+                    <span className="min-w-0 flex-1 break-words leading-snug text-navy-800 sm:truncate">{l.title}</span>
                     {l.duration && <span className="rounded-full bg-navy-50 px-2 py-0.5 text-[11px] font-semibold text-navy-700">{l.duration}</span>}
                   </li>
                 ))}

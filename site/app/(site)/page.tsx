@@ -124,14 +124,16 @@ export default async function HomePage() {
               {/* Dağların üstünde okunurluk: başlığın arkasında yumuşak koyu hale + metin gölgesi */}
               <div className="pointer-events-none absolute left-1/2 top-1/2 -z-[1] h-[180%] w-[min(100%,900px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy-900/70 blur-2xl" aria-hidden />
               <h2 className="text-2xl font-bold md:text-4xl [text-shadow:0_2px_12px_rgba(10,21,48,.9)]">Rotaları İncele</h2>
-              <p className="mx-auto mt-2 max-w-3xl truncate text-white/90 [text-shadow:0_1px_8px_rgba(10,21,48,.9)]">Hedefine adım adım tırman: her rota hangi eğitimle başlayıp nasıl devam edeceğini gösterir.</p>
+              <p className="mx-auto mt-2 max-w-3xl text-sm text-white/90 sm:text-base lg:truncate [text-shadow:0_1px_8px_rgba(10,21,48,.9)]">Hedefine adım adım tırman: her rota hangi eğitimle başlayıp nasıl devam edeceğini gösterir.</p>
             </div>
             <div className={`grid gap-6 ${featuredRoutes.length === 1 ? "mx-auto max-w-3xl" : featuredRoutes.length === 2 ? "md:grid-cols-2" : "md:grid-cols-2 lg:grid-cols-3"}`}>
               {featuredRoutes.map((r) => (
                 <div key={r.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white text-navy-800 shadow-xl">
                   <RouteMountain name={r.name} goal={r.goal} steps={toSteps(r)} compact />
                   <div className="flex flex-1 flex-col p-5">
-                    {r.description && <p className="text-sm font-medium text-navy-700">{excerpt(r.description, 110)}</p>}
+                    {/* Telefonda rota adı görselin üstünde değil gövdede: uzun ad kesilmeden okunur */}
+                    <h3 className="mb-1 text-lg font-bold leading-snug text-navy-800 sm:hidden">{r.name}</h3>
+                    {r.description && <p className="text-sm font-medium text-navy-700">{excerpt(r.description, 200)}</p>}
                     <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
                       <span className="flex flex-wrap gap-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-navy-800 px-2.5 py-1 text-xs font-bold text-white"><Icon name="mountain" className="size-3.5" /> {r.steps.length} adım</span>

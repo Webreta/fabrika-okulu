@@ -86,7 +86,7 @@ export default async function RoutesPage({ searchParams }: { searchParams: Promi
                     </div>
                     <div className="flex flex-1 flex-col p-5">
                       <h2 className="text-lg font-bold text-navy-800 group-hover:text-sky-600">{r.name}</h2>
-                      {r.description && <p className="mt-1 text-sm font-medium text-navy-700">{excerpt(r.description, 110)}</p>}
+                      {r.description && <p className="mt-1 text-sm font-medium text-navy-700">{excerpt(r.description, 200)}</p>}
                       {user && steps.length > 0 && (
                         <div className="mt-3">
                           <div className="h-2 overflow-hidden rounded-full bg-surface"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((done / steps.length) * 100)}%` }} /></div>

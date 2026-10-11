@@ -119,6 +119,8 @@ export function Header({ user, cartCount, categories = [], routes = [], goalColo
           {NAV_AFTER.map((n) => <Link key={n.href} href={n.href} className={linkCls(isActive(n.href))}>{n.label}</Link>)}
         </nav>
         <div className="flex items-center gap-2">
+          {/* Telefonda (sm altı) kişi ikonu: hamburgeri açmadan Çalışma Odam / girişe gider; sm+ metinli düğme zaten görünür */}
+          <Link href={panelHref} aria-label={user ? "Çalışma Odam" : "Giriş Yap / Üye Ol"} title={user ? "Çalışma Odam" : "Giriş Yap / Üye Ol"} className="rounded-lg p-2 text-navy-800 hover:bg-navy-50 sm:hidden"><Icon name="user" className="size-6" /></Link>
           <Link href="/sepet" className="relative rounded-lg p-2 text-navy-800 hover:bg-navy-50" aria-label="Sepet">
             <Icon name="cart" className="size-6" />
             {cartCount > 0 && (

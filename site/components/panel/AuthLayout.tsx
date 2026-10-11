@@ -28,12 +28,21 @@ export function AuthLayout({
         </div>
         <p className="relative text-sm text-white/70 drop-shadow-[0_1px_3px_rgba(0,0,0,.6)]">© {new Date().getFullYear()} Fabrika Okulu</p>
       </aside>
-      <main className="flex flex-1 items-center justify-center bg-gradient-to-b from-surface to-white p-6">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_22px_54px_rgba(20,43,86,.10)]">
-          <Link href="/" className="mb-6 block lg:hidden"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={120} height={137} className="mx-auto h-14 w-auto" /></Link>
-          <h1 className="text-2xl font-bold text-navy-800">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
-          <div className="mt-6">{children}</div>
+      {/* Telefon (lg altı, 2026-10-11): masaüstündeki fotoğraf üstte bant olarak gelir (logo + slogan üstünde); form bandın alt
+          kenarına binen sade bir sayfa gibi durur (ayrı kart/gölge yok, alt başlık gizli). Masaüstünde ortalanmış kart. */}
+      <main className="flex flex-1 flex-col bg-white lg:items-center lg:justify-center lg:bg-gradient-to-b lg:from-surface lg:to-white lg:p-6">
+        <div className="relative h-52 shrink-0 overflow-hidden bg-navy-900 text-white lg:hidden">
+          <Image src={bg || DEFAULT_AUTH_BG} alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-navy-950/35 via-navy-900/20 to-navy-950/80" />
+          <div className="relative flex h-full flex-col justify-between p-5 pb-10">
+            <Link href="/" className="inline-block w-fit rounded-xl bg-white px-3 py-2 shadow-lg"><Image src={logo || "/img/site/logo.webp"} alt="Fabrika Okulu" width={120} height={137} className="h-10 w-auto" /></Link>
+            <p className="text-lg font-bold leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">{aside}</p>
+          </div>
+        </div>
+        <div className="relative -mt-6 w-full flex-1 rounded-t-3xl bg-white px-5 pb-8 pt-6 lg:mt-0 lg:max-w-md lg:flex-none lg:rounded-2xl lg:p-8 lg:shadow-[0_22px_54px_rgba(20,43,86,.10)]">
+          <h1 className="text-xl font-bold text-navy-800 lg:text-2xl">{title}</h1>
+          {subtitle && <p className="mt-1 hidden text-sm text-muted lg:block">{subtitle}</p>}
+          <div className="mt-4 lg:mt-6">{children}</div>
         </div>
       </main>
     </div>

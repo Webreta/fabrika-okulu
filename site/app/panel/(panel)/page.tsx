@@ -84,7 +84,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
         )}
 
         {/* KPI */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           <Kpi label="Aktif eğitim" value={courses.filter((c) => c.percent < 100).length} icon="book" color="navy" href="/panel/egitim" />
           <Kpi label="Bekleyen görev" value={pendingTasks} icon="task" color="amber" href="/panel/aksiyon" />
           <Kpi label="Yaklaşan sınav" value={upcomingQuiz} icon="quiz" color="sky" href="/panel/aksiyon" />

@@ -25,11 +25,12 @@ export function Chip({ color = "gray", children }: { color?: keyof typeof CHIP; 
 
 export function Kpi({ label, value, icon, color = "navy", href }: { label: string; value: React.ReactNode; icon: IconName; color?: keyof typeof CHIP; href?: string }) {
   const body = (
-    <div className="card flex min-w-0 items-center gap-4">
-      <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${CHIP[color]}`}><Icon name={icon} className="size-5" /></span>
+    // Telefonda iki sütunda kutu dar: iç boşluk ve ikon küçülür, etiket tek satırda kalır ("Bekleyen görev" iki satıra kırılıyordu)
+    <div className="card flex min-w-0 items-center gap-2.5 p-3 sm:gap-4 sm:p-5">
+      <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl sm:size-11 ${CHIP[color]}`}><Icon name={icon} className="size-[18px] sm:size-5" /></span>
       <div className="min-w-0">
-        <p className="break-words text-2xl font-bold text-navy-800">{value}</p>
-        <p className="text-xs text-muted">{label}</p>
+        <p className="break-words text-xl font-bold leading-tight text-navy-800 sm:text-2xl">{value}</p>
+        <p className="whitespace-nowrap text-[11px] text-muted sm:text-xs">{label}</p>
       </div>
     </div>
   );

@@ -235,14 +235,18 @@ export function RouteMountain({ name, goal, description, steps, compact = false 
       </svg>
 
       {/* Başlık */}
-      <div className={`pointer-events-none absolute left-4 top-4 ${compact ? "max-w-[46%]" : "max-w-[72%] sm:left-8 sm:top-8"}`}>
-        <p className={`font-bold leading-tight tracking-tight text-navy-800 ${compact ? "text-lg" : "truncate text-xl sm:text-3xl"}`}>{name}</p>
+      {/* Küçük kartta (compact) telefonda ad görselde gösterilmez; kart gövdesinde tam yazılır (dar alanda 3-4 satıra kırılıp
+          çizimi kapatıyordu). Büyük görünümde telefonda ad kesilmez, alt satıra kırılır ve zirve etiketine yer bırakır. */}
+      <div className={`pointer-events-none absolute left-4 top-4 ${compact ? "hidden max-w-[46%] sm:block" : "max-w-[50%] sm:left-8 sm:top-8 sm:max-w-[72%]"}`}>
+        <p className={`font-bold leading-tight tracking-tight text-navy-800 ${compact ? "text-lg" : "text-lg sm:truncate sm:text-3xl"}`}>{name}</p>
         {description && !compact && <p className="mt-1.5 hidden max-w-xl text-base font-medium leading-snug text-navy-700/85 sm:block md:text-lg">{firstSentence(description)}</p>}
       </div>
-      {/* Zirve etiketi */}
-      <div className="pointer-events-none absolute -translate-x-1/2 text-center" style={{ left: `${(SUMMIT[0] / W) * 100}%`, top: `${((SUMMIT[1] - 100) / H) * 100}%` }}>
-        <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1 font-bold text-navy-800 shadow ${compact ? "text-[10px]" : "text-[11px] sm:text-sm"}`}>
-          <Icon name="trophy" className="size-3.5 text-amber-500" /> {summitLabel}
+      {/* Zirve etiketi: zirve sağa yakın (%76) olduğundan uzun hedef adı tek satırda kartın dışına taşıp kesiliyordu (2026-10-11).
+          Kutu zirvenin iki yanına eşit, karta sığan genişlikte (%46); uzun ad alt satıra kırılır. Alt kenarı sabit, yukarı doğru büyür
+          (bayrağın üstüne binmesin). */}
+      <div className="pointer-events-none absolute flex w-[46%] -translate-x-1/2 justify-center" style={{ left: `${(SUMMIT[0] / W) * 100}%`, bottom: `calc(${(1 - (SUMMIT[1] - 100) / H) * 100}% - 26px)` }}>
+        <span className={`inline-flex max-w-full items-center gap-1 rounded-2xl bg-white/90 px-2.5 py-1 text-left font-bold leading-tight text-navy-800 shadow ${compact ? "text-[10px]" : "text-[11px] sm:text-sm"}`}>
+          <Icon name="trophy" className="size-3.5 shrink-0 text-amber-500" /> <span className="min-w-0 break-words">{summitLabel}</span>
         </span>
       </div>
 

@@ -47,24 +47,38 @@ export function AssignmentStage({ payload, nextUrl, preview }: { payload: Payloa
   return (
     <div className="card">
       <span className="badge bg-navy-100 text-navy-800">GÖREV</span>
-      <h1 className="mt-2 text-2xl font-bold text-navy-800">{payload.title}</h1>
+      <h1 className="mt-2 break-words text-xl font-bold leading-snug text-navy-800 sm:text-2xl">{payload.title}</h1>
       {payload.due && <p className={`mt-1 text-sm ${overdue && !s ? "text-red-600" : "text-muted"}`}>Son teslim: {fmtDateTime(payload.due)}{overdue && !s ? " (geçti)" : ""}</p>}
       {!payload.due && <p className="mt-1 text-xs text-muted">Süre, kursu ilk açtığın andan (dönemliyse dönem başından) itibaren işler.</p>}
       {payload.description && <div className="prose-fabo mt-4 text-sm whitespace-pre-line">{payload.description}</div>}
 
       {s ? (
-        <div className="mt-6 rounded-xl bg-emerald-50 p-4">
-          <p className="font-semibold text-emerald-700">✓ Bu görevi teslim ettin. <span className="font-normal text-muted">({fmtDateTime(s.at)})</span></p>
-          {s.text && <p className="mt-3 whitespace-pre-line text-sm">{s.text}</p>}
-          {s.files.length > 0 && <ul className="mt-2 space-y-1 text-sm">{s.files.map((f, i) => <li key={i}><a href={f.url} target="_blank" className="text-sky-600 underline">📎 {f.name}</a></li>)}</ul>}
-          {s.voices.map((v, i) => <audio key={i} src={v.url} controls className="mt-2 w-full" />)}
+        // Teslim özeti: başlık + tarih ayrı satırlarda (telefonda tarih başlığın ortasında kırılıyordu); metin, dosya ve ses kayıtları
+        // ayrı kutularda, uzun dosya adı kutuya sığacak şekilde kırılır
+        <div className="mt-5 rounded-xl bg-emerald-50 p-3.5 sm:mt-6 sm:p-4">
+          <div className="flex items-start gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"><Icon name="check" className="size-4" /></span>
+            <div className="min-w-0">
+              <p className="font-semibold leading-snug text-emerald-700">Bu görevi teslim ettin</p>
+              <p className="text-xs text-muted">{fmtDateTime(s.at)}</p>
+            </div>
+          </div>
+          {s.text && <p className="mt-3 whitespace-pre-line break-words rounded-lg bg-white/70 px-3 py-2 text-sm">{s.text}</p>}
+          {s.files.length > 0 && (
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {s.files.map((f, i) => (
+                <li key={i}><a href={f.url} target="_blank" rel="noopener" className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-2 text-sky-600 hover:bg-white"><Icon name="file" className="size-4 shrink-0" /><span className="min-w-0 break-all underline underline-offset-2">{f.name}</span></a></li>
+              ))}
+            </ul>
+          )}
+          {s.voices.map((v, i) => <audio key={i} src={v.url} controls className="mt-2 h-10 w-full" />)}
           {(s.score !== null || s.feedback) && (
             <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-3 text-sm">
               <p className="font-semibold text-navy-800">Eğitmen değerlendirmesi{s.score !== null && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">{s.score}/{payload.maxScore}</span>}</p>
               {s.feedback && <p className="mt-1 whitespace-pre-line text-muted">{s.feedback}</p>}
             </div>
           )}
-          {nextUrl && <Link href={nextUrl} className="btn-primary mt-4">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
+          {nextUrl && <Link href={nextUrl} className="btn-primary mt-4 w-full sm:w-auto">Sıradaki içerik <Icon name="arrowRight" className="size-4" /></Link>}
         </div>
       ) : preview ? (
         <p className="mt-6 text-sm text-muted">Önizleme modunda gönderim yapılamaz.</p>

@@ -191,21 +191,24 @@ export default async function PlayerPage({ params, searchParams }: { params: Pro
   // Eğitim tümüyle tamamlandığında kutlama kartı (sertifika + yeni eğitim keşfet)
   const courseComplete = !acc.preview && prog.total > 0 && prog.percent === 100;
   const celebrationCard = courseComplete ? (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-6 text-[#fff] shadow-xl md:p-8">
+    // Telefonda sıkı düzen (2026-10-11): emoji başlığın yanında, metin kısa ve küçük, iki düğme yan yana eşit genişlikte
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-4 text-[#fff] shadow-xl sm:p-6 md:p-8">
       <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-[#fff]/10 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-20 left-1/3 size-56 rounded-full bg-[#fff]/10 blur-3xl" />
       <div className="relative">
-        <p className="text-4xl">🎉</p>
-        <h2 className="mt-2 text-2xl font-bold md:text-3xl">Tebrikler, eğitimi tamamladın!</h2>
-        <p className="mt-2 max-w-2xl text-[#fff]/90">
-          <span className="font-semibold">{course.title}</span> programındaki tüm içerikleri bitirdin. Emeğine sağlık! Sertifikan hazırsa profilinden görüntüleyebilir, yeni eğitimlerle öğrenmeye devam edebilirsin.
+        <div className="flex items-center gap-3 sm:block">
+          <p className="text-3xl leading-none sm:text-4xl">🎉</p>
+          <h2 className="text-lg font-bold leading-snug sm:mt-2 sm:text-2xl md:text-3xl">Tebrikler, eğitimi tamamladın!</h2>
+        </div>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#fff]/90 sm:text-base">
+          <span className="font-semibold">{course.title}</span> programındaki tüm içerikleri bitirdin. Emeğine sağlık!<span className="hidden sm:inline"> Sertifikan hazırsa profilinden görüntüleyebilir, yeni eğitimlerle öğrenmeye devam edebilirsin.</span>
         </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/panel/sertifika" className="inline-flex items-center gap-2 rounded-lg bg-[#fff] px-5 py-2.5 text-sm font-bold text-emerald-700 shadow transition hover:bg-emerald-50">
-            <Icon name="award" className="size-4" /> Sertifikanı gör
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-wrap sm:gap-3">
+          <Link href="/panel/sertifika" className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#fff] px-3 py-2.5 text-[13px] font-bold text-emerald-700 shadow transition hover:bg-emerald-50 sm:gap-2 sm:px-5 sm:text-sm">
+            <Icon name="award" className="size-4 shrink-0" /> <span className="sm:hidden">Sertifikam</span><span className="hidden sm:inline">Sertifikanı gör</span>
           </Link>
-          <Link href="/kesfet" className="inline-flex items-center gap-2 rounded-lg border border-[#fff]/50 px-4 py-2.5 text-sm font-semibold text-[#fff] hover:bg-[#fff]/10">
-            <Icon name="book" className="size-4" /> Yeni eğitimler keşfet
+          <Link href="/kesfet" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#fff]/50 px-3 py-2.5 text-[13px] font-semibold text-[#fff] hover:bg-[#fff]/10 sm:gap-2 sm:px-4 sm:text-sm">
+            <Icon name="book" className="size-4 shrink-0" /> <span className="sm:hidden">Yeni eğitimler</span><span className="hidden sm:inline">Yeni eğitimler keşfet</span>
           </Link>
         </div>
       </div>
