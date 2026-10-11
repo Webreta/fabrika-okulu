@@ -1073,6 +1073,26 @@ export const coursePrerequisites = pgTable(
   (t) => [index("course_prerequisites_required_idx").on(t.requiredCourseId)]
 );
 
+// ---------- Genel arşiv (çöp kutusu) ----------
+
+/**
+ * Yönetim panelinde silinen kayıtların kopyası (lib/archive.ts). payload: { parts: [{ table, rows }], nulled: [...] };
+ * Yönetim → Arşiv'den geri alınır ya da kalıcı silinir. Eğitimler bu tabloyu kullanmaz (courses.status = "archived").
+ */
+export const archiveItems = pgTable(
+  "archive_items",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind").notNull(),
+    label: text("label").notNull(),
+    payload: jsonb("payload").notNull(),
+    rowCount: integer("row_count").notNull().default(0),
+    deletedBy: integer("deleted_by").references(() => users.id, { onDelete: "set null" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("archive_items_deleted_idx").on(t.deletedAt)]
+);
+
 // ---------- Tipler ----------
 
 export type User = typeof users.$inferSelect;

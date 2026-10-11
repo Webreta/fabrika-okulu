@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { eq, sql, and } from "drizzle-orm";
 import { db } from "@/db";
-import { questions, documents, contactMessages, orders, assignmentSubmissions } from "@/db/schema";
+import { archiveCount } from "@/lib/archive";
+import { courses, questions, documents, contactMessages, orders, assignmentSubmissions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { logout } from "@/app/actions/auth";
 import { Icon } from "@/components/site/Icon";
@@ -16,6 +17,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   const cnt = async (q: Promise<{ n: number }[]>) => (await q)[0]?.n ?? 0;
   const fresh = await newCounts(user.id);
   const bakim = await maintenanceInfo();
+  // Arşivdeki kayıt sayısı (genel arşiv + arşivlenmiş eğitimler): menüde rozet
+  const [archivedItems, [{ n: archivedCourses }]] = await Promise.all([archiveCount(), db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(courses).where(eq(courses.status, "archived"))]);
+  const archived = archivedItems + archivedCourses;
   const [pq, pd, pm, po, ps] = await Promise.all([
     cnt(db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(questions).where(eq(questions.status, "pending"))),
     cnt(db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(documents).where(eq(documents.status, "pending"))),
@@ -46,6 +50,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     { href: "/admin/icerik", label: "Site İçeriği", icon: "edit", group: "Site" },
     { href: "/admin/vitrin", label: "Vitrin", icon: "star" },
     { href: "/admin/ayarlar", label: "Ayarlar", icon: "settings" },
+    { href: "/admin/arsiv", label: "Arşiv", icon: "trash", badge: archived || undefined },
   ];
 
   return (

@@ -7,6 +7,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { archiveAndDelete } from "@/lib/archive";
 import {
   courses, enrollments, questions, questionAnswers, assignmentSubmissions, assignments, quizAttempts, quizzes, quizQuestions, users,
   issuedCertificates, certificateTemplates, teacherEvents, documents, coupons, periods, periodEnrollments,
@@ -189,8 +190,10 @@ export async function revokeCertificate(id: number): Promise<ActionResult> {
   const user = await requireTeacher();
   const [ic] = await db.select().from(issuedCertificates).where(eq(issuedCertificates.id, id)).limit(1);
   if (!ic || !(await ownsCourse(user, ic.courseId))) return { ok: false, error: "Yetki yok." };
-  await db.delete(issuedCertificates).where(eq(issuedCertificates.id, id));
-  revalidatePath("/egitmen/sertifika");
+  const [who] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, ic.userId)).limit(1);
+  // Geri alınan sertifika arşive gider; yönetici Arşiv'den geri alırsa doğrulama adresi yeniden çalışır
+  await archiveAndDelete({ kind: "certificate", label: `${ic.holderName || `${who?.firstName ?? ""} ${who?.lastName ?? ""}`.trim()} · ${ic.courseName}`, by: user.id, targets: [{ table: "issued_certificates", where: sql`id = ${id}` }] });
+  revalidatePath("/egitmen/sertifika"); revalidatePath("/admin/arsiv");
   return { ok: true };
 }
 

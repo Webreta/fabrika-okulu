@@ -211,6 +211,13 @@
       "when": 1791452578762,
       "tag": "0029_worried_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791758674261,
+      "tag": "0030_loving_alex_power",
+      "breakpoints": true
     }
   ]
 }

@@ -32,7 +32,7 @@ export function DeleteSurveyButton({ id, title }: { id: number; title: string })
   return (
     <button
       disabled={pending}
-      onClick={() => { if (prompt(`Silmek için anket adını yaz: "${title}"\nTüm cevaplar da silinir!`) === title) start(async () => { await deleteSurvey(id); router.refresh(); }); }}
+      onClick={() => { if (prompt(`ANKETİN TAMAMI silinecek. Tek bir öğrencinin cevabını sıfırlamak için Sonuçlar sayfasını kullan.\nAnket ve tüm cevapları Arşiv'e taşınır; oradan geri alınabilir.\nSilmek için anket adını yaz: "${title}"`) === title) start(async () => { await deleteSurvey(id); router.refresh(); }); }}
       className="btn-secondary btn-sm text-red-600"
     >
       Sil

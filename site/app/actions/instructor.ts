@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { archiveAndDelete } from "@/lib/archive";
 import { instructors, users, courses } from "@/db/schema";
 import { requireTeacher } from "@/lib/auth/session";
 import { saveUploadedFile, IMAGE_EXTENSIONS } from "@/lib/uploads";
@@ -112,16 +113,17 @@ export async function deleteInstructor(id: number): Promise<ActionResult> {
   if (user.role !== "admin") return { ok: false, error: "Yetki yok." };
   const [{ n }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(courses).where(eq(courses.instructorId, id));
   if (n > 0) return { ok: false, error: `Bu eğitmen ${n} kursta kullanılıyor. Önce o kurslarda başka bir eğitmen seç.` };
-  const [row] = await db.delete(instructors).where(eq(instructors.id, id)).returning({ userId: instructors.userId });
+  const [row] = await db.select({ userId: instructors.userId, name: instructors.name }).from(instructors).where(eq(instructors.id, id)).limit(1);
   if (!row) return { ok: false, error: "Eğitmen profili bulunamadı (silinmiş olabilir)." };
+  await archiveAndDelete({ kind: "instructor", label: row.name, by: user.id, targets: [{ table: "instructors", where: sql`id = ${id}` }] });
   // Profili silinen kullanıcı eğitmen rolünde kalmasın
   const d = row.userId ? await demoteIfOrphan(row.userId) : "none";
   revalidatePath("/admin/egitmenler");
   revalidatePath("/admin/kullanicilar");
   return {
     ok: true,
-    message: d === "demoted" ? "Eğitmen profili silindi. Bağlı kullanıcı öğrenci rolüne döndü."
-      : d === "kept" ? "Eğitmen profili silindi. Bağlı kullanıcı eğitmen rolünde kaldı (başka profili ya da kendi eğitimi var)."
-      : "Eğitmen profili silindi.",
+    message: d === "demoted" ? "Eğitmen profili arşive taşındı. Bağlı kullanıcı öğrenci rolüne döndü."
+      : d === "kept" ? "Eğitmen profili arşive taşındı. Bağlı kullanıcı eğitmen rolünde kaldı (başka profili ya da kendi eğitimi var)."
+      : "Eğitmen profili arşive taşındı.",
   };
 }

@@ -22,6 +22,8 @@ import { ne } from "drizzle-orm";
 import { courses as courseTable } from "@/db/schema";
 import { groupFromSlug } from "@/lib/course-logic";
 import { isUniqueViolation, isForeignKeyViolation, isNumericError } from "@/lib/db-errors";
+import { archiveAndDelete, restoreArchive, purgeArchive } from "@/lib/archive";
+import { toId } from "@/lib/ids";
 import { LIMITS, COUPON_MAX_AMOUNT, COUPON_MAX_USAGE, COUPON_MAX_DAYS, tooLong, firstError, isEmail } from "@/lib/limits";
 
 // ---------- Ayarlar ----------
@@ -111,10 +113,12 @@ export async function savePage(input: { id?: number; slug: string; title: string
 }
 
 export async function deletePage(id: number): Promise<ActionResult> {
-  await requireAdmin();
-  await db.delete(pages).where(eq(pages.id, id));
-  revalidatePath("/admin/icerik");
-  return { ok: true };
+  const admin = await requireAdmin();
+  const [p] = await db.select({ title: pages.title }).from(pages).where(eq(pages.id, id)).limit(1);
+  if (!p) return { ok: false, error: "Sayfa bulunamadı." };
+  await archiveAndDelete({ kind: "page", label: p.title, by: admin.id, targets: [{ table: "pages", where: sql`id = ${id}` }] });
+  revalidatePath("/admin/icerik"); revalidatePath("/admin/arsiv");
+  return { ok: true, message: "Sayfa arşive taşındı." };
 }
 
 // ---------- Kullanıcılar ----------
@@ -180,9 +184,13 @@ export async function deleteUser(id: number): Promise<ActionResult> {
     const what = [o > 0 ? `${o} sipariş` : "", c > 0 ? `${c} sertifika` : ""].filter(Boolean).join(" ve ");
     return { ok: false, error: `Bu kullanıcının ${what} kaydı var; silinirse bu kayıtlar da yok olur. Silmek yerine "Hesap aktif" işaretini kaldırıp hesabı pasif yap (giriş yapamaz, kayıtları durur).` };
   }
-  await db.delete(users).where(eq(users.id, id));
-  revalidatePath("/admin/kullanicilar"); revalidatePath("/admin/ogrenciler");
-  return { ok: true, message: "Kullanıcı silindi." };
+  const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email }).from(users).where(eq(users.id, id)).limit(1);
+  if (!u) return { ok: false, error: "Kullanıcı bulunamadı." };
+  await destroyAllSessions(id);
+  // Kullanıcı ve ona bağlı kayıtlar (eğitim kayıtları, ilerleme, notlar, anket cevapları…) arşive kopyalanıp silinir
+  await archiveAndDelete({ kind: "user", label: `${`${u.firstName} ${u.lastName}`.trim() || u.email} (${u.email})`, by: admin.id, targets: [{ table: "users", where: sql`id = ${id}` }] });
+  revalidatePath("/admin/kullanicilar"); revalidatePath("/admin/ogrenciler"); revalidatePath("/admin/arsiv");
+  return { ok: true, message: "Kullanıcı arşive taşındı. Yönetim → Arşiv'den geri alınabilir." };
 }
 
 // ---------- Öğrenci kayıtları ----------
@@ -298,10 +306,12 @@ export async function duplicateCertificateTemplate(id: number): Promise<ActionRe
 }
 
 export async function deleteCertificateTemplate(id: number): Promise<ActionResult> {
-  await requireAdmin();
-  await db.delete(issuedCertificates).where(eq(issuedCertificates.templateId, id));
-  await db.delete(certificateTemplates).where(eq(certificateTemplates.id, id));
-  revalidatePath("/admin/sertifikalar");
+  const admin = await requireAdmin();
+  const [t] = await db.select({ title: certificateTemplates.title }).from(certificateTemplates).where(eq(certificateTemplates.id, id)).limit(1);
+  if (!t) return { ok: false, error: "Tasarım bulunamadı." };
+  // Tasarım ve bu tasarımla verilmiş sertifikalar birlikte arşive gider (geri alınınca sertifika adresleri yeniden çalışır)
+  await archiveAndDelete({ kind: "cert_template", label: t.title, by: admin.id, targets: [{ table: "certificate_templates", where: sql`id = ${id}` }, { table: "issued_certificates", where: sql`template_id = ${id}` }] });
+  revalidatePath("/admin/sertifikalar"); revalidatePath("/admin/arsiv");
   return { ok: true };
 }
 
@@ -371,20 +381,58 @@ export async function publishSurvey(id: number, publish: boolean): Promise<Actio
 }
 
 export async function deleteSurvey(id: number): Promise<ActionResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const [s] = await db.select().from(surveys).where(eq(surveys.id, id)).limit(1);
   if (!s) return { ok: false, error: "Anket bulunamadı." };
-  await db.delete(surveyAnswers).where(eq(surveyAnswers.surveyKey, s.key));
-  await db.delete(surveyCompletions).where(eq(surveyCompletions.surveyKey, s.key));
-  await db.delete(surveys).where(eq(surveys.id, id));
-  revalidatePath("/admin/anketler"); revalidatePath("/panel/anket");
-  return { ok: true };
+  // Anket, bağlı eğitimleri ve TÜM öğrencilerin cevapları arşive kopyalanıp silinir (2026-10-12: canlıda tek anket,
+  // bir öğrencinin cevabı sıfırlanacakken yanlışlıkla silindi; o tarihte silme kalıcıydı)
+  await archiveAndDelete({
+    kind: "survey", label: s.title, by: admin.id,
+    targets: [
+      { table: "surveys", where: sql`id = ${id}` },
+      { table: "survey_answers", where: sql`survey_key = ${s.key}`, walk: false },
+      { table: "survey_completions", where: sql`survey_key = ${s.key}`, walk: false },
+    ],
+  });
+  revalidatePath("/admin/anketler"); revalidatePath("/panel/anket"); revalidatePath("/admin/arsiv");
+  return { ok: true, message: "Anket arşive taşındı. Yönetim → Arşiv'den geri alınabilir." };
 }
 
 export async function resetUserSurvey(userId: number, surveyKey: string): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  const [s] = await db.select({ title: surveys.title }).from(surveys).where(eq(surveys.key, surveyKey)).limit(1);
+  // Öğrencinin bu anketteki cevapları arşive gider; geri alınınca cevaplar ve "tamamladı" kaydı döner
+  await archiveAndDelete({
+    kind: "survey_reset", label: `${u ? `${u.firstName} ${u.lastName}`.trim() || u.email : `Kullanıcı #${userId}`} · ${s?.title ?? surveyKey}`, by: admin.id,
+    targets: [
+      { table: "survey_answers", where: sql`user_id = ${userId} and survey_key = ${surveyKey}`, walk: false },
+      { table: "survey_completions", where: sql`user_id = ${userId} and survey_key = ${surveyKey}`, walk: false },
+    ],
+  });
+  revalidatePath("/admin/arsiv");
+  return { ok: true };
+}
+
+// ---------- Genel arşiv ----------
+
+export async function restoreArchiveItem(id: number): Promise<ActionResult> {
   await requireAdmin();
-  await db.delete(surveyAnswers).where(and(eq(surveyAnswers.userId, userId), eq(surveyAnswers.surveyKey, surveyKey)));
-  await db.delete(surveyCompletions).where(and(eq(surveyCompletions.userId, userId), eq(surveyCompletions.surveyKey, surveyKey)));
+  const n = toId(id);
+  if (!n) return { ok: false, error: "Arşiv kaydı bulunamadı." };
+  const r = await restoreArchive(n);
+  if (!r.ok) return r;
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Geri alındı." };
+}
+
+export async function purgeArchiveItem(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const n = toId(id);
+  if (!n) return { ok: false, error: "Arşiv kaydı bulunamadı." };
+  const r = await purgeArchive(n);
+  if (!r.ok) return r;
+  revalidatePath("/admin/arsiv");
   return { ok: true };
 }
 
@@ -442,9 +490,11 @@ export async function createGeneralCoupon(input: { code: string; kind?: "percent
 }
 
 export async function deleteCoupon(id: number): Promise<ActionResult> {
-  await requireAdmin();
-  await db.delete(coupons).where(eq(coupons.id, id));
-  revalidatePath("/admin/kuponlar");
+  const admin = await requireAdmin();
+  const [c] = await db.select({ code: coupons.code }).from(coupons).where(eq(coupons.id, id)).limit(1);
+  if (!c) return { ok: false, error: "Kupon bulunamadı." };
+  await archiveAndDelete({ kind: "coupon", label: c.code, by: admin.id, targets: [{ table: "coupons", where: sql`id = ${id}` }] });
+  revalidatePath("/admin/kuponlar"); revalidatePath("/admin/arsiv");
   return { ok: true };
 }
 

@@ -24,7 +24,7 @@ export default async function AdminCoursesPage() {
   ]);
   return (
     <>
-      <PageTitle title="Kurslar" sub={`${list.length} eğitim`} action={<div className="flex gap-2"><Link href="/admin/kurslar/arsiv" className="btn-secondary"><Icon name="trash" className="size-4" /> Arşiv{archived > 0 && <span className="ml-1 rounded-full bg-red-100 px-1.5 text-xs font-semibold text-red-700">{archived}</span>}</Link><Link href="/admin/kurslar/editor/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni eğitim</Link></div>} />
+      <PageTitle title="Kurslar" sub={`${list.length} eğitim`} action={<div className="flex gap-2"><Link href="/admin/arsiv#egitimler" className="btn-secondary"><Icon name="trash" className="size-4" /> Arşiv{archived > 0 && <span className="ml-1 rounded-full bg-red-100 px-1.5 text-xs font-semibold text-red-700">{archived}</span>}</Link><Link href="/admin/kurslar/editor/yeni" className="btn-primary"><Icon name="plus" className="size-4" /> Yeni eğitim</Link></div>} />
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>Eğitim</th><th>Eğitmen</th><th>Grup</th><th>Öğrenci</th><th>Ders</th><th>Fiyat</th><th>Durum</th><th title="Açılınca / kontenjan açılınca haber ver diyenler">Talep</th><th></th></tr></thead>

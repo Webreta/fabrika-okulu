@@ -8,6 +8,6 @@ export function ResetSurveyButton({ userId, surveyKey }: { userId: number; surve
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
-    <button disabled={pending} onClick={() => { if (confirm("Kullanıcının bu anket cevapları silinsin mi? Yeniden doldurması istenir.")) start(async () => { await resetUserSurvey(userId, surveyKey); router.refresh(); }); }} className="btn-secondary btn-sm text-red-600">{pending ? "…" : "Anketi sıfırla"}</button>
+    <button disabled={pending} onClick={() => { if (confirm("Yalnızca bu kullanıcının bu anketteki cevapları sıfırlansın mı? Yeniden doldurması istenir. Cevaplar Arşiv'e taşınır; oradan geri alınabilir.")) start(async () => { await resetUserSurvey(userId, surveyKey); router.refresh(); }); }} className="btn-secondary btn-sm text-red-600">{pending ? "…" : "Anketi sıfırla"}</button>
   );
 }

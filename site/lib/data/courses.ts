@@ -123,7 +123,7 @@ export function openPeriods<T extends Period>(list: T[]) {
 /** Katalog listesi */
 export const listCourses = cache(
   async (opts: { group?: "takvimli" | "esnek" | "ucretsiz"; includeDrafts?: boolean; ids?: number[] } = {}) => {
-    // Arşivdeki eğitimler hiçbir listede yer almaz (yalnızca /admin/kurslar/arsiv)
+    // Arşivdeki eğitimler hiçbir listede yer almaz (yalnızca /admin/arsiv)
     const conds = [notArchived];
     if (!opts.includeDrafts) conds.push(eq(courses.status, "published"));
     if (opts.group) conds.push(eq(courses.group, opts.group));

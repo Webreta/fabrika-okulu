@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq, ne, and, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { archiveAndDelete } from "@/lib/archive";
 import { categories, courseCategories } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { slugify } from "@/lib/uploads";
@@ -58,10 +59,13 @@ export async function saveCategory(input: { id?: number; name: string; descripti
 }
 
 export async function deleteCategory(id: number): Promise<ActionResult> {
-  await requireAdmin();
-  await db.delete(categories).where(eq(categories.id, id));
+  const admin = await requireAdmin();
+  const [c] = await db.select({ name: categories.name }).from(categories).where(eq(categories.id, id)).limit(1);
+  if (!c) return { ok: false, error: "Kategori bulunamadı." };
+  // Kategori ve eğitim atamaları arşive gider (geri alınınca eğitimler yeniden bu kategoride görünür)
+  await archiveAndDelete({ kind: "category", label: c.name, by: admin.id, targets: [{ table: "categories", where: sql`id = ${id}` }] });
   revalidateSite();
-  return { ok: true, message: "Kategori silindi." };
+  return { ok: true, message: "Kategori arşive taşındı." };
 }
 
 /** Sıralama: id listesi verilen sırayla 0..n */

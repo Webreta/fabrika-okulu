@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { archiveAndDelete } from "@/lib/archive";
 import { notArchived } from "@/lib/data/course-filters";
 import { routes, routeSteps, courses } from "@/db/schema";
 import { isUniqueViolation, isForeignKeyViolation } from "@/lib/db-errors";
@@ -84,10 +85,12 @@ export async function saveRoute(input: RouteInput): Promise<ActionResult> {
 }
 
 export async function deleteRoute(id: number): Promise<ActionResult> {
-  await requireAdmin();
-  await db.delete(routes).where(eq(routes.id, id));
+  const admin = await requireAdmin();
+  const [r] = await db.select({ name: routes.name }).from(routes).where(eq(routes.id, id)).limit(1);
+  if (!r) return { ok: false, error: "Rota bulunamadı." };
+  await archiveAndDelete({ kind: "route", label: r.name, by: admin.id, targets: [{ table: "routes", where: sql`id = ${id}` }] });
   revalidate();
-  return { ok: true, message: "Rota silindi." };
+  return { ok: true, message: "Rota arşive taşındı." };
 }
 
 export async function reorderRoutes(ids: number[]): Promise<ActionResult> {
