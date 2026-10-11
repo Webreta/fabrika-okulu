@@ -69,6 +69,8 @@ export function Shell({
         <header className="relative z-20 border-b border-line bg-white">
           <div className="mx-auto grid max-w-[1310px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 lg:grid-cols-[1fr_auto_1fr]">
             <div className="flex items-center gap-2">
+              {/* Telefonda logo en solda, hamburger hemen sağında (2026-10-11); masaüstünde logo ortada */}
+              <Link href="/" className="lg:hidden"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={120} height={137} className="fo-logo h-11 w-auto" /></Link>
               <button className="rounded-lg p-2 hover:bg-surface lg:hidden" onClick={() => setDrawer(true)} aria-label="Menü"><Icon name="menu" className="size-6 text-navy-800" /></button>
               <nav className="hidden items-center gap-1 lg:flex">
                 {primary.map((n) => (
@@ -79,7 +81,8 @@ export function Shell({
                 ))}
               </nav>
             </div>
-            <Link href="/" className="justify-self-center"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={120} height={137} className="fo-logo h-12 w-auto lg:h-14" /></Link>
+            <span className="lg:hidden" aria-hidden />
+            <Link href="/" className="hidden justify-self-center lg:block"><Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={120} height={137} className="fo-logo h-14 w-auto" /></Link>
             <div className="flex items-center justify-end gap-1">
               <Link href={bellHref} className="relative rounded-lg p-2 hover:bg-surface" aria-label="Gelen Kutusu">
                 <Icon name="bell" className="size-6 text-navy-800" />

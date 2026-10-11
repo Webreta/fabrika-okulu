@@ -3,6 +3,8 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCart } from "@/lib/cart";
+import { studentGoalFlags } from "@/lib/survey";
+import { goalColor } from "@/lib/survey-logic";
 import { getSetting, getRawSetting } from "@/lib/settings";
 import { DEFAULT_FOOTER, type FooterContent } from "@/lib/content-defaults";
 import { listCategories } from "@/lib/data/categories";
@@ -30,6 +32,9 @@ export default async function SiteLayout({ children }: Readonly<{ children: Reac
     getSetting("contact"),
     getRawSetting<Partial<FooterContent> | null>("footer", null),
   ]);
+  // Öğrencinin hedef bayrağı rengi: header'daki "Kariyer Hedefim" bağlantısı bu renkte (ilk cevaplı bayrak)
+  const goalFlag = user?.role === "student" ? (await studentGoalFlags(user.id)).find((f) => f.answer && f.color) ?? null : null;
+  const goalHex = goalFlag ? goalColor(goalFlag.color).hex : null;
   // Footer ayarı hiç kaydedilmediyse kısa metin eski "Footer metni"nden gelir; kaydedildiyse (boş bile olsa) yeni değer geçerlidir
   const footer: FooterContent = { ...DEFAULT_FOOTER, text: general.footerText, ...(footerRaw ?? {}) };
   const routes = await publicRoutes();
@@ -44,7 +49,7 @@ export default async function SiteLayout({ children }: Readonly<{ children: Reac
           Bakım modu açık: bu sayfayı yalnızca yöneticiler görüyor, ziyaretçiler bakım sayfasını görüyor.
         </a>
       )}
-      <Header user={user ? { name: user.name, role: user.role } : null} cartCount={cart.length} categories={cats} routes={rts} />
+      <Header user={user ? { name: user.name, role: user.role } : null} cartCount={cart.length} categories={cats} routes={rts} goalColor={goalHex} />
       <main className="min-h-[60vh]">{children}</main>
       <Footer content={footer} categories={cats} contact={{ phones: contact.phones, whatsapps: contact.whatsapps, email: contact.email, instagram: contact.instagram, linkedin: contact.linkedin, youtube: contact.youtube }} />
       {seo.headCode && <div dangerouslySetInnerHTML={{ __html: seo.headCode }} />}

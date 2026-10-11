@@ -26,7 +26,9 @@ export function LiveSessionsCard({ periodName, sessions }: { periodName: string;
           <span className="text-[10px] uppercase">{fmtDate(s.start).split(" ")[1]}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-semibold leading-snug text-navy-800">{s.title}{next && <span className="ml-2 inline-block rounded-full bg-emerald-600 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase text-white">Sıradaki</span>}</p>
+          {/* Etiket başlığın üstünde kendi satırında: uzun başlık alt satıra kırılınca araya düşüp kayık duruyordu */}
+          {next && <span className="mb-1 inline-flex w-fit items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-white">Sıradaki</span>}
+          <p className="break-words text-sm font-semibold leading-snug text-navy-800">{s.title}</p>
           <p className="mt-0.5 text-xs text-muted">{fmtDate(s.start, true)} · {fmtTime(s.start)}</p>
           {s.notes && <p className="mt-0.5 text-xs text-muted">{s.notes}</p>}
         </div>

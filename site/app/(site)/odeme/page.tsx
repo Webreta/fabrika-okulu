@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ScrollToTop } from "@/components/site/ScrollToTop";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { cartTotals } from "@/lib/cart-totals";
@@ -22,6 +23,7 @@ export default async function CheckoutPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12">
+      <ScrollToTop />
       <h1 className="text-3xl font-bold text-navy-800">Ödeme</h1>
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
         <CheckoutForm defaults={{ billing: normalizeAddress({ name: user.name, ...user.addresses.billing }), shipping: normalizeAddress(user.addresses.shipping), shippingSame: !isAddressFilled(user.addresses.shipping) || JSON.stringify(normalizeAddress(user.addresses.shipping)) === JSON.stringify(normalizeAddress(user.addresses.billing)) }} mode={mode} bankInfo={payment.bankInfo} />

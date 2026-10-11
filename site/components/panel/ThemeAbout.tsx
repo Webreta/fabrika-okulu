@@ -19,8 +19,9 @@ export function ThemeAboutButton({ about, img, themeLabel }: { about: ThemeAbout
   }, [open]);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-navy-800 shadow backdrop-blur transition hover:bg-white">
-        <Icon name="info" className="size-4" /> Görsel hakkında
+      {/* Telefonda yalnızca ikon (küçük daire), sm+ metinli kapsül */}
+      <button onClick={() => setOpen(true)} aria-label="Görsel hakkında" title="Görsel hakkında" className="absolute bottom-3 right-3 flex size-8 items-center justify-center rounded-full bg-white/90 text-navy-800 shadow backdrop-blur transition hover:bg-white sm:bottom-4 sm:right-4 sm:size-auto sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs sm:font-semibold">
+        <Icon name="info" className="size-4" /><span className="hidden sm:inline">Görsel hakkında</span>
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy-900/60 p-4 backdrop-blur-[2px] sm:items-center" onClick={() => setOpen(false)}>

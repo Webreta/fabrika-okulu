@@ -8,6 +8,7 @@ import { cartTotals } from "@/lib/cart-totals";
 import { fmtMoney, fmtDay } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { CartAutoPrune } from "@/components/site/CartAutoPrune";
+import { ScrollToTop } from "@/components/site/ScrollToTop";
 
 export const metadata: Metadata = { title: "Sepet" };
 
@@ -18,6 +19,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12">
+      <ScrollToTop />
       <h1 className="text-3xl font-bold text-navy-800">Sepet</h1>
       {/* Satın alınmış (erişimi olan) eğitim sepette kalmaz: sonuç sayfasına uğramadan gelen öğrencide burada düşer */}
       <CartAutoPrune active={!!user && t.lines.some((l) => l.blockCode === "kayitli")} />

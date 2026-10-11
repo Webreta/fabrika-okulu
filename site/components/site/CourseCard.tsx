@@ -87,14 +87,16 @@ export async function CourseCard({ course, size = "md" }: { course: CourseWithMe
           </span>
         )}
         {course.comingSoon && <SoonRibbon />}
-        <span className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-2">
-          <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">{GROUP_LABELS[course.group]}</span>
+        {/* Telefonda görselin altında yalnızca fiyat kapsülü kalır; kategori etiketi gövdeye iner (ikisi aynı satırda çakışıyordu) */}
+        <span className="absolute inset-x-3 bottom-3 flex items-end justify-end gap-2 sm:inset-x-4 sm:justify-between">
+          <span className="hidden rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md sm:inline-flex">{GROUP_LABELS[course.group]}</span>
           <PricePill course={course} lg={lg} />
         </span>
       </Link>
 
       {/* Metin */}
-      <div className={`flex flex-1 flex-col p-5 ${lg ? "lg:p-7" : ""}`}>
+      <div className={`flex flex-1 flex-col p-4 sm:p-5 ${lg ? "lg:p-7" : ""}`}>
+        <span className="mb-2 inline-flex w-fit items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100 sm:hidden">{GROUP_LABELS[course.group]}</span>
         <h3 className={`line-clamp-2 font-bold leading-snug text-navy-800 ${lg ? "text-lg lg:text-2xl" : "text-[17px]"}`}>
           <Link href={href} className="transition hover:text-sky-600">{course.title}</Link>
         </h3>

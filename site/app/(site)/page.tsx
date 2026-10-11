@@ -46,14 +46,15 @@ export default async function HomePage() {
     <>
       {/* 1. Giriş hero banner */}
       <section className="relative overflow-hidden bg-navy-800">
-        {/* Görsel sağa yaslı: tırmanıcılar sağda; sol tarafa açık lacivert geçiş (çok koyu olmasın) */}
+        {/* Masaüstü: görsel sağa yaslı (tırmanıcılar sağda), sola açık lacivert geçiş. Telefon (md altı, 2026-10-11): görsel ortalı
+            (iki dağcı görünür) ve üstte açık; mavi geçiş ALTTAN gelir, yazı ve düğmeler geçişin üstünde en altta durur. */}
         <div className="absolute inset-y-0 right-0 w-full md:w-[74%] lg:w-[70%]">
-          <Image src={g.heroImage || "/img/site/hero.jpg"} alt="" fill className="object-cover object-[80%_center] opacity-90" priority />
-          <div className="absolute inset-y-0 -left-2 right-0 bg-gradient-to-r from-navy-800 from-3% via-navy-800/20 via-38% to-transparent" />
+          <Image src={g.heroImage || "/img/site/hero.jpg"} alt="" fill className="object-cover object-[58%_top] opacity-90 md:object-[80%_center]" priority />
+          <div className="absolute inset-y-0 -left-2 right-0 hidden bg-gradient-to-r from-navy-800 from-3% via-navy-800/20 via-38% to-transparent md:block" />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-navy-800/70 via-navy-800/20 to-transparent md:hidden" />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy-900/60 to-transparent" />
-        <div className="relative mx-auto max-w-7xl px-4 py-32 md:py-44">
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 from-18% via-navy-900/70 via-45% to-transparent md:hidden" />
+        <div className="absolute inset-x-0 bottom-0 hidden h-24 bg-gradient-to-t from-navy-900/60 to-transparent md:block" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-64 md:py-44">
           <div className="max-w-3xl text-white">
             <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:whitespace-nowrap lg:text-[2.9rem]">{g.heroTitle}</h1>
             <p className="mt-5 text-lg text-white/85 md:text-xl lg:whitespace-nowrap">{g.heroText}</p>
@@ -66,27 +67,28 @@ export default async function HomePage() {
       </section>
 
       {/* 2. Vitrin alanı */}
-      <section id="vitrin" className="mx-auto max-w-7xl px-4 py-16">
+      {/* Telefonda (sm altı, 2026-10-11) dış ve iç boşluklar dar: kartlar ekranı daha çok kullanır */}
+      <section id="vitrin" className="mx-auto max-w-7xl px-3 py-10 sm:px-4 sm:py-16">
         {/* Modern vitrin çerçevesi: yumuşak gradyan panel, ışık lekeleri, nokta dokusu */}
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-line bg-gradient-to-br from-white via-sky-50 to-navy-50 p-6 shadow-[0_30px_80px_-40px_rgba(20,43,86,.45)] sm:p-10">
+        <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white via-sky-50 to-navy-50 p-3 shadow-[0_30px_80px_-40px_rgba(20,43,86,.45)] sm:rounded-[2.5rem] sm:p-10">
           <div className="pointer-events-none absolute inset-0 opacity-[.35] [background-image:radial-gradient(rgba(20,43,86,.14)_1px,transparent_1px)] [background-size:22px_22px]" />
           <div className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full bg-sky-300/30 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-navy-300/25 blur-3xl" />
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/70 to-transparent" />
 
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative flex flex-col gap-3 px-1 pt-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:px-0 sm:pt-0">
             <div>
-              <h2 className="text-3xl font-bold text-navy-800 md:text-4xl">{sc.title}</h2>
-              {sc.sub && <p className="mt-2 max-w-2xl text-muted">{sc.sub}</p>}
+              <h2 className="text-2xl font-bold text-navy-800 sm:text-3xl md:text-4xl">{sc.title}</h2>
+              {sc.sub && <p className="mt-1.5 max-w-2xl text-sm text-muted sm:mt-2 sm:text-base">{sc.sub}</p>}
             </div>
-            <Link href="/kesfet" className="btn-primary shrink-0 px-6 py-3 text-base">Tüm eğitimleri gör <Icon name="arrowRight" className="size-4" /></Link>
+            <Link href="/kesfet" className="btn-primary w-full shrink-0 justify-center px-6 py-3 text-base sm:w-auto">Tüm eğitimleri gör <Icon name="arrowRight" className="size-4" /></Link>
           </div>
 
-          <div className="relative mt-8">
+          <div className="relative mt-5 sm:mt-8">
             {showcase.length === 0 ? (
               <p className="text-center text-muted">Henüz yayınlanmış program yok.</p>
             ) : (
-              <div className={`grid gap-6 ${showcaseCols}`}>
+              <div className={`grid gap-4 sm:gap-6 ${showcaseCols}`}>
                 {showcase.map((k) => <CourseCard key={k.id} course={k} size={sc.columns === 2 ? "lg" : "md"} />)}
               </div>
             )}
@@ -150,7 +152,7 @@ export default async function HomePage() {
 
       {/* 4. Merak edilenler (SSS) */}
       {faq.items.length > 0 && (
-        <section id="merak-edilenler" className="mx-auto max-w-7xl px-4 py-16">
+        <section id="merak-edilenler" className="mx-auto max-w-7xl px-4 py-10 sm:py-16">
           <SectionTitle sub={faq.sub}>{faq.title}</SectionTitle>
           <FaqAccordion items={faq.items.slice(0, Math.max(1, faq.homeLimit || 6))} />
           {faq.items.length > (faq.homeLimit || 6) && (

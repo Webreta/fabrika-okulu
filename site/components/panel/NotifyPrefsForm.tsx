@@ -30,7 +30,8 @@ export function NotifyPrefsForm({ initial, title }: { initial: NotifyPrefs; titl
         <h3 className="font-bold text-navy-800">{title}</h3>
         <button type="button" onClick={() => commit(Object.fromEntries(keys.map((k) => [k, !allOn])))} disabled={pending} className="btn-secondary btn-sm shrink-0">{allOn ? "Tümünü kapat" : "Tümünü aç"}</button>
       </div>
-      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-5 gap-y-0">
+      {/* Hücreler satır boyunca uzar (items-center YOK): ayırıcı çizgiler soldaki metinle aynı hizada kalır, anahtar hücre içinde ortalanır */}
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-5 gap-y-0">
         <span />
         <span className="pb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">Panel</span>
         <span className="pb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">E-posta</span>
@@ -43,8 +44,8 @@ export function NotifyPrefsForm({ initial, title }: { initial: NotifyPrefs; titl
                 <p className="text-sm font-semibold text-navy-800">{c.label}</p>
                 <p className="text-xs text-muted">{c.desc}</p>
               </div>
-              <div className="flex justify-center border-t border-line py-3"><Switch on={app} label={`${c.label} — panel`} disabled={pending} onChange={(v) => commit({ ...prefs, [c.key]: v })} /></div>
-              <div className="flex justify-center border-t border-line py-3"><Switch on={mail} label={`${c.label} — e-posta`} disabled={pending} onChange={(v) => commit({ ...prefs, [`mail:${c.key}`]: v })} /></div>
+              <div className="flex items-center justify-center border-t border-line py-3"><Switch on={app} label={`${c.label} — panel`} disabled={pending} onChange={(v) => commit({ ...prefs, [c.key]: v })} /></div>
+              <div className="flex items-center justify-center border-t border-line py-3"><Switch on={mail} label={`${c.label} — e-posta`} disabled={pending} onChange={(v) => commit({ ...prefs, [`mail:${c.key}`]: v })} /></div>
             </div>
           );
         })}

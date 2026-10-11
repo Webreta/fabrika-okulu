@@ -24,7 +24,11 @@ type Menu = { key: string; label: string; href?: string; active: boolean; icon: 
  * admin → Kategoriler) · Rotam (rotalar, admin → Rotalar) · Hakkımızda · S.S.S. · İletişim.
  * Açılır menüler üzerine gelince/oka tıklayınca açılır; mobilde akordeon.
  */
-export function Header({ user, cartCount, categories = [], routes = [] }: { user: { name: string; role: string } | null; cartCount: number; categories?: Cat[]; routes?: Cat[] }) {
+/**
+ * goalColor: giriş yapmış öğrencinin hedef bayrağı rengi (hex). "Kariyer Hedefim" bağlantısı bu renkte ve bayrak ikonlu
+ * çizilir (panel menüsüyle aynı dil, 2026-10-11); bayrak yoksa normal bağlantı.
+ */
+export function Header({ user, cartCount, categories = [], routes = [], goalColor = null }: { user: { name: string; role: string } | null; cartCount: number; categories?: Cat[]; routes?: Cat[]; goalColor?: string | null }) {
   const [open, setOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState<string | null>(null);
@@ -58,7 +62,11 @@ export function Header({ user, cartCount, categories = [], routes = [] }: { user
           <Image src="/img/site/logo.webp" alt="Fabrika Okulu" width={180} height={205} className="h-14 w-auto lg:h-16" priority />
         </Link>
         <nav className="hidden lg:flex items-center gap-1 text-[15px] font-medium">
-          {NAV_BEFORE.map((n) => <Link key={n.href} href={n.href} className={linkCls(isActive(n.href))}>{n.label}</Link>)}
+          {NAV_BEFORE.map((n) => (
+            <Link key={n.href} href={n.href} style={goalColor && n.href === "/panel/anket" ? { color: goalColor } : undefined} className={`${linkCls(isActive(n.href))} ${goalColor && n.href === "/panel/anket" ? "inline-flex items-center gap-1.5 font-semibold" : ""}`}>
+              {goalColor && n.href === "/panel/anket" && <Icon name="flag" className="size-4" />}{n.label}
+            </Link>
+          ))}
 
           {/* Açılır menüler: Eğitimler (kategoriler) ve Rotam (rotalar) */}
           {MENUS.map((m) => {
@@ -130,7 +138,7 @@ export function Header({ user, cartCount, categories = [], routes = [] }: { user
         <div className="lg:hidden border-t border-line bg-white px-4 py-3">
           <nav className="flex flex-col gap-1 text-[15px] font-medium">
             {NAV_BEFORE.map((n) => (
-              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-navy-800 hover:bg-navy-50">{n.label}</Link>
+              <Link key={n.href} href={n.href} onClick={() => setOpen(false)} style={goalColor && n.href === "/panel/anket" ? { color: goalColor } : undefined} className={`rounded-lg px-3 py-2.5 text-navy-800 hover:bg-navy-50 ${goalColor && n.href === "/panel/anket" ? "flex items-center gap-2 font-semibold" : ""}`}>{goalColor && n.href === "/panel/anket" && <Icon name="flag" className="size-4" />}{n.label}</Link>
             ))}
             {MENUS.map((m) => (
               <div key={m.key} className="contents">

@@ -35,11 +35,11 @@ export default async function GroupOrPage({ params }: { params: Promise<{ grup: 
     return (
       <>
         <PageHero title={GROUP_LABELS[g]} subtitle={GROUP_SUB[g]} crumbs={[{ label: "Eğitimler", href: "/kesfet" }, { label: GROUP_LABELS[g] }]} />
-        <section className="mx-auto max-w-7xl px-4 py-14">
+        <section className="mx-auto max-w-7xl px-3 py-8 sm:px-4 sm:py-14">
           {list.length === 0 ? (
             <p className="text-center text-muted">Bu kategoride henüz program yok.</p>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {list.map((c) => <CourseCard key={c.id} course={c} />)}
             </div>
           )}

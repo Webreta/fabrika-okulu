@@ -45,9 +45,10 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
             <div className="w-full rounded-2xl bg-gradient-to-r from-navy-800 to-sky-500" style={{ aspectRatio: BANNER_ASPECT }} />
           )}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#000]/75 via-[#000]/20 to-transparent" />
-          <div className="absolute bottom-5 left-6 text-[#fff]">
-            <p className="text-sm text-[#fff]/80">{fmtDate(new Date(), true)}</p>
-            <h1 className="text-3xl font-bold md:text-4xl">Merhaba, {user.firstName || user.name} 👋</h1>
+          {/* Telefonda selamlama küçük ve sağdaki "Görsel hakkında" rozetine yer bırakır (üst üste binmesin) */}
+          <div className="absolute bottom-3 left-4 right-14 text-[#fff] sm:bottom-5 sm:left-6 sm:right-44">
+            <p className="text-xs text-[#fff]/80 sm:text-sm">{fmtDate(new Date(), true)}</p>
+            <h1 className="truncate text-xl font-bold sm:text-3xl md:text-4xl">Merhaba, {user.firstName || user.name} 👋</h1>
           </div>
           <ThemeButton current={theme.key} />
           <ThemeAboutButton about={theme.about} img={theme.img} themeLabel={theme.label} />

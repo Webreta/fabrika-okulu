@@ -17,11 +17,11 @@ export default async function KesfetPage() {
   return (
     <>
       <PageHero title={page.title || DEFAULT_CATALOG.title} subtitle={page.sub || undefined} crumbs={[{ label: "Eğitimler" }]} />
-      <section className="mx-auto max-w-7xl px-4 py-14">
+      <section className="mx-auto max-w-7xl px-3 py-8 sm:px-4 sm:py-14">
         {list.length === 0 ? (
           <p className="text-center text-muted">Henüz program yok.</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {list.map((c) => <CourseCard key={c.id} course={c} />)}
           </div>
         )}

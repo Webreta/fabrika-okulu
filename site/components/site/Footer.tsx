@@ -39,8 +39,16 @@ export function Footer({ content = DEFAULT_FOOTER, categories = [], contact = {}
       {/* Üst ışık çizgisi + zemin ışığı */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/70 to-transparent" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(91,174,207,.18),transparent_55%)]" />
-      {/* Sönük dağ silüeti */}
-      <svg viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full opacity-60">
+      {/* Sönük dağ silüeti. Telefonda 1440 birimlik sıra 400 px'e sıkışıp zirveler yığıldığı için oran korunur ve yanlar kırpılır (sm altı);
+          sm+ kutuya göre esner (eski davranış). */}
+      <svg viewBox="0 0 1440 320" preserveAspectRatio="xMidYMax slice" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full opacity-60 sm:hidden">
+        <defs>
+          <linearGradient id="footer-peaks-m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#142b56" stopOpacity="0" /><stop offset="1" stopColor="#142b56" stopOpacity=".9" /></linearGradient>
+        </defs>
+        <path d="M0 320 L140 220 L240 260 L360 150 L470 210 L580 110 L690 190 L800 60 L910 180 L1010 130 L1120 200 L1230 100 L1330 190 L1440 140 L1440 320 Z" fill="url(#footer-peaks-m)" />
+        <path d="M0 320 L140 220 L240 260 L360 150 L470 210 L580 110 L690 190 L800 60 L910 180 L1010 130 L1120 200 L1230 100 L1330 190 L1440 140" fill="none" stroke="#84bedc" strokeOpacity=".25" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+      <svg viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-56 w-full opacity-60 sm:block">
         <defs>
           <linearGradient id="footer-peaks" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#142b56" stopOpacity="0" /><stop offset="1" stopColor="#142b56" stopOpacity=".9" /></linearGradient>
         </defs>

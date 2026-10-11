@@ -22,7 +22,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   return (
     <>
       <PageHero title={k.name} subtitle={k.description || "Bu kategorideki eğitimleri keşfet."} crumbs={[{ label: "Eğitimler", href: "/kesfet" }, { label: k.name }]} />
-      <section className="mx-auto max-w-7xl px-4 py-14">
+      <section className="mx-auto max-w-7xl px-3 py-8 sm:px-4 sm:py-14">
         {all.length > 1 && (
           <div className="mb-8 flex flex-wrap gap-2">
             {all.map((c) => (
@@ -35,7 +35,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         {list.length === 0 ? (
           <p className="text-center text-muted">Bu kategoride henüz program yok.</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {list.map((c) => <CourseCard key={c.id} course={c} />)}
           </div>
         )}
