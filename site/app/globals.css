@@ -65,6 +65,9 @@ body {
   .btn-sm { min-height: 0; }
 }
 .card { @apply rounded-xl border border-line bg-white p-5 shadow-sm; }
+/* Yatay kaydırmalı şeritlerde çubuğu gizle (kaydırma çalışmaya devam eder) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
 
 /* Tablolar */
@@ -183,6 +186,10 @@ body {
 .fo-theme[data-theme="okyanus"] :is(.bg-navy-800, .bg-navy-900, .btn-primary) { color: var(--color-surface); }
 
 /* ===== Anket: soru kartı geçişleri ===== */
+@keyframes theme-about-in { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+.theme-about-in { animation: theme-about-in .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .theme-about-in { animation: none; } }
+
 @keyframes survey-in-next { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
 @keyframes survey-in-prev { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
 .survey-card-next { animation: survey-in-next 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }

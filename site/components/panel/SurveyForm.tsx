@@ -33,7 +33,7 @@ function QuestionField({ q, value, onChange, invalid, autoFocus }: { q: SurveyQu
       {q.type === "radio" && (
         <div role="radiogroup" aria-labelledby={fid("baslik")} className="space-y-1.5">
           {q.options?.map((o) => (
-            <label key={o.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${value === o.value ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"}`} style={q.goal && value === o.value ? { borderColor: goalColor(o.color).hex, background: goalColor(o.color).soft } : undefined}>
+            <label key={o.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${value === o.value ? "border-sky-400 bg-sky-50" : "border-line hover:bg-surface"}`} style={q.goal && value === o.value ? { borderColor: goalColor(o.color).hex, background: `${goalColor(o.color).hex}26` } : undefined}>
               <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} />
               {q.goal && <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-white" style={{ background: goalColor(o.color).hex }}><Icon name="flag" className="size-3" /></span>}
               {o.label}

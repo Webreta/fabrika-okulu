@@ -78,6 +78,8 @@ const paths = {
   grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   linkedin: "M4 9h4v12H4zM6 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM10 9h4v2c1-1.5 2.5-2.5 4.5-2.5S22 10 22 14v7h-4v-6c0-2-1-3-2.5-3S13 13 13 15v6h-3z",
   instagram: "M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm5 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.5-1.5h.01",
+  // YouTube: yuvarlak köşeli ekran + oynat üçgeni (iletişim sayfası ve footer sosyal bağlantıları; eskiden tanımsızdı, boş çember görünüyordu)
+  youtube: "M3 8.5A3.5 3.5 0 0 1 6.5 5h11A3.5 3.5 0 0 1 21 8.5v7a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 15.5zM10 9v6l5-3z",
   twitter: "M4 4l16 16M20 4 4 20",
 } as const;
 

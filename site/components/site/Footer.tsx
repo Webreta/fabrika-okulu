@@ -26,8 +26,8 @@ export function Footer({ content = DEFAULT_FOOTER, categories = [], contact = {}
   const socials = !content.showSocials ? [] : [
     contact.instagram && { href: contact.instagram, icon: "instagram" as const, label: "Instagram" },
     contact.linkedin && { href: contact.linkedin, icon: "linkedin" as const, label: "LinkedIn" },
-    contact.youtube && { href: contact.youtube, icon: "play" as const, label: "YouTube" },
-  ].filter((s): s is { href: string; icon: "instagram" | "linkedin" | "play"; label: string } => !!s);
+    contact.youtube && { href: contact.youtube, icon: "youtube" as const, label: "YouTube" },
+  ].filter((s): s is { href: string; icon: "instagram" | "linkedin" | "youtube"; label: string } => !!s);
 
   const columns = content.columns
     .slice(0, FOOTER_MAX_COLUMNS)

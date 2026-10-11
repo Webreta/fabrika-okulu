@@ -11,6 +11,7 @@ import { fmtDate, fmtTime, numSuffix, CALENDAR_TYPES } from "@/lib/format";
 import { Icon } from "@/components/site/Icon";
 import { Progress, Kpi, Chip } from "@/components/panel/ui";
 import { ThemeButton } from "@/components/panel/ThemePicker";
+import { ThemeAboutButton } from "@/components/panel/ThemeAbout";
 import { SessionJoinButton } from "@/components/panel/SessionJoinButton";
 
 export default async function PanelHome({ searchParams }: { searchParams: Promise<{ sifirlandi?: string }> }) {
@@ -39,7 +40,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
         <div className="relative rounded-2xl">
           {/* Kapak görseli kendi oranında, kırpılmadan (yönetici isteği 2026-10-10) */}
           {theme.img ? (
-            <Image src={theme.img} alt="" width={1600} height={638} priority className="w-full rounded-2xl object-cover" style={{ aspectRatio: BANNER_ASPECT }} />
+            <Image src={theme.img} alt="" width={1600} height={679} priority className="w-full rounded-2xl object-cover" style={{ aspectRatio: BANNER_ASPECT }} />
           ) : (
             <div className="w-full rounded-2xl bg-gradient-to-r from-navy-800 to-sky-500" style={{ aspectRatio: BANNER_ASPECT }} />
           )}
@@ -49,6 +50,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
             <h1 className="text-3xl font-bold md:text-4xl">Merhaba, {user.firstName || user.name} 👋</h1>
           </div>
           <ThemeButton current={theme.key} />
+          <ThemeAboutButton about={theme.about} img={theme.img} themeLabel={theme.label} />
         </div>
 
         {sifirlandi && <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Şifren güncellendi.</p>}

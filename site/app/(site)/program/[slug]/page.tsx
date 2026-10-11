@@ -220,8 +220,10 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
           const [ed, em] = fmtDay(p.endDate).split(" ");
           return (
             <div key={p.id} className={`overflow-hidden rounded-2xl ring-1 ${free ? "bg-emerald-50/60 ring-emerald-200" : "bg-surface/70 ring-line/70"}`}>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5">
-                <div className="flex shrink-0 items-center gap-2" title={fmtRange(p.startDate, p.endDate)}>
+              {/* Telefonda iki satır: tarih kutuları + durum rozeti üstte, dönem adı/açıklama altta tam genişlikte (sıkışmasın) */}
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-3 sm:p-5">
+                <div className="flex items-center justify-between gap-3 sm:contents">
+                <div className="flex shrink-0 items-center gap-2 sm:order-1" title={fmtRange(p.startDate, p.endDate)}>
                   <span className="flex size-14 flex-col items-center justify-center rounded-xl bg-navy-800 text-white shadow-[0_8px_16px_-8px_rgba(20,43,86,.7)]">
                     <span className="text-lg font-extrabold leading-none">{sd}</span>
                     <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-200">{sm}</span>
@@ -232,16 +234,17 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
                     <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-600">{em}</span>
                   </span>
                 </div>
-                <div className="min-w-0 flex-1">
+                <span className={`badge shrink-0 sm:order-3 ${isOpen ? (taken >= p.capacity ? "bg-red-50 text-red-700" : "bg-emerald-500 text-white") : "bg-white text-muted ring-1 ring-line"}`}>
+                  {isOpen ? (taken >= p.capacity ? "Dolu" : "Kayıt açık") : "Kapalı"}
+                </span>
+                </div>
+                <div className="min-w-0 flex-1 sm:order-2">
                   <h3 className="text-[15px] font-bold text-navy-800">{p.name}</h3>
                   <p className="mt-0.5 text-[13px] text-navy-700">
                     <b className="font-semibold text-navy-800">{fmtRange(p.startDate, p.endDate)}</b> · {p.capacity} kişilik kontenjan{free && ` · ${p.capacity - taken} yer kaldı`}
                   </p>
                   {p.description && <p className="mt-1 text-[13px] text-navy-700">{p.description}</p>}
                 </div>
-                <span className={`badge shrink-0 ${isOpen ? (taken >= p.capacity ? "bg-red-50 text-red-700" : "bg-emerald-500 text-white") : "bg-white text-muted ring-1 ring-line"}`}>
-                  {isOpen ? (taken >= p.capacity ? "Dolu" : "Kayıt açık") : "Kapalı"}
-                </span>
               </div>
               {p.schedule.length > 0 && (
                 <div className="border-t border-line/70 bg-white/60 p-4 sm:px-5">
@@ -330,11 +333,27 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
       {/* Hero */}
       {/* Hero + içerik: sağdaki kart hero ile beyaz alanın sınırında durur ve kaydırınca takip eder */}
       <section className="relative">
-        <div className="absolute inset-x-0 top-0 h-[560px] overflow-hidden bg-navy-900 lg:h-[440px]"><MountainBackdrop className="absolute inset-x-0 bottom-0 h-[70%] opacity-80" /></div>
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[1fr_400px]">
-          {/* min-w-0: uzun (kesilen) ders adları sütunu ekran genişliğinin dışına itmesin (telefonda yatay kayma) */}
-          <div className="min-w-0">
-            <div className="flex min-h-[560px] flex-col justify-center py-10 text-white lg:min-h-[440px]">
+        {/* Masaüstü: lacivert zemin sabit yükseklikte, sağdaki kart hero ile beyaz alanın sınırına biner.
+            Telefonda (lg altı) hero kendi zeminini taşır: üstte görsel/video kart dışında tam genişlikte "giriş" olarak,
+            altında başlık, sonra satın alma kutusu, en altta içerik paneli (2026-10-11: kutu ve görsel en alttaydı). */}
+        <div className="absolute inset-x-0 top-0 hidden h-[440px] overflow-hidden bg-navy-900 lg:block"><MountainBackdrop className="absolute inset-x-0 bottom-0 h-[70%] opacity-80" /></div>
+        <div className="relative mx-auto grid max-w-7xl px-4 lg:grid-cols-[1fr_400px] lg:grid-rows-[auto_1fr] lg:gap-x-8">
+          {/* Hero. min-w-0: uzun (kesilen) ders adları sütunu ekran genişliğinin dışına itmesin (telefonda yatay kayma) */}
+          <div className="relative -mx-4 min-w-0 overflow-hidden bg-navy-900 px-4 lg:col-start-1 lg:row-start-1 lg:mx-0 lg:overflow-visible lg:bg-transparent lg:px-0">
+            <MountainBackdrop className="absolute inset-x-0 bottom-0 h-[55%] opacity-80 lg:hidden" />
+            {(hasVideo || course.imageUrl) && (
+              <div className="relative -mx-4 lg:hidden">
+                {hasVideo ? (
+                  <iframe src={preview.type === "youtube" || preview.type === "vimeo" ? preview.embed : undefined} className="aspect-video w-full bg-black" allow="autoplay; fullscreen" allowFullScreen title="Önizleme" />
+                ) : (
+                  <Image src={course.imageUrl} alt={course.title} width={800} height={450} sizes="100vw" priority className="aspect-video w-full object-cover" />
+                )}
+                {/* Alt kenar lacivert zemine erir; başlık görselin hemen altından başlar */}
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy-900 to-transparent" />
+                {course.comingSoon && <SoonRibbon size="md" />}
+              </div>
+            )}
+            <div className="relative flex flex-col justify-center py-7 text-white lg:min-h-[440px] lg:py-10">
                 {/* Konum + grup çipleri */}
                 <nav aria-label="Konum" className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                   <ol className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-1 backdrop-blur-md">
@@ -346,8 +365,8 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
                   {early && <span className="rounded-full bg-violet-600 px-3 py-1 text-white shadow">Erken Kayıt</span>}
                   {hasActiveSale(course) && !course.comingSoon && !early && <span className="rounded-full bg-rose-500 px-3 py-1 text-white shadow">İndirimde</span>}
                 </nav>
-                <h1 className="mt-5 text-3xl font-semibold tracking-tight [text-shadow:0_2px_12px_rgba(10,21,48,.8)] md:text-[2.6rem] md:leading-tight">{course.title}</h1>
-                {course.shortDescription && <p className="mt-3 max-w-2xl text-lg text-white/85 [text-shadow:0_1px_8px_rgba(10,21,48,.8)]">{course.shortDescription}</p>}
+                <h1 className="mt-4 text-[1.75rem] font-semibold leading-tight tracking-tight [text-shadow:0_2px_12px_rgba(10,21,48,.8)] sm:mt-5 sm:text-3xl md:text-[2.6rem] md:leading-tight">{course.title}</h1>
+                {course.shortDescription && <p className="mt-3 max-w-2xl text-base text-white/85 [text-shadow:0_1px_8px_rgba(10,21,48,.8)] sm:text-lg">{course.shortDescription}</p>}
                 {/* Cam efektli bilgi çipleri: yalnızca modül ve canlı oturum sayısı (erken kayıtta ayrıca açılış tarihi) */}
                 <div className="mt-6 flex flex-wrap gap-2 text-sm">
                   {[
@@ -359,43 +378,25 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
                   ))}
                 </div>
             </div>
-            {/* İçerik paneli: tüm bölümler tek çerçevede, solda birbirine bağlı düğümlerle; altta erişim notu şeridi */}
-            <div className="py-10 lg:py-12">
-              <div className="relative overflow-hidden rounded-[2rem] bg-white shadow-[0_30px_80px_-45px_rgba(20,43,86,.6)] ring-1 ring-navy-900/5">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-navy-800 via-sky-400 to-navy-800" />
-                <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-sky-200/40 blur-3xl" />
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-64 opacity-40 [background-image:radial-gradient(rgba(20,43,86,.13)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-                <div className="relative p-6 sm:p-9">
-                  {blocks.map((b, i) => (
-                    <Block key={b.key} icon={b.icon} title={b.title} sub={b.sub} last={i === blocks.length - 1}>{b.body}</Block>
-                  ))}
-                </div>
-                {/* Erişim süresi notu: tüm eğitimlerde sabit metin (görüşme ürününde içerik olmadığı için yok) */}
-                {course.type !== "meeting" && (
-                  <p className="relative flex items-center gap-3 bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 px-6 py-3.5 text-[13px] font-medium text-white sm:px-9">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sky-300 ring-1 ring-white/15"><Icon name="clock" className="size-4" /></span>
-                    Eğitimi tamamladıktan sonra tüm içeriğe 1 ay süreyle erişebilirsin.
-                  </p>
-                )}
-              </div>
-            </div>
           </div>
-          <div className="min-w-0 lg:pt-24">
+          {/* Satın alma sütunu: telefonda hero'nun hemen altında; masaüstünde sağda iki satırı (hero + panel) kaplar */}
+          <div className="min-w-0 pt-5 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:pt-24">
             {/* Satın alma kartı iki parça: görsel normal akışta kalır (kaydırınca yukarıda kalır, takip etmez);
-                alttaki gövde yapışkandır ve site başlığının altında takip eder. Gövde görselin alt kenarına biner, tek kart gibi görünür. */}
+                alttaki gövde yapışkandır ve site başlığının altında takip eder. Gövde görselin alt kenarına biner, tek kart gibi görünür.
+                Telefonda görsel/video hero'nun üstünde gösterildiği için burada yalnızca masaüstünde. */}
             {hasVideo ? (
-              <div className="overflow-hidden rounded-3xl bg-navy-900 shadow-[0_20px_40px_-20px_rgba(10,21,48,.5)] ring-1 ring-black/5">
+              <div className="hidden overflow-hidden rounded-3xl bg-navy-900 shadow-[0_20px_40px_-20px_rgba(10,21,48,.5)] ring-1 ring-black/5 lg:block">
                 <iframe src={preview.type === "youtube" || preview.type === "vimeo" ? preview.embed : undefined} className="aspect-video w-full" allow="autoplay; fullscreen" allowFullScreen title="Önizleme" />
               </div>
             ) : course.imageUrl ? (
-              <div className="relative overflow-hidden rounded-t-3xl bg-navy-50 shadow-[0_20px_40px_-20px_rgba(10,21,48,.5)] ring-1 ring-black/5">
+              <div className="relative hidden overflow-hidden rounded-t-3xl bg-navy-50 shadow-[0_20px_40px_-20px_rgba(10,21,48,.5)] ring-1 ring-black/5 lg:block">
                 <Image src={course.imageUrl} alt={course.title} width={800} height={450} sizes="400px" className="aspect-video w-full object-cover" />
                 {/* Alt kenar gölgesi: görsel açık renkli olsa da üstüne binen gövdenin yuvarlak köşeleri iki yanda da belirgin kalır */}
                 <span className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-navy-950/60 via-navy-950/20 to-transparent" />
                 {course.comingSoon && <SoonRibbon size="md" />}
               </div>
             ) : null}
-            <div id="satin-al" className={`relative z-10 scroll-mt-40 rounded-3xl bg-white text-ink shadow-[0_30px_60px_-15px_rgba(10,21,48,.45),0_10px_20px_-10px_rgba(10,21,48,.3)] ring-1 ring-black/5 lg:sticky lg:top-[148px] ${hasVideo ? "mt-3" : course.imageUrl ? "-mt-6" : ""}`}>
+            <div id="satin-al" className={`relative z-10 scroll-mt-40 rounded-3xl bg-white text-ink shadow-[0_30px_60px_-15px_rgba(10,21,48,.45),0_10px_20px_-10px_rgba(10,21,48,.3)] ring-1 ring-black/5 lg:sticky lg:top-[148px] ${hasVideo ? "lg:mt-3" : course.imageUrl ? "lg:-mt-6" : ""}`}>
               <div className="p-5 sm:p-6">
                 <div className="flex items-end justify-between gap-3">
                   <div className="text-3xl">
@@ -480,12 +481,42 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
               </div>
             </div>
           </div>
+          {/* İçerik paneli: tüm bölümler tek çerçevede, solda birbirine bağlı düğümlerle; altta erişim notu şeridi */}
+          <div className="min-w-0 py-8 lg:col-start-1 lg:row-start-2 lg:py-12">
+              <div className="relative overflow-hidden rounded-[2rem] bg-white shadow-[0_30px_80px_-45px_rgba(20,43,86,.6)] ring-1 ring-navy-900/5">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-navy-800 via-sky-400 to-navy-800" />
+                <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-sky-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-64 opacity-40 [background-image:radial-gradient(rgba(20,43,86,.13)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
+                <div className="relative p-5 sm:p-9">
+                  {blocks.map((b, i) => (
+                    <Block key={b.key} icon={b.icon} title={b.title} sub={b.sub} last={i === blocks.length - 1}>{b.body}</Block>
+                  ))}
+                </div>
+                {/* Erişim süresi notu: tüm eğitimlerde sabit metin (görüşme ürününde içerik olmadığı için yok) */}
+                {course.type !== "meeting" && (
+                  <p className="relative flex items-center gap-3 bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 px-6 py-3.5 text-[13px] font-medium text-white sm:px-9">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sky-300 ring-1 ring-white/15"><Icon name="clock" className="size-4" /></span>
+                    Eğitimi tamamladıktan sonra tüm içeriğe 1 ay süreyle erişebilirsin.
+                  </p>
+                )}
+              </div>
+          </div>
         </div>
       </section>
       {related.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-4 pt-[30px]">
           <div className="mb-6"><SectionHead icon="star" title="İlgili programlar" sub="Bu eğitimden sonra önerdiğimiz eğitimler" /></div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{related.map((c) => <CourseCard key={c.id} course={c} />)}</div>
+          {/* Telefonda yatay kaydırmalı şerit: kartlar %82 genişlikte, snap ile ortalanır, sıradaki kart kenardan görünür,
+              sağ kenarda silik geçiş; masaüstünde (sm+) eski grid */}
+          <div className="relative">
+            <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
+              {related.map((c) => <div key={c.id} className="w-[82%] shrink-0 snap-center sm:w-auto"><CourseCard course={c} /></div>)}
+            </div>
+            <span className="pointer-events-none absolute inset-y-0 -right-4 flex w-14 items-center justify-end bg-gradient-to-l from-white via-white/80 to-transparent pr-1.5 sm:hidden" aria-hidden>
+              <span className="flex size-8 items-center justify-center rounded-full bg-white text-navy-800 shadow-lg ring-1 ring-line"><Icon name="chevronRight" className="size-4" /></span>
+            </span>
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-muted sm:hidden"><Icon name="arrowRight" className="size-3.5" /> Kaydırarak diğer programları gör</p>
+          </div>
         </section>
       )}
       {/* Mobil yapışkan alt çubuk */}

@@ -70,7 +70,7 @@ export default async function SurveyDetailPage({ params, searchParams }: { param
                 <h3 className="font-bold text-navy-800">{gq.label}</h3>
                 <p className="mt-0.5 text-sm text-navy-700/80">
                   {opt ? <>Şu an: <b>{opt.label}</b>.</> : "Henüz bir hedef seçmedin."}{" "}
-                  {survey.editable ? <>Değiştirmek için <Link href={`/panel/anket/${survey.id}?duzenle=1`} className="font-semibold underline underline-offset-2">testi yeniden çöz</Link>.</> : "Bu test tek seferlik olduğu için hedef sonradan değiştirilemez."}
+                  {survey.editable ? <>Değiştirmek için <Link href={`/panel/anket/${survey.id}?duzenle=1`} className="font-semibold underline underline-offset-2">anketi yeniden değerlendir</Link>.</> : "Bu test tek seferlik olduğu için hedef sonradan değiştirilemez."}
                 </p>
               </div>
             </div>

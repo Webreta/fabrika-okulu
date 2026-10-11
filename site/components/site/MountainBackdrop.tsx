@@ -1,12 +1,35 @@
 /**
  * Sayfa başlıklarının ortak dağ illüstrasyonu: üç katmanlı sıra, ışıklı/gölgeli yüzler, kaya katman çizgileri,
  * alt kenarı zemine eriyen sis. `flags` ile birkaç zirveye kırmızı bayrak konur. Kapsayıcı konumu `className` ile verilir
- * (örn. `absolute inset-x-0 top-12 h-64 sm:h-80`); kutuya göre esner (preserveAspectRatio="none").
+ * (örn. `absolute inset-x-0 top-12 h-64 sm:h-80`). Masaüstünde kutuya göre esner (preserveAspectRatio="none");
+ * telefonda 1440 birimlik sıra 400 px'e sıkışıp zirveler yan yana yığıldığı için orada oran korunur ve yanlar kırpılır
+ * (`xMidYMax slice`): ortadaki birkaç zirve masaüstündeki seyreklikte görünür (2026-10-11).
  */
 export function MountainBackdrop({ className = "absolute inset-x-0 top-12 h-64 sm:h-80", flags = false }: { className?: string; flags?: boolean }) {
   return (
     <div className={`pointer-events-none ${className}`} aria-hidden>
-    <svg viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden className="absolute inset-0 h-full w-full">
+      <Peaks preserve="xMidYMax slice" className="sm:hidden" />
+      <Peaks preserve="none" className="hidden sm:block" />
+      {flags && (
+        <div className="absolute inset-0 hidden sm:block" aria-hidden>
+          {[{ x: 720, y: 30 }, { x: 1120, y: 70 }, { x: 330, y: 120 }].map((f, i) => (
+            <div key={i} className="absolute -translate-x-[3px] -translate-y-full" style={{ left: `${(f.x / 1440) * 100}%`, top: `${(f.y / 320) * 100}%` }}>
+              <svg viewBox="0 0 24 30" className="route-flag h-6 w-5 sm:h-8 sm:w-6" style={{ animationDelay: `${i * 0.7}s` }}>
+                <line x1="3" y1="1" x2="3" y2="30" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+                <path d="M4 2 L22 8 L4 14 Z" fill="#ef4444" />
+              </svg>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Dağ sırası SVG'si; `preserve` = preserveAspectRatio (bayraklar yalnızca `none` ölçeğinde hizalı olduğundan telefonda gizlenir) */
+function Peaks({ preserve, className }: { preserve: "none" | "xMidYMax slice"; className: string }) {
+  return (
+    <svg viewBox="0 0 1440 320" preserveAspectRatio={preserve} aria-hidden className={`absolute inset-0 h-full w-full ${className}`}>
         <defs>
           <linearGradient id="pk-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7fa7cf" stopOpacity=".28" /><stop offset="1" stopColor="#7fa7cf" stopOpacity=".04" /></linearGradient>
           <linearGradient id="pk-mid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#5b86bd" stopOpacity=".45" /><stop offset="1" stopColor="#5b86bd" stopOpacity=".08" /></linearGradient>
@@ -51,19 +74,6 @@ export function MountainBackdrop({ className = "absolute inset-x-0 top-12 h-64 s
         </g>
         {/* Alt sis: zemine yumuşak geçiş */}
         <rect x="0" y="180" width="1440" height="140" fill="url(#pk-haze)" />
-      </svg>
-      {flags && (
-        <div className="absolute inset-0" aria-hidden>
-          {[{ x: 720, y: 30 }, { x: 1120, y: 70 }, { x: 330, y: 120 }].map((f, i) => (
-            <div key={i} className="absolute -translate-x-[3px] -translate-y-full" style={{ left: `${(f.x / 1440) * 100}%`, top: `${(f.y / 320) * 100}%` }}>
-              <svg viewBox="0 0 24 30" className="route-flag h-6 w-5 sm:h-8 sm:w-6" style={{ animationDelay: `${i * 0.7}s` }}>
-                <line x1="3" y1="1" x2="3" y2="30" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-                <path d="M4 2 L22 8 L4 14 Z" fill="#ef4444" />
-              </svg>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </svg>
   );
 }

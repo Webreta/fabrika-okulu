@@ -136,7 +136,7 @@ export function Shell({
                         <span className="absolute -top-1 right-3 size-2.5 rotate-45 bg-navy-900" />
                         <span className="block text-[10px] font-semibold uppercase tracking-wide text-white/60">{f.title}</span>
                         <span className="mt-0.5 flex items-center gap-1.5 text-sm font-bold"><span className="size-2.5 shrink-0 rounded-full" style={{ background: c ? c.hex : "#9aabc7" }} />{f.answer ?? "Hedef seçilmedi"}</span>
-                        <span className="mt-0.5 block text-[11px] text-white/70">{f.answer ? (f.editable ? "Testi yeniden çözerek değiştirebilirsin" : "Tek seferlik test; hedef değişmez") : "Seçmek için testi çöz"}</span>
+                        <span className="mt-0.5 block text-[11px] text-white/70">{f.answer ? (f.editable ? "Anketi yeniden değerlendirerek değiştirebilirsin" : "Tek seferlik test; hedef değişmez") : "Seçmek için testi çöz"}</span>
                       </span>
                     </Link>
                   );

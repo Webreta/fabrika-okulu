@@ -16,24 +16,27 @@ export default async function CalendarPage() {
   const past = pending.filter((e) => e.date.getTime() < Date.now() - 86400000);
   const upcoming = pending.filter((e) => e.date.getTime() >= Date.now() - 86400000);
 
+  // Telefonda iki satır: tarih kutusu + metin üstte (başlık kesilmez), düğme altta tam genişlikte; sm+ tek satır
   const Card = ({ e }: { e: (typeof calendar)[number] }) => (
-    <div className={`card flex gap-4 ${e.done ? "opacity-60" : ""}`}>
-      <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-navy-800 text-white">
-        <span className="text-lg font-bold leading-none">{e.date.getDate()}</span>
-        <span className="text-[11px] uppercase">{MONTHS[e.date.getMonth()]}</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <Chip color={CALENDAR_TYPES[e.type].color}>
-          {CALENDAR_TYPES[e.type].label}{e.done && e.type !== "session" ? " ✓" : ""}
-        </Chip>
-        <p className="mt-1 truncate font-semibold text-navy-800">{e.title}</p>
-        <p className="mt-1 text-xs text-muted">{e.type !== "opening" && <><span className="date-chip">{fmtTime(e.date)}</span> · </>}{e.courseTitle}</p>
+    <div className={`card flex flex-col gap-3 sm:flex-row sm:gap-4 ${e.done ? "opacity-60" : ""}`}>
+      <div className="flex min-w-0 flex-1 gap-4">
+        <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-navy-800 text-white">
+          <span className="text-lg font-bold leading-none">{e.date.getDate()}</span>
+          <span className="text-[11px] uppercase">{MONTHS[e.date.getMonth()]}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <Chip color={CALENDAR_TYPES[e.type].color}>
+            {CALENDAR_TYPES[e.type].label}{e.done && e.type !== "session" ? " ✓" : ""}
+          </Chip>
+          <p className="mt-1 break-words font-semibold leading-snug text-navy-800 sm:truncate">{e.title}</p>
+          <p className="mt-1 text-xs text-muted">{e.type !== "opening" && <><span className="date-chip">{fmtTime(e.date)}</span> · </>}{e.courseTitle}</p>
+        </div>
       </div>
       {e.type === "session" ? (
         // Canlı ders: bağlantı oturumdan 15 dk önce açılır; bağlantı girilmemişse bilgi
-        <SessionJoinButton start={e.date.toISOString()} end={e.end.toISOString()} link={e.external ? e.link : ""} className="self-center" />
+        <SessionJoinButton start={e.date.toISOString()} end={e.end.toISOString()} link={e.external ? e.link : ""} className="w-full justify-center text-center sm:w-auto sm:self-center" />
       ) : (
-        <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm self-center">{CALENDAR_TYPES[e.type].action}</Link>
+        <Link href={e.link} target={e.external ? "_blank" : undefined} rel={e.external ? "noopener" : undefined} className="btn-secondary btn-sm w-full sm:w-auto sm:self-center">{CALENDAR_TYPES[e.type].action}</Link>
       )}
     </div>
   );
